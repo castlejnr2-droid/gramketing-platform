@@ -545,7 +545,7 @@ export function CreatePoolStepper() {
             </div>
 
             {contractAddress && (
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
+              <div className="glass-inner p-4">
                 <p className="text-xs text-white/40 uppercase tracking-wider mb-2">
                   Escrow Contract Address
                 </p>

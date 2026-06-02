@@ -86,7 +86,7 @@ export function SubmitPostModal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
-          <div className="glass-card p-6 shadow-2xl border border-white/15">
+          <div className="glass-modal p-6 shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <Dialog.Title className="text-lg font-semibold text-white">

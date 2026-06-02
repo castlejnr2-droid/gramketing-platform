@@ -73,7 +73,7 @@ export default function PoolsPage() {
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="glass-inner relative flex-1 max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
             <input
               type="text"

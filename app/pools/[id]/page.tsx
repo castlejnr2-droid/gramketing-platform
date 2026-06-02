@@ -253,7 +253,7 @@ export default function PoolDetailPage() {
 
               {/* Stats bar */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5">
+                <div className="glass-inner p-3">
                   <p className="text-xs text-white/40 mb-0.5">Prize Pool</p>
                   <p className="font-bold text-white">
                     {parseFloat(pool.totalReward) >= 1000
@@ -262,7 +262,7 @@ export default function PoolDetailPage() {
                     {pool.tokenSymbol}
                   </p>
                 </div>
-                <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5">
+                <div className="glass-inner p-3">
                   <div className="flex items-center gap-1 mb-0.5">
                     <Users className="w-3 h-3 text-white/30" />
                     <p className="text-xs text-white/40">Participants</p>
@@ -271,7 +271,7 @@ export default function PoolDetailPage() {
                     {pool._count.participants}
                   </p>
                 </div>
-                <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5">
+                <div className="glass-inner p-3">
                   <div className="flex items-center gap-1 mb-0.5">
                     <Clock className="w-3 h-3 text-white/30" />
                     <p className="text-xs text-white/40">
@@ -284,7 +284,7 @@ export default function PoolDetailPage() {
                       : `${pool.durationDays} days`}
                   </p>
                 </div>
-                <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5">
+                <div className="glass-inner p-3">
                   <div className="flex items-center gap-1 mb-0.5">
                     <Trophy className="w-3 h-3 text-white/30" />
                     <p className="text-xs text-white/40">Reward Slots</p>

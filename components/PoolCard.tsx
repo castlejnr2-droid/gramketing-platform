@@ -72,7 +72,7 @@ export function PoolCard({
 
   return (
     <div
-      className="glass-card p-6 cursor-pointer hover:border-[#0088CC]/40 hover:bg-white/[0.07] transition-all duration-300 hover:shadow-[0_0_30px_#0088CC15] group"
+      className="pool-card p-6 cursor-pointer group"
       onClick={() => router.push(`/pools/${id}`)}
     >
       {/* Header */}
@@ -125,7 +125,7 @@ export function PoolCard({
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3 text-center">
         {/* Duration */}
-        <div className="bg-white/[0.03] rounded-xl p-2.5 border border-white/5">
+        <div className="glass-inner p-2.5">
           <p className="text-xs text-white/40 mb-0.5">Duration</p>
           <p className="text-sm font-semibold text-white/80">
             {durationDays}d
@@ -133,7 +133,7 @@ export function PoolCard({
         </div>
 
         {/* Participants */}
-        <div className="bg-white/[0.03] rounded-xl p-2.5 border border-white/5">
+        <div className="glass-inner p-2.5">
           <div className="flex items-center justify-center gap-1 mb-0.5">
             <Users className="w-3 h-3 text-white/30" />
             <p className="text-xs text-white/40">Joined</p>
@@ -144,7 +144,7 @@ export function PoolCard({
         </div>
 
         {/* Reward slots */}
-        <div className="bg-white/[0.03] rounded-xl p-2.5 border border-white/5">
+        <div className="glass-inner p-2.5">
           <div className="flex items-center justify-center gap-1 mb-0.5">
             <Trophy className="w-3 h-3 text-white/30" />
             <p className="text-xs text-white/40">Slots</p>

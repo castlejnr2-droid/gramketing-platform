@@ -20,7 +20,7 @@ const phases = [
   {
     number: 'Phase 1',
     title: 'Web Platform Launch',
-    period: 'NOW',
+    period: 'Q2 2026 (Now)',
     status: 'completed' as const,
     items: [
       { done: true, text: 'Pool creation with escrow smart contract' },
@@ -31,12 +31,13 @@ const phases = [
       { done: true, text: 'Project and marketer dashboards' },
       { done: true, text: 'TON wallet auth (TON Connect 2.0)' },
       { done: true, text: 'Dollar-pegged access fees via CoinGecko' },
+      { done: true, text: '$mGRAM token launch on TON' },
     ],
   },
   {
     number: 'Phase 2',
-    title: 'Telegram Bot & Mini App',
-    period: 'Q3 2025',
+    title: 'Telegram Bot, Mini App & Staking',
+    period: 'Q3 2026',
     status: 'upcoming' as const,
     items: [
       { done: false, text: 'Telegram Bot — outranked alerts' },
@@ -44,19 +45,18 @@ const phases = [
       { done: false, text: 'Telegram Bot — rewards distributed notifications' },
       { done: false, text: 'Telegram Bot — new pools announcements' },
       { done: false, text: 'Telegram Mini App — join pools in-app' },
+      { done: false, text: '$mGRAM staking and governance' },
     ],
   },
   {
     number: 'Phase 3',
-    title: 'Mobile & Token Launch',
-    period: 'Q4 2025',
+    title: 'Mobile App',
+    period: 'Q4 2026',
     status: 'future' as const,
     items: [
       { done: false, text: 'Mobile App — iOS' },
       { done: false, text: 'Mobile App — Android' },
-      { done: false, text: '$mGRAM token launch on TON' },
       { done: false, text: 'Pool creation gated by $mGRAM holdings' },
-      { done: false, text: '$mGRAM staking and governance' },
     ],
   },
 ];

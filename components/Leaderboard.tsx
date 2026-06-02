@@ -111,11 +111,11 @@ export function Leaderboard({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody>
               {entries.map((entry) => (
                 <tr
                   key={entry.userId}
-                  className="hover:bg-white/[0.03] cursor-pointer transition-colors group"
+                  className="glass-row cursor-pointer group"
                   onClick={() => router.push(`/leaderboard/${poolId}/${entry.userId}`)}
                 >
                   {/* Rank */}

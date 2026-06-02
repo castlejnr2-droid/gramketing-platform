@@ -489,7 +489,7 @@ export default function AdminPage() {
       {/* Cancel Pool Modal */}
       {cancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="glass-card p-8 max-w-md w-full space-y-5">
+          <div className="glass-modal p-8 max-w-md w-full space-y-5">
             <h3 className="text-lg font-bold text-white">Cancel Pool?</h3>
             <p className="text-sm text-white/50">
               This will end the pool immediately using a pro-rata split of rewards.
@@ -498,11 +498,11 @@ export default function AdminPage() {
             {cancelPreview ? (
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5">
+                  <div className="glass-inner p-3">
                     <p className="text-white/40 text-xs mb-0.5">Days Elapsed</p>
                     <p className="text-white font-semibold">{cancelPreview.daysElapsed} / {cancelPreview.totalDays}</p>
                   </div>
-                  <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5">
+                  <div className="glass-inner p-3">
                     <p className="text-white/40 text-xs mb-0.5">Days Remaining</p>
                     <p className="text-white font-semibold">{cancelPreview.daysRemaining}</p>
                   </div>

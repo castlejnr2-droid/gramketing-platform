@@ -107,7 +107,7 @@ export function PointsBreakdownCard({
       {/* Itemized breakdown */}
       <div className="space-y-3">
         {/* X Posts */}
-        <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.03] border border-white/5">
+        <div className="glass-inner flex items-center justify-between py-2.5 px-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#0088CC]" />
             <span className="text-sm text-white/70">X Post Views</span>
@@ -123,7 +123,7 @@ export function PointsBreakdownCard({
         </div>
 
         {/* Telegram */}
-        <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.03] border border-white/5">
+        <div className="glass-inner flex items-center justify-between py-2.5 px-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#00BBFF]" />
             <span className="text-sm text-white/70">Telegram Posts</span>
@@ -142,7 +142,7 @@ export function PointsBreakdownCard({
         </div>
 
         {/* Referral Bonus */}
-        <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.03] border border-white/5">
+        <div className="glass-inner flex items-center justify-between py-2.5 px-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#9966FF]" />
             <span className="text-sm text-white/70">Referral Bonus</span>
@@ -156,7 +156,7 @@ export function PointsBreakdownCard({
         </div>
 
         {/* Referral Multiplier */}
-        <div className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.03] border border-white/5">
+        <div className="glass-inner flex items-center justify-between py-2.5 px-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-purple-400" />
             <span className="text-sm text-white/70">Referral Multiplier</span>

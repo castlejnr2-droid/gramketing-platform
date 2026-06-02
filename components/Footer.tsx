@@ -158,7 +158,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-white/30">
-            &copy; 2025 GRAMKETING. Built on TON.
+            &copy; 2026 GRAMKETING. Built on TON.
           </p>
           <p className="text-xs text-white/20 text-center md:text-right max-w-lg">
             GRAMKETING is not a financial product. Rewards are earned through
