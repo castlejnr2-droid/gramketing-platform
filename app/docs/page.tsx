@@ -265,11 +265,27 @@ Carol: 2,000 pts  → 20% share → 200,000 tokens`}</CodeBlock>
                     post URL. Supported formats:
                   </p>
                   <CodeBlock>{`X:        https://x.com/username/status/1234567890
-Telegram: https://t.me/channelname/123`}</CodeBlock>
+Telegram: https://t.me/yourchannel/456`}</CodeBlock>
                   <p>
                     After submission, the post is queued for the next scrape
                     cycle. Views are updated within 30 minutes.
                   </p>
+                  <div className="mt-4 p-4 rounded-xl bg-[#0088CC]/5 border border-[#0088CC]/20">
+                    <p className="text-sm font-semibold text-[#0088CC] mb-1">
+                      Telegram: Channel Posts Only
+                    </p>
+                    <p className="text-sm text-white/60">
+                      Only posts from <strong className="text-white">public Telegram channels</strong> are
+                      supported — not group messages, private chats, or DMs.
+                      Channel posts have a public URL in the format{' '}
+                      <code className="text-[#0088CC] bg-[#0088CC]/10 px-1 rounded">
+                        t.me/yourchannel/123
+                      </code>{' '}
+                      and are the only post type where view counts are publicly
+                      accessible. Group messages and DMs do not expose view
+                      data, so they cannot be tracked or verified.
+                    </p>
+                  </div>
                 </Section>
 
                 <Section id="daily-limit" title="Daily Submission Limits">
