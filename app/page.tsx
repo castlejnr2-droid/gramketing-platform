@@ -70,12 +70,12 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ position: 'relative', zIndex: 1 }}>
       {/* ── Hero ── */}
       <section
         ref={heroRef}
         className="relative overflow-hidden"
-        style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}
+        style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', zIndex: 1 }}
       >
         {/* Vignette — reduced to 50% so orbs show through while text stays readable */}
         <div
@@ -213,7 +213,7 @@ export default function HomePage() {
       </section>
 
       {/* ── How it works ── */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4" style={{ position: 'relative', zIndex: 1 }}>
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -247,7 +247,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Live Pools preview ── */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4" style={{ position: 'relative', zIndex: 1 }}>
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-10">
             <div>
@@ -299,7 +299,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Referral highlight ── */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4" style={{ position: 'relative', zIndex: 1 }}>
         <div className="max-w-6xl mx-auto">
           <div className="glass-card p-10 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none"
@@ -351,7 +351,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Roadmap teaser ── */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4" style={{ position: 'relative', zIndex: 1 }}>
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-white mb-3">Roadmap</h2>
@@ -410,7 +410,7 @@ export default function HomePage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="py-24 px-4">
+      <section className="py-24 px-4" style={{ position: 'relative', zIndex: 1 }}>
         <div className="max-w-3xl mx-auto text-center">
           <div className="glass-card p-12 relative overflow-hidden">
             <div className="absolute inset-0 radial-glow pointer-events-none" />
@@ -441,6 +441,100 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      {/* ── Footer ── */}
+      <footer
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(0,0,0,0.40)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-14">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+
+            {/* Brand */}
+            <div className="space-y-3">
+              <p className="text-xl font-bold" style={{ color: '#00d4ff' }}>GRAMKETING</p>
+              <p className="text-sm text-white/40 leading-relaxed max-w-[200px]">
+                Performance marketing on TON
+              </p>
+              <div className="flex items-center gap-3 pt-2">
+                <a href="https://t.me/Gramketing" target="_blank" rel="noopener noreferrer"
+                  aria-label="Telegram"
+                  className="text-white/40 transition-colors hover:text-[#00d4ff]">
+                  <TelegramIcon className="w-5 h-5" />
+                </a>
+                <a href="https://x.com/Gramketing" target="_blank" rel="noopener noreferrer"
+                  aria-label="X (Twitter)"
+                  className="text-white/40 transition-colors hover:text-[#00d4ff]">
+                  <XIcon className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+
+            {/* Platform */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/30">Platform</p>
+              {[
+                { label: 'Pools',       href: '/pools' },
+                { label: 'Create Pool', href: '/create-pool' },
+                { label: 'Dashboard',   href: '/dashboard' },
+                { label: 'Leaderboard', href: '/leaderboard/demo/demo' },
+              ].map(l => (
+                <Link key={l.href} href={l.href}
+                  className="block text-sm text-white/50 transition-colors hover:text-[#00d4ff]">
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+
+            {/* Resources */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/30">Resources</p>
+              {[
+                { label: 'Docs',     href: '/docs' },
+                { label: 'Roadmap',  href: '/roadmap' },
+                { label: 'API',      href: '/docs#api' },
+                { label: 'Support',  href: 'https://t.me/Gramketing' },
+              ].map(l => (
+                <Link key={l.label} href={l.href}
+                  className="block text-sm text-white/50 transition-colors hover:text-[#00d4ff]">
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+
+            {/* Legal + Built on TON */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/30">Legal</p>
+              {[
+                { label: 'Privacy Policy',   href: '/privacy' },
+                { label: 'Terms of Service', href: '/terms' },
+              ].map(l => (
+                <Link key={l.href} href={l.href}
+                  className="block text-sm text-white/50 transition-colors hover:text-[#00d4ff]">
+                  {l.label}
+                </Link>
+              ))}
+              <div className="mt-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-white/40"
+                style={{ border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.04)' }}>
+                Built on TON Blockchain
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="max-w-7xl mx-auto px-6 py-4 text-center">
+            <p className="text-xs text-white/25">© 2025 Gramketing. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }
