@@ -61,7 +61,7 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((d) => {
         const myPools = (d.pools ?? []).filter(
-          (p: { project?: { ownerWalletAddress?: string }; participantCount: number; id: string; project: { name: string }; tokenSymbol: string; totalReward: string; status: string; endDate: string }) =>
+          (p: { project?: { ownerWalletAddress?: string; name: string }; participantCount: number; id: string; tokenSymbol: string; totalReward: string; status: string; endDate: string }) =>
             p.project?.ownerWalletAddress === wallet.account.address
         );
         setOwnedEndedPools(myPools.map((p: { id: string; project: { name: string }; tokenSymbol: string; totalReward: string; status: string; endDate: string; participantCount: number }) => ({
