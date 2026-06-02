@@ -10,8 +10,14 @@
   * {
     @apply border-white/10;
   }
+  html {
+    height: auto;
+    overflow-x: hidden;
+  }
   body {
     @apply bg-[#050810] text-white;
+    height: auto;
+    overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

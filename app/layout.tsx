@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${inter.className} bg-[#050810] text-white min-h-screen`}
+        className={`${inter.className} bg-[#050810] text-white`}
       >
         <HeroBackground />
         <Providers>
