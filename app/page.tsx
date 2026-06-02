@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PoolCard } from '@/components/PoolCard';
 import { ArrowRight, Zap, Users, Trophy, TrendingUp } from 'lucide-react';
+import { HeroBackground } from '@/components/HeroBackground';
 
 function TelegramIcon({ className }: { className?: string }) {
   return (
@@ -72,13 +73,7 @@ export default function HomePage() {
     <div className="min-h-screen">
       {/* ── Hero ── */}
       <section className="relative pt-32 pb-24 px-4 overflow-hidden">
-        {/* Animated gradient orbs */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-          <div className="orb orb-1" />
-          <div className="orb orb-2" />
-          <div className="orb orb-3" />
-          <div className="orb orb-4" />
-        </div>
+        <HeroBackground />
 
         <div className="relative max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#0088CC]/30 bg-[#0088CC]/10 text-[#0088CC] text-xs font-semibold mb-8">

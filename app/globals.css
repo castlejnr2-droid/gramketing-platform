@@ -145,63 +145,55 @@
 }
 
 /* ── Hero animated orbs ── */
-.orb {
+.hero-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px);
   will-change: transform;
 }
-.orb-1 {
-  width: 650px;
-  height: 650px;
-  top: -5%;
-  left: 20%;
-  background: rgba(0, 255, 255, 0.28);
-  animation: orbFloat1 15s ease-in-out infinite;
+/* Cyan — top-left corner */
+.hero-orb-cyan {
+  width: 500px;
+  height: 500px;
+  top: -120px;
+  left: -100px;
+  background: rgba(0, 240, 255, 0.30);
+  filter: blur(80px);
+  animation: orbCyan 24s ease-in-out infinite;
 }
-.orb-2 {
+/* Blue — bottom-right corner */
+.hero-orb-blue {
   width: 600px;
   height: 600px;
-  top: 10%;
-  right: 5%;
-  background: rgba(0, 85, 255, 0.32);
-  animation: orbFloat2 18s ease-in-out infinite;
+  bottom: -160px;
+  right: -120px;
+  background: rgba(0, 184, 255, 0.25);
+  filter: blur(100px);
+  animation: orbBlue 28s ease-in-out infinite;
 }
-.orb-3 {
-  width: 580px;
-  height: 580px;
-  bottom: -10%;
-  left: 30%;
-  background: rgba(139, 0, 255, 0.25);
-  animation: orbFloat3 22s ease-in-out infinite;
-}
-.orb-4 {
-  width: 520px;
-  height: 520px;
-  top: 30%;
-  left: 35%;
-  background: rgba(79, 70, 229, 0.28);
-  animation: orbFloat4 16s ease-in-out infinite;
+/* Purple — top-right corner */
+.hero-orb-purple {
+  width: 400px;
+  height: 400px;
+  top: -80px;
+  right: -60px;
+  background: rgba(123, 92, 255, 0.20);
+  filter: blur(90px);
+  animation: orbPurple 20s ease-in-out infinite;
 }
 
-@keyframes orbFloat1 {
-  0%,100% { transform: translate(0, 0) scale(1); }
-  33%      { transform: translate(60px, 80px) scale(1.08); }
-  66%      { transform: translate(-40px, 50px) scale(0.95); }
+@keyframes orbCyan {
+  0%,100% { transform: translate(0, 0); }
+  40%     { transform: translate(60px, 80px); }
+  70%     { transform: translate(30px, 40px); }
 }
-@keyframes orbFloat2 {
-  0%,100% { transform: translate(0, 0) scale(1); }
-  40%     { transform: translate(-70px, 60px) scale(1.05); }
-  70%     { transform: translate(30px, -50px) scale(0.97); }
+@keyframes orbBlue {
+  0%,100% { transform: translate(0, 0); }
+  35%     { transform: translate(-70px, -60px); }
+  65%     { transform: translate(-40px, -90px); }
 }
-@keyframes orbFloat3 {
-  0%,100% { transform: translate(0, 0) scale(1); }
-  30%     { transform: translate(50px, -70px) scale(1.1); }
-  60%     { transform: translate(-60px, 40px) scale(0.93); }
-}
-@keyframes orbFloat4 {
-  0%,100% { transform: translate(0, 0) scale(1); }
-  50%     { transform: translate(80px, -60px) scale(1.06); }
+@keyframes orbPurple {
+  0%,100% { transform: translate(0, 0); }
+  50%     { transform: translate(-50px, 70px); }
 }
 
 /* ── Scrollbar ── */
