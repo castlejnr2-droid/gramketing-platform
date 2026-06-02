@@ -72,7 +72,8 @@ export default function HomePage() {
     <div className="min-h-screen">
       {/* ── Hero ── */}
       <section className="relative pt-32 pb-24 px-4 overflow-hidden">
-        {/* Radial glow background */}
+        {/* Hero liquid glass glow */}
+        <div className="hero-glow" />
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full"
             style={{

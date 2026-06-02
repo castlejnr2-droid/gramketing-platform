@@ -29,6 +29,16 @@ interface RevenueData {
   ton: { totalTokens: string; totalUsd: number; records: RevenueRecord[] };
 }
 
+interface ProRataPreview {
+  daysElapsed: number;
+  daysRemaining: number;
+  totalDays: number;
+  dailyRate: number;
+  participantTokens: number;
+  refundTokens: number;
+  accessFeeRefunded: boolean;
+}
+
 interface RevenueRecord {
   id: string;
   tokenAmount: string;
@@ -82,6 +92,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [actionStates, setActionStates] = useState<Record<string, boolean>>({});
+  const [cancelModal, setCancelModal] = useState<{ poolId: string; tokenSymbol: string; totalReward: string } | null>(null);
+  const [cancelPreview, setCancelPreview] = useState<ProRataPreview | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [banWallet, setBanWallet] = useState('');
   const [banReason, setBanReason] = useState('');
   const [banLoading, setBanLoading] = useState(false);
@@ -143,13 +156,37 @@ export default function AdminPage() {
       'Distribution triggered!'
     );
 
-  const handleCancel = (poolId: string) =>
-    doAction(
-      `cancel-${poolId}`,
-      '/api/admin/cancel-pool',
-      { poolId },
-      'Pool cancelled!'
-    );
+  const openCancelModal = async (pool: PoolRow) => {
+    setCancelModal({ poolId: pool.id, tokenSymbol: pool.tokenSymbol, totalReward: pool.totalReward });
+    setCancelPreview(null);
+    try {
+      const res = await fetch(`/api/admin/cancel-pool?poolId=${pool.id}`, { credentials: 'include' });
+      const d = await res.json();
+      setCancelPreview(d.preview ?? null);
+    } catch {}
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelModal) return;
+    setCancelLoading(true);
+    try {
+      const res = await fetch('/api/admin/cancel-pool', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ poolId: cancelModal.poolId }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? 'Failed');
+      setFeedback({ msg: 'Pool cancelled with pro-rata split.', ok: true });
+      setCancelModal(null);
+      setPools((prev) => prev.map((p) => p.id === cancelModal.poolId ? { ...p, status: 'ENDED' } : p));
+    } catch (e: unknown) {
+      setFeedback({ msg: e instanceof Error ? e.message : 'Cancel failed', ok: false });
+    } finally {
+      setCancelLoading(false);
+    }
+  };
 
   const handleBan = async () => {
     if (!banWallet.trim()) return;
@@ -365,8 +402,7 @@ export default function AdminPage() {
                             <ActionButton
                               label="Cancel"
                               icon={<XCircle className="w-3 h-3" />}
-                              onClick={() => handleCancel(pool.id)}
-                              loading={actionStates[`cancel-${pool.id}`]}
+                              onClick={() => openCancelModal(pool)}
                               variant="danger"
                             />
                           )}
@@ -449,6 +485,70 @@ export default function AdminPage() {
           </div>
         </section>
       </div>
+
+      {/* Cancel Pool Modal */}
+      {cancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="glass-card p-8 max-w-md w-full space-y-5">
+            <h3 className="text-lg font-bold text-white">Cancel Pool?</h3>
+            <p className="text-sm text-white/50">
+              This will end the pool immediately using a pro-rata split of rewards.
+            </p>
+
+            {cancelPreview ? (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5">
+                    <p className="text-white/40 text-xs mb-0.5">Days Elapsed</p>
+                    <p className="text-white font-semibold">{cancelPreview.daysElapsed} / {cancelPreview.totalDays}</p>
+                  </div>
+                  <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5">
+                    <p className="text-white/40 text-xs mb-0.5">Days Remaining</p>
+                    <p className="text-white font-semibold">{cancelPreview.daysRemaining}</p>
+                  </div>
+                </div>
+                <div className="bg-[#0088CC]/5 rounded-xl p-4 border border-[#0088CC]/15 space-y-2.5">
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Participants receive</span>
+                    <span className="text-[#0088CC] font-semibold">{cancelPreview.participantTokens} {cancelModal.tokenSymbol}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Project refund</span>
+                    <span className="text-white font-semibold">{cancelPreview.refundTokens} {cancelModal.tokenSymbol}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/10 pt-2">
+                    <span className="text-white/60">Access fee</span>
+                    <span className="text-red-400 text-xs font-semibold">Non-refundable</span>
+                  </div>
+                </div>
+                <p className="text-xs text-white/30">
+                  Daily rate: {cancelPreview.dailyRate} {cancelModal.tokenSymbol}/day.
+                  Participants share proportionally by points among top reward slots.
+                </p>
+              </div>
+            ) : (
+              <div className="py-4 text-center text-white/30 text-sm">Loading preview...</div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setCancelModal(null)}
+                className="btn-secondary flex-1"
+              >
+                Keep Pool
+              </button>
+              <button
+                onClick={confirmCancel}
+                disabled={cancelLoading || !cancelPreview}
+                className="flex-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 font-semibold px-6 py-2.5 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {cancelLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Confirm Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

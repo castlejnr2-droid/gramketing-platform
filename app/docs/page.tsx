@@ -400,7 +400,7 @@ Total Points = (xPoints + telegramPoints)
                   <ol className="list-decimal list-inside space-y-2 ml-2">
                     <li>Connect your TON wallet</li>
                     <li>Go to <Link href="/create-pool" className="text-[#0088CC] underline">Create a Pool</Link></li>
-                    <li>Enter your project details (name, token symbol, jetton master address)</li>
+                    <li>Enter your project details (name, token symbol, jetton master address, X profile link, and Telegram channel link)</li>
                     <li>Configure pool: duration, total reward, reward slots</li>
                     <li>Pay the access fee (TON or $mGRAM) to the platform treasury</li>
                     <li>Deposit your reward tokens to the escrow contract</li>
@@ -451,9 +451,38 @@ Total Points = (xPoints + telegramPoints)
                   <ul className="list-disc list-inside ml-2 space-y-1">
                     <li>Holds tokens securely until pool ends</li>
                     <li>Can only distribute to winners via platform admin instruction</li>
-                    <li>Supports cancellation with full refund to pool owner</li>
+                    <li>Supports pro-rata cancellation if a pool is ended early</li>
                     <li>Is publicly verifiable on TON Scan</li>
                   </ul>
+
+                  <div className="mt-6 p-5 rounded-xl bg-white/[0.03] border border-white/10">
+                    <h4 className="font-semibold text-white mb-3">Pool Cancellation Policy</h4>
+                    <p className="text-sm text-white/60 mb-4">
+                      If a pool is cancelled before it ends, rewards are split using a daily rate formula
+                      so participants are fairly compensated for the time elapsed.
+                    </p>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex gap-2">
+                        <span className="text-[#0088CC] flex-shrink-0">→</span>
+                        <span className="text-white/60"><strong className="text-white">Daily rate</strong> = Total reward tokens ÷ pool duration in days</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-[#0088CC] flex-shrink-0">→</span>
+                        <span className="text-white/60"><strong className="text-white">Participants share</strong> = daily rate × days elapsed (distributed proportionally by points among top N winners at time of cancellation)</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-[#0088CC] flex-shrink-0">→</span>
+                        <span className="text-white/60"><strong className="text-white">Project refund</strong> = daily rate × days remaining (returned to project owner wallet)</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-red-400 flex-shrink-0">→</span>
+                        <span className="text-white/60"><strong className="text-white">Access fee</strong> paid to the platform treasury is fully <strong className="text-red-400">non-refundable</strong></span>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 rounded-lg bg-[#0088CC]/5 border border-[#0088CC]/15 text-xs text-white/50">
+                      <strong className="text-white/70">Example:</strong> A 7-day pool cancelled on day 4 → participants share 4/7 of rewards, project gets back 3/7, platform keeps the full access fee.
+                    </div>
+                  </div>
                 </Section>
 
                 <Section id="reward-slots" title="Setting Reward Slots">
@@ -472,10 +501,11 @@ Total Points = (xPoints + telegramPoints)
                 <Section id="pool-end" title="What Happens When a Pool Ends">
                   <ol className="list-decimal list-inside space-y-2 ml-2">
                     <li>Pool status automatically changes to ENDED when duration expires</li>
-                    <li>A final leaderboard snapshot is saved</li>
-                    <li>Platform admin reviews and triggers distribution</li>
+                    <li>A final leaderboard snapshot is saved — results are frozen</li>
+                    <li>Platform admin and the project owner both review the final leaderboard before distribution is triggered</li>
+                    <li>Project owner receives a notification on their dashboard when their pool ends and can view the final frozen leaderboard</li>
                     <li>Smart contract distributes tokens proportionally to top N wallets</li>
-                    <li>Remaining dust (rounding) is returned to pool owner</li>
+                    <li>Remaining dust (rounding) is returned to the project owner wallet</li>
                   </ol>
                   <p>Typical distribution time: within 24–48 hours of pool ending.</p>
                 </Section>

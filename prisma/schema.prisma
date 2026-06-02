@@ -51,6 +51,8 @@ model Project {
   jettonMasterAddress String
   logoUrl             String?
   description         String?
+  xUrl                String?
+  telegramUrl         String?
   createdAt           DateTime @default(now())
   pools               Pool[]
 }

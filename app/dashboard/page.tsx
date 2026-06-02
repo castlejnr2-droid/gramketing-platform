@@ -21,6 +21,16 @@ interface MyPool {
   referralBonusPoints: number;
 }
 
+interface OwnedPool {
+  id: string;
+  projectName: string;
+  tokenSymbol: string;
+  totalReward: string;
+  status: string;
+  endDate: string;
+  participantCount: number;
+}
+
 interface AccountInfo {
   walletAddress: string;
   xHandle?: string;
@@ -42,7 +52,30 @@ export default function DashboardPage() {
   const [endedPools, setEndedPools] = useState<MyPool[]>([]);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ownedEndedPools, setOwnedEndedPools] = useState<OwnedPool[]>([]);
   const [xInput, setXInput] = useState('');
+
+  useEffect(() => {
+    if (!wallet) return;
+    fetch(`/api/pools?status=ENDED&limit=20`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        const myPools = (d.pools ?? []).filter(
+          (p: { project?: { ownerWalletAddress?: string }; participantCount: number; id: string; project: { name: string }; tokenSymbol: string; totalReward: string; status: string; endDate: string }) =>
+            p.project?.ownerWalletAddress === wallet.account.address
+        );
+        setOwnedEndedPools(myPools.map((p: { id: string; project: { name: string }; tokenSymbol: string; totalReward: string; status: string; endDate: string; participantCount: number }) => ({
+          id: p.id,
+          projectName: p.project.name,
+          tokenSymbol: p.tokenSymbol,
+          totalReward: p.totalReward,
+          status: p.status,
+          endDate: p.endDate,
+          participantCount: p.participantCount,
+        })));
+      })
+      .catch(() => {});
+  }, [wallet]);
   const [tgInput, setTgInput] = useState('');
   const [savingX, setSavingX] = useState(false);
   const [savingTg, setSavingTg] = useState(false);

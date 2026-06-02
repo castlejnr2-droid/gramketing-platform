@@ -70,6 +70,8 @@ export function CreatePoolStepper() {
   const [jettonMasterAddress, setJettonMasterAddress] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [description, setDescription] = useState('');
+  const [xUrl, setXUrl] = useState('');
+  const [telegramUrl, setTelegramUrl] = useState('');
 
   // Step 2
   const [durationDays, setDurationDays] = useState(7);
@@ -99,6 +101,12 @@ export function CreatePoolStepper() {
     if (!projectName.trim()) return 'Project name is required';
     if (!tokenSymbol.trim()) return 'Token symbol is required';
     if (!jettonMasterAddress.trim()) return 'Jetton master address is required';
+    if (!xUrl.trim()) return 'X profile URL is required';
+    if (!xUrl.startsWith('https://x.com/') && !xUrl.startsWith('https://twitter.com/'))
+      return 'X profile URL must start with https://x.com/';
+    if (!telegramUrl.trim()) return 'Telegram channel URL is required';
+    if (!telegramUrl.startsWith('https://t.me/'))
+      return 'Telegram URL must start with https://t.me/';
     return null;
   };
 
@@ -159,6 +167,8 @@ export function CreatePoolStepper() {
           jettonMasterAddress,
           logoUrl,
           description,
+          xUrl,
+          telegramUrl,
           contractAddress: contractAddress || undefined,
           totalReward,
           durationDays,
@@ -312,6 +322,29 @@ export function CreatePoolStepper() {
                 placeholder="Tell marketers about your project..."
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#0088CC]/50 resize-none"
               />
+            </div>
+            <div>
+              <label className="block text-sm text-white/60 mb-1.5">
+                X Profile URL *
+              </label>
+              <input
+                value={xUrl}
+                onChange={(e) => setXUrl(e.target.value)}
+                placeholder="https://x.com/yourproject"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#0088CC]/50"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-white/60 mb-1.5">
+                Telegram Channel URL *
+              </label>
+              <input
+                value={telegramUrl}
+                onChange={(e) => setTelegramUrl(e.target.value)}
+                placeholder="https://t.me/yourproject"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#0088CC]/50"
+              />
+              <p className="mt-1.5 text-xs text-white/30">Must be a public Telegram channel (not a group or DM).</p>
             </div>
           </div>
         )}
