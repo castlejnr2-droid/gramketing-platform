@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
           { params: { owner_address: submission.user.walletAddress, limit: 1 } }
         );
         const wallets = res.data?.jetton_wallets ?? [];
-        holdsToken = wallets.length > 0 && BigInt(wallets[0].balance ?? '0') > 0n;
+        holdsToken = wallets.length > 0 && BigInt(wallets[0].balance ?? '0') > BigInt(0);
       } catch {
         // ignore
       }
