@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+  }
+  * {
+    @apply border-white/10;
+  }
+  body {
+    @apply bg-[#0A0F1E] text-white;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply backdrop-blur-[12px] bg-white/5 border border-white/10 rounded-2xl;
+  }
+  .glass-nav {
+    @apply backdrop-blur-[20px] bg-[#0A0F1E]/80 border-b border-white/10;
+  }
+  .btn-primary {
+    @apply bg-[#0088CC] hover:bg-[#0099DD] text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-200 shadow-[0_0_20px_#0088CC33] hover:shadow-[0_0_30px_#0088CC55];
+  }
+  .btn-secondary {
+    @apply border border-[#0088CC]/50 text-[#0088CC] hover:bg-[#0088CC]/10 font-semibold px-6 py-2.5 rounded-xl transition-all duration-200;
+  }
+  .radial-glow {
+    background: radial-gradient(ellipse at center, #0088CC15 0%, transparent 70%);
+  }
+  .live-badge {
+    @apply bg-green-500/20 text-green-400 border border-green-500/30 text-xs font-bold px-2 py-0.5 rounded-full;
+  }
+  .ended-badge {
+    @apply bg-gray-500/20 text-gray-400 border border-gray-500/30 text-xs font-bold px-2 py-0.5 rounded-full;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0A0F1E;
+}
+::-webkit-scrollbar-thumb {
+  background: #0088CC44;
+  border-radius: 3px;
+}

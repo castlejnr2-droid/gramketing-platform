@@ -1,0 +1,358 @@
+'use client';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { PoolCard } from '@/components/PoolCard';
+import { ArrowRight, Zap, Users, Trophy, TrendingUp } from 'lucide-react';
+
+function TelegramIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.19 13.676l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.958.883z" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+interface Pool {
+  id: string;
+  project: { name: string; logoUrl: string | null };
+  tokenSymbol: string;
+  totalReward: string;
+  durationDays: number;
+  endDate: string;
+  _count: { participants: number };
+  rewardSlots: number;
+  status: 'ACTIVE' | 'ENDED' | 'DISTRIBUTED';
+}
+
+const STEPS = [
+  {
+    num: '01',
+    title: 'Projects Create Pools',
+    description:
+      'A TON project deposits their token into an escrow smart contract and sets a reward pool with a duration of 1–4 weeks.',
+    icon: <Trophy className="w-6 h-6 text-[#0088CC]" />,
+  },
+  {
+    num: '02',
+    title: 'Marketers Promote',
+    description:
+      'Connect your wallet, join a pool, and submit your X posts and Telegram posts promoting the project.',
+    icon: <TrendingUp className="w-6 h-6 text-[#0088CC]" />,
+  },
+  {
+    num: '03',
+    title: 'Earn Based on Performance',
+    description:
+      "Your view counts are scraped every 30 minutes. The more eyeballs your content gets, the higher your rank and reward share.",
+    icon: <Zap className="w-6 h-6 text-[#0088CC]" />,
+  },
+];
+
+export default function HomePage() {
+  const [pools, setPools] = useState<Pool[]>([]);
+  const [loadingPools, setLoadingPools] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/pools?status=ACTIVE&limit=3')
+      .then((r) => r.json())
+      .then((d) => setPools(d.pools ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingPools(false));
+  }, []);
+
+  return (
+    <div className="min-h-screen">
+      {/* ── Hero ── */}
+      <section className="relative pt-32 pb-24 px-4 overflow-hidden">
+        {/* Radial glow background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full"
+            style={{
+              background: 'radial-gradient(ellipse, rgba(0,136,204,0.12) 0%, transparent 70%)',
+            }}
+          />
+        </div>
+
+        <div className="relative max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#0088CC]/30 bg-[#0088CC]/10 text-[#0088CC] text-xs font-semibold mb-8">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#0088CC] animate-pulse" />
+            Built on TON Blockchain
+          </div>
+
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6">
+            Earn Rewards for
+            <br />
+            <span className="text-[#0088CC]">Marketing on X & Telegram</span>
+          </h1>
+
+          <p className="text-lg sm:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
+            GRAMKETING is a performance-based Web3 marketing platform on TON.
+            Promote TON projects, get rewarded for real views — not promises.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link href="/pools" className="btn-primary text-base px-8 py-3 flex items-center gap-2">
+              Browse Pools
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link href="/create-pool" className="btn-secondary text-base px-8 py-3">
+              Create a Pool
+            </Link>
+          </div>
+
+          {/* Stats */}
+          <div className="mt-16 grid grid-cols-3 gap-4 max-w-sm mx-auto sm:max-w-md">
+            {[
+              { label: 'Active Pools', value: '12+' },
+              { label: 'Rewards Distributed', value: '$50K+' },
+              { label: 'Marketers', value: '1,200+' },
+            ].map((stat) => (
+              <div key={stat.label} className="glass-card p-4 text-center">
+                <p className="text-xl font-bold text-[#0088CC]">{stat.value}</p>
+                <p className="text-xs text-white/40 mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ── */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              How It Works
+            </h2>
+            <p className="text-white/50 max-w-xl mx-auto">
+              Three simple steps to start earning or growing your project.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {STEPS.map((step) => (
+              <div key={step.num} className="glass-card p-7 hover:border-[#0088CC]/30 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-4xl font-bold text-[#0088CC]/20">
+                    {step.num}
+                  </span>
+                  <div className="p-2.5 rounded-xl bg-[#0088CC]/10 border border-[#0088CC]/20">
+                    {step.icon}
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-3">
+                  {step.title}
+                </h3>
+                <p className="text-sm text-white/50 leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Live Pools preview ── */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-10">
+            <div>
+              <h2 className="text-3xl font-bold text-white">Live Pools</h2>
+              <p className="text-white/40 text-sm mt-1">
+                Join now and start earning
+              </p>
+            </div>
+            <Link href="/pools" className="btn-secondary text-sm flex items-center gap-2">
+              View All
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {loadingPools ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="glass-card p-6 animate-pulse h-56"
+                />
+              ))}
+            </div>
+          ) : pools.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {pools.map((pool) => (
+                <PoolCard
+                  key={pool.id}
+                  id={pool.id}
+                  projectName={pool.project.name}
+                  tokenSymbol={pool.tokenSymbol}
+                  logoUrl={pool.project.logoUrl}
+                  totalReward={pool.totalReward}
+                  durationDays={pool.durationDays}
+                  endDate={pool.endDate}
+                  participantCount={pool._count.participants}
+                  rewardSlots={pool.rewardSlots}
+                  status={pool.status}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="glass-card p-12 text-center text-white/40">
+              <Trophy className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p>No active pools right now. Check back soon!</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Referral highlight ── */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="glass-card p-10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(0,136,204,0.08), transparent 70%)' }}
+            />
+            <div className="relative grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+              <div>
+                <h2 className="text-3xl font-bold text-white mb-4">
+                  Boost Your Earnings with Referrals
+                </h2>
+                <p className="text-white/50 leading-relaxed mb-6">
+                  Refer other marketers and earn bonus points. The more tokens
+                  they hold, the bigger your multiplier boost — stacking
+                  additively for every referral.
+                </p>
+                <ul className="space-y-3 text-sm text-white/60">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#0088CC] mt-0.5">✓</span>
+                    +500 bonus points for each referred friend who holds the pool token
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#0088CC] mt-0.5">✓</span>
+                    Tier 1/2/3 multipliers: 1.2x / 1.5x / 2.0x based on their holdings
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#0088CC] mt-0.5">✓</span>
+                    Multiple referrals stack — the more you refer, the higher your multiplier
+                  </li>
+                </ul>
+              </div>
+              <div className="space-y-3">
+                {[
+                  { tier: 'Tier 1', holding: '≥ 1,000 tokens', mult: '1.2x', color: 'text-blue-300 bg-blue-500/10 border-blue-500/20' },
+                  { tier: 'Tier 2', holding: '≥ 10,000 tokens', mult: '1.5x', color: 'text-purple-300 bg-purple-500/10 border-purple-500/20' },
+                  { tier: 'Tier 3', holding: '≥ 100,000 tokens', mult: '2.0x', color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' },
+                ].map((t) => (
+                  <div key={t.tier} className={`flex items-center justify-between px-5 py-3 rounded-xl border ${t.color}`}>
+                    <div>
+                      <span className="font-semibold">{t.tier}</span>
+                      <span className="text-xs opacity-60 ml-2">{t.holding}</span>
+                    </div>
+                    <span className="text-xl font-bold">{t.mult}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Roadmap teaser ── */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white mb-3">Roadmap</h2>
+            <p className="text-white/40">What&apos;s built and what&apos;s coming</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="glass-card p-6 border-[#0088CC]/30">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                  Phase 1 — Now
+                </span>
+              </div>
+              <ul className="space-y-2 text-sm text-white/60">
+                {['Pool creation & escrow', 'X & Telegram verification', 'Live leaderboard', 'Referral system', 'Reward distribution'].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="text-green-400">✅</span> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  Phase 2 — Q3
+                </span>
+              </div>
+              <ul className="space-y-2 text-sm text-white/60">
+                {['Telegram Bot alerts', 'Telegram Mini App', 'Advanced analytics'].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="text-[#0088CC]">🔜</span> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/40 border border-white/10">
+                  Phase 3 — Q4
+                </span>
+              </div>
+              <ul className="space-y-2 text-sm text-white/60">
+                {['Mobile App (iOS + Android)', '$mGRAM token launch', 'Pool creation gated by $mGRAM'].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="text-white/30">🔜</span> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="text-center mt-8">
+            <Link href="/roadmap" className="btn-secondary text-sm">
+              View Full Roadmap
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA ── */}
+      <section className="py-24 px-4">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="glass-card p-12 relative overflow-hidden">
+            <div className="absolute inset-0 radial-glow pointer-events-none" />
+            <h2 className="relative text-4xl font-bold text-white mb-4">
+              Ready to Earn?
+            </h2>
+            <p className="relative text-white/50 mb-8 max-w-md mx-auto">
+              Browse live pools, connect your TON wallet, and start earning
+              rewards for your marketing efforts today.
+            </p>
+            <div className="relative flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/pools" className="btn-primary text-base px-10 py-3">
+                Get Started
+              </Link>
+              <div className="flex items-center gap-3">
+                <a href="https://t.me/Gramketing" target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-white/50 hover:text-[#0088CC] transition-colors">
+                  <TelegramIcon className="w-5 h-5" />
+                  Telegram
+                </a>
+                <a href="https://x.com/Gramketing" target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors">
+                  <XIcon className="w-4 h-4" />
+                  X
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

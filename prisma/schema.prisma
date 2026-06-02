@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Platform {
+  X
+  TELEGRAM
+}
+
+enum SubmissionStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PoolStatus {
+  ACTIVE
+  ENDED
+  DISTRIBUTED
+}
+
+enum FeeCurrency {
+  MGRAM
+  TON
+}
+
+model User {
+  id                String            @id @default(cuid())
+  walletAddress     String            @unique
+  xHandle           String?
+  xAccessToken      String?
+  telegramId        String?
+  telegramHandle    String?
+  createdAt         DateTime          @default(now())
+  participants      PoolParticipant[]
+  submissions       Submission[]
+  referralsGiven    ReferralBoost[]   @relation("Referrer")
+  referralsReceived ReferralBoost[]   @relation("Referred")
+}
+
+model Project {
+  id                  String   @id @default(cuid())
+  ownerWalletAddress  String
+  name                String
+  tokenSymbol         String
+  jettonMasterAddress String
+  logoUrl             String?
+  description         String?
+  createdAt           DateTime @default(now())
+  pools               Pool[]
+}
+
+model Pool {
+  id                   String                @id @default(cuid())
+  projectId            String
+  project              Project               @relation(fields: [projectId], references: [id])
+  contractAddress      String?
+  totalReward          String
+  tokenSymbol          String
+  jettonMasterAddress  String
+  durationDays         Int
+  rewardSlots          Int
+  accessFeePaidIn      FeeCurrency
+  accessFeeTxHash      String?
+  startDate            DateTime
+  endDate              DateTime
+  status               PoolStatus            @default(ACTIVE)
+  createdAt            DateTime              @default(now())
+  participants         PoolParticipant[]
+  submissions          Submission[]
+  leaderboardSnapshots LeaderboardSnapshot[]
+  platformRevenue      PlatformRevenue[]
+  referralBoosts       ReferralBoost[]
+}
+
+model PoolParticipant {
+  id                  String   @id @default(cuid())
+  poolId              String
+  pool                Pool     @relation(fields: [poolId], references: [id])
+  userId              String
+  user                User     @relation(fields: [userId], references: [id])
+  referralCode        String   @unique @default(cuid())
+  referredByUserId    String?
+  totalPoints         Float    @default(0)
+  xPoints             Float    @default(0)
+  telegramPoints      Float    @default(0)
+  referralBonusPoints Float    @default(0)
+  referralMultiplier  Float    @default(1.0)
+  holderBoost         Float    @default(1.0)
+  joinedAt            DateTime @default(now())
+
+  @@unique([poolId, userId])
+}
+
+model Submission {
+  id            String           @id @default(cuid())
+  poolId        String
+  pool          Pool             @relation(fields: [poolId], references: [id])
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  platform      Platform
+  postUrl       String
+  submittedAt   DateTime         @default(now())
+  lastScrapedAt DateTime?
+  currentViews  Int              @default(0)
+  currentPoints Float            @default(0)
+  status        SubmissionStatus @default(PENDING)
+  submittedDate String
+
+  @@unique([poolId, userId, platform, submittedDate])
+}
+
+model ReferralBoost {
+  id              String   @id @default(cuid())
+  referrerId      String
+  referrer        User     @relation("Referrer", fields: [referrerId], references: [id])
+  referredUserId  String
+  referred        User     @relation("Referred", fields: [referredUserId], references: [id])
+  poolId          String
+  pool            Pool     @relation(fields: [poolId], references: [id])
+  referredHolding BigInt   @default(0)
+  boostMultiplier Float    @default(1.0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LeaderboardSnapshot {
+  id         String   @id @default(cuid())
+  poolId     String
+  pool       Pool     @relation(fields: [poolId], references: [id])
+  snapshotAt DateTime @default(now())
+  rankings   Json
+}
+
+model PlatformRevenue {
+  id             String      @id @default(cuid())
+  poolId         String
+  pool           Pool        @relation(fields: [poolId], references: [id])
+  currency       FeeCurrency
+  tokenAmount    String
+  usdValueAtTime Float
+  txHash         String?
+  createdAt      DateTime    @default(now())
+}
