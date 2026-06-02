@@ -18,10 +18,10 @@
 @layer components {
   /* ── Liquid glass card ── */
   .glass-card {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
     box-shadow:
       0 4px 24px rgba(0, 0, 0, 0.3),
