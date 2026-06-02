@@ -72,48 +72,136 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* ── Hero ── */}
-      <section className="relative pt-32 pb-24 px-4 overflow-hidden">
+      <section
+        className="relative overflow-hidden"
+        style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}
+      >
         <HeroBackground />
 
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#0088CC]/30 bg-[#0088CC]/10 text-[#0088CC] text-xs font-semibold mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#0088CC] animate-pulse" />
-            Built on TON Blockchain
-          </div>
+        {/* Center vignette — keeps text area dark so orbs stay on edges */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 1,
+            background:
+              'radial-gradient(ellipse 65% 55% at 50% 50%, transparent 0%, #050810 72%)',
+          }}
+        />
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6">
-            Earn Rewards for
-            <br />
-            <span className="text-[#0088CC]">Marketing on X & Telegram</span>
-          </h1>
+        <div
+          className="relative w-full px-4 py-32 text-center"
+          style={{ zIndex: 2, WebkitFontSmoothing: 'antialiased' } as React.CSSProperties}
+        >
+          <div className="max-w-[800px] mx-auto flex flex-col items-center gap-8">
 
-          <p className="text-lg sm:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-            GRAMKETING is a performance-based Web3 marketing platform on TON.
-            Promote TON projects, get rewarded for real views — not promises.
-          </p>
+            {/* Badge */}
+            <div
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-wide text-white/80"
+              style={{
+                background: 'rgba(255,255,255,0.07)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00d4ff] animate-pulse" />
+              Built on TON Blockchain
+            </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/pools" className="btn-primary text-base px-8 py-3 flex items-center gap-2">
-              Browse Pools
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link href="/create-pool" className="btn-secondary text-base px-8 py-3">
-              Create a Pool
-            </Link>
-          </div>
+            {/* Headline */}
+            <h1
+              className="text-white"
+              style={{
+                fontSize: 'clamp(2.8rem, 6vw, 4.5rem)',
+                fontWeight: 800,
+                lineHeight: 1.08,
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Earn Rewards for
+              <br />
+              <span style={{ color: '#00d4ff' }}>Marketing on X &amp; Telegram</span>
+            </h1>
 
-          {/* Stats */}
-          <div className="mt-16 grid grid-cols-3 gap-4 max-w-sm mx-auto sm:max-w-md">
-            {[
-              { label: 'Active Pools', value: '12+' },
-              { label: 'Rewards Distributed', value: '$50K+' },
-              { label: 'Contributors', value: '1,200+' },
-            ].map((stat) => (
-              <div key={stat.label} className="glass-card p-4 text-center">
-                <p className="text-xl font-bold text-[#0088CC]">{stat.value}</p>
-                <p className="text-xs text-white/40 mt-1">{stat.label}</p>
-              </div>
-            ))}
+            {/* Subheadline */}
+            <p
+              className="leading-relaxed"
+              style={{
+                color: '#94a3b8',
+                fontSize: '1.125rem',
+                maxWidth: '560px',
+              }}
+            >
+              GRAMKETING is a performance-based Web3 marketing platform on TON.
+              Promote TON projects, get rewarded for real views — not promises.
+            </p>
+
+            {/* Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
+              <Link
+                href="/pools"
+                className="inline-flex items-center gap-2 font-semibold text-base transition-all duration-200"
+                style={{
+                  background: '#00d4ff',
+                  color: '#050810',
+                  borderRadius: '9999px',
+                  padding: '1rem 2rem',
+                  boxShadow: '0 0 32px rgba(0,212,255,0.35)',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 0 48px rgba(0,212,255,0.55)';
+                  (e.currentTarget as HTMLAnchorElement).style.transform  = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 0 32px rgba(0,212,255,0.35)';
+                  (e.currentTarget as HTMLAnchorElement).style.transform  = '';
+                }}
+              >
+                Browse Pools
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+
+              <Link
+                href="/create-pool"
+                className="inline-flex items-center font-semibold text-base text-white transition-all duration-200"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  borderRadius: '9999px',
+                  padding: '1rem 2rem',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.12)';
+                  (e.currentTarget as HTMLAnchorElement).style.transform  = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)';
+                  (e.currentTarget as HTMLAnchorElement).style.transform  = '';
+                }}
+              >
+                Create a Pool
+              </Link>
+            </div>
+
+            {/* Stats */}
+            <div className="mt-8 grid grid-cols-3 gap-4 w-full max-w-md">
+              {[
+                { label: 'Active Pools',        value: '12+' },
+                { label: 'Rewards Distributed', value: '$50K+' },
+                { label: 'Contributors',         value: '1,200+' },
+              ].map((stat) => (
+                <div key={stat.label} className="glass-card p-4 text-center">
+                  <p className="text-xl font-bold" style={{ color: '#00d4ff' }}>{stat.value}</p>
+                  <p className="text-xs text-white/40 mt-1">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
           </div>
         </div>
       </section>
