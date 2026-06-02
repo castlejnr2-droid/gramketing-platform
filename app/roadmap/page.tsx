@@ -58,6 +58,15 @@ const phases = [
       { done: false, text: 'Mobile App — Android' },
     ],
   },
+  {
+    number: 'Phase 4',
+    title: 'Coming Soon',
+    period: '2027',
+    status: 'future' as const,
+    items: [
+      { done: false, text: 'More features on the way — stay tuned.' },
+    ],
+  },
 ];
 
 const statusConfig = {
@@ -124,7 +133,7 @@ export default function RoadmapPage() {
 
                   {/* Card */}
                   <div
-                    className={`glass-card p-7 border ${config.border} hover:bg-white/[0.06] transition-all duration-300`}
+                    className={`glass-card p-7 border ${config.border} hover:bg-white/[0.06] transition-all duration-300${phase.number === 'Phase 4' ? ' opacity-60' : ''}`}
                   >
                     <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
                       <div>
