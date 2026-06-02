@@ -129,14 +129,17 @@ export default function DocsPage() {
                   <p>
                     GRAMKETING is a Web3 performance marketing platform built on
                     the TON blockchain. It connects projects that want to grow
-                    their community, attract investors, and reward their holders with contributors, promoters, and marketers who want to earn rewards for their content.
+                    their community, holders and investors with contributors,
+                    promoters, and marketers who want to earn rewards for their
+                    content.
                   </p>
                   <p>
                     Projects create reward pools funded with their own tokens.
-                    Participants — Contributors, Promoters, and Marketers — compete by posting about the project on X
-                    (Twitter) and Telegram. At the end of a pool&apos;s duration,
-                    rewards are distributed proportionally based on each
-                    participant&apos;s accumulated points.
+                    Participants — Contributors, Promoters, and Marketers —
+                    compete by posting about the project on X (Twitter) and
+                    Telegram. At the end of a pool&apos;s duration, rewards are
+                    distributed proportionally based on each participant&apos;s
+                    accumulated points.
                   </p>
                   <p>
                     Everything runs on TON — wallets connect via TON Connect
