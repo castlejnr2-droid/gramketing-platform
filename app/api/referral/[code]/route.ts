@@ -3,11 +3,12 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
+    const { code } = await params;
     const participant = await prisma.poolParticipant.findUnique({
-      where: { referralCode: params.code },
+      where: { referralCode: code },
       include: {
         pool: {
           include: {

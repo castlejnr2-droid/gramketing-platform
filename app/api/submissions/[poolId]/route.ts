@@ -4,9 +4,10 @@ import { getAuthWallet } from '@/lib/auth';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { poolId: string } }
+  { params }: { params: Promise<{ poolId: string }> }
 ) {
   try {
+    const { poolId } = await params;
     const walletAddress = await getAuthWallet(req);
     if (!walletAddress) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,7 +25,7 @@ export async function GET(
 
     const submissions = await prisma.submission.findMany({
       where: {
-        poolId: params.poolId,
+        poolId: poolId,
         userId: targetUserId,
       },
       orderBy: { submittedAt: 'desc' },
@@ -35,7 +36,7 @@ export async function GET(
     const participant = await prisma.poolParticipant.findUnique({
       where: {
         poolId_userId: {
-          poolId: params.poolId,
+          poolId: poolId,
           userId: authUser.id,
         },
       },
@@ -51,7 +52,7 @@ export async function GET(
         holderBoost: participant.holderBoost,
         referralCode: participant.referralCode,
         successfulReferrals: await prisma.referralBoost.count({
-          where: { referrerId: authUser.id, poolId: params.poolId },
+          where: { referrerId: authUser.id, poolId: poolId },
         }),
       };
     }
