@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { PoolCard } from '@/components/PoolCard';
 import { ArrowRight, Zap, Users, Trophy, TrendingUp } from 'lucide-react';
@@ -60,6 +60,7 @@ const STEPS = [
 export default function HomePage() {
   const [pools, setPools] = useState<Pool[]>([]);
   const [loadingPools, setLoadingPools] = useState(true);
+  const heroRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     fetch('/api/pools?status=ACTIVE&limit=3')
@@ -73,35 +74,30 @@ export default function HomePage() {
     <div className="min-h-screen">
       {/* ── Hero ── */}
       <section
+        ref={heroRef}
         className="relative overflow-hidden"
         style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}
       >
-        <HeroBackground />
+        <HeroBackground heroRef={heroRef} />
 
-        {/* Center vignette — keeps text area dark so orbs stay on edges */}
+        {/* Vignette — dark center so orb color stays at edges */}
         <div
           aria-hidden="true"
           style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            zIndex: 1,
-            background:
-              'radial-gradient(ellipse 65% 55% at 50% 50%, transparent 0%, #050810 72%)',
+            position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+            background: 'radial-gradient(ellipse 65% 55% at 50% 48%, transparent 0%, rgba(8,12,22,0.72) 100%)',
           }}
         />
 
-        <div
-          className="relative w-full px-4 py-32 text-center"
-          style={{ zIndex: 2, WebkitFontSmoothing: 'antialiased' } as React.CSSProperties}
-        >
+        <div className="relative w-full px-4 py-32 text-center" style={{ zIndex: 2 }}>
           <div className="max-w-[800px] mx-auto flex flex-col items-center gap-8">
 
             {/* Badge */}
             <div
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-wide text-white/80"
+              className="hero-fadein inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-wide text-white/80"
               style={{
-                background: 'rgba(255,255,255,0.07)',
+                animationDelay: '0s',
+                background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.15)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
@@ -113,12 +109,13 @@ export default function HomePage() {
 
             {/* Headline */}
             <h1
-              className="text-white"
+              className="hero-fadein text-white"
               style={{
-                fontSize: 'clamp(2.8rem, 6vw, 4.5rem)',
+                animationDelay: '0.1s',
+                fontSize: 'clamp(2.4rem, 6vw, 4.2rem)',
                 fontWeight: 800,
                 lineHeight: 1.08,
-                letterSpacing: '-0.02em',
+                letterSpacing: '-0.03em',
               }}
             >
               Earn Rewards for
@@ -128,11 +125,12 @@ export default function HomePage() {
 
             {/* Subheadline */}
             <p
-              className="leading-relaxed"
+              className="hero-fadein leading-relaxed"
               style={{
+                animationDelay: '0.2s',
                 color: '#94a3b8',
                 fontSize: '1.125rem',
-                maxWidth: '560px',
+                maxWidth: '540px',
               }}
             >
               GRAMKETING is a performance-based Web3 marketing platform on TON.
@@ -140,48 +138,56 @@ export default function HomePage() {
             </p>
 
             {/* Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
+            <div
+              className="hero-fadein flex flex-col sm:flex-row items-center justify-center gap-4 w-full"
+              style={{ animationDelay: '0.3s' }}
+            >
               <Link
                 href="/pools"
-                className="inline-flex items-center gap-2 font-semibold text-base transition-all duration-200"
+                className="inline-flex items-center gap-2 font-semibold text-base"
                 style={{
                   background: '#00d4ff',
-                  color: '#050810',
+                  color: '#060c16',
                   borderRadius: '9999px',
-                  padding: '1rem 2rem',
-                  boxShadow: '0 0 32px rgba(0,212,255,0.35)',
+                  padding: '0.9rem 2rem',
+                  boxShadow: '0 0 28px rgba(0,212,255,0.35)',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                 }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 0 48px rgba(0,212,255,0.55)';
-                  (e.currentTarget as HTMLAnchorElement).style.transform  = 'translateY(-1px)';
+                  const el = e.currentTarget as HTMLAnchorElement;
+                  el.style.transform  = 'scale(1.03)';
+                  el.style.boxShadow  = '0 0 44px rgba(0,212,255,0.55)';
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 0 32px rgba(0,212,255,0.35)';
-                  (e.currentTarget as HTMLAnchorElement).style.transform  = '';
+                  const el = e.currentTarget as HTMLAnchorElement;
+                  el.style.transform  = '';
+                  el.style.boxShadow  = '0 0 28px rgba(0,212,255,0.35)';
                 }}
               >
-                Browse Pools
-                <ArrowRight className="w-4 h-4" />
+                Browse Pools <ArrowRight className="w-4 h-4" />
               </Link>
 
               <Link
                 href="/create-pool"
-                className="inline-flex items-center font-semibold text-base text-white transition-all duration-200"
+                className="inline-flex items-center font-semibold text-base text-white"
                 style={{
                   background: 'rgba(255,255,255,0.06)',
                   border: '1px solid rgba(255,255,255,0.25)',
                   borderRadius: '9999px',
-                  padding: '1rem 2rem',
+                  padding: '0.9rem 2rem',
                   backdropFilter: 'blur(12px)',
                   WebkitBackdropFilter: 'blur(12px)',
+                  transition: 'transform 0.2s ease, background 0.2s ease',
                 }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.12)';
-                  (e.currentTarget as HTMLAnchorElement).style.transform  = 'translateY(-1px)';
+                  const el = e.currentTarget as HTMLAnchorElement;
+                  el.style.transform  = 'scale(1.03)';
+                  el.style.background = 'rgba(255,255,255,0.12)';
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)';
-                  (e.currentTarget as HTMLAnchorElement).style.transform  = '';
+                  const el = e.currentTarget as HTMLAnchorElement;
+                  el.style.transform  = '';
+                  el.style.background = 'rgba(255,255,255,0.06)';
                 }}
               >
                 Create a Pool
@@ -189,7 +195,10 @@ export default function HomePage() {
             </div>
 
             {/* Stats */}
-            <div className="mt-8 grid grid-cols-3 gap-4 w-full max-w-md">
+            <div
+              className="hero-fadein mt-4 grid grid-cols-3 gap-4 w-full max-w-md"
+              style={{ animationDelay: '0.4s' }}
+            >
               {[
                 { label: 'Active Pools',        value: '12+' },
                 { label: 'Rewards Distributed', value: '$50K+' },
