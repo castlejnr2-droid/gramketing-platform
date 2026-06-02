@@ -9,9 +9,9 @@ const config: Config = {
     extend: {
       colors: {
         navy: {
-          DEFAULT: '#0A0F1E',
-          light: '#0D1526',
-          deep: '#060A14',
+          DEFAULT: '#050810',
+          light: '#0A0F1E',
+          deep: '#030508',
         },
         blue: {
           electric: '#0088CC',

@@ -29,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${inter.className} bg-[#0A0F1E] text-white min-h-screen`}
+        className={`${inter.className} bg-[#050810] text-white min-h-screen`}
       >
         {/* Fixed gradient orbs — give backdrop-filter something to blur against */}
         <div aria-hidden="true" style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>

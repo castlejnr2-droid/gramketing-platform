@@ -11,7 +11,7 @@
     @apply border-white/10;
   }
   body {
-    @apply bg-[#0A0F1E] text-white;
+    @apply bg-[#050810] text-white;
   }
 }
 
@@ -148,40 +148,40 @@
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(100px);
+  filter: blur(60px);
   will-change: transform;
 }
 .orb-1 {
-  width: 560px;
-  height: 560px;
-  top: -15%;
-  left: -10%;
-  background: rgba(0, 212, 255, 0.20);
-  animation: orbFloat1 25s ease-in-out infinite;
+  width: 750px;
+  height: 750px;
+  top: -20%;
+  left: -15%;
+  background: rgba(0, 255, 255, 0.50);
+  animation: orbFloat1 15s ease-in-out infinite;
 }
 .orb-2 {
-  width: 480px;
-  height: 480px;
-  top: 10%;
-  right: -8%;
-  background: rgba(0, 102, 255, 0.18);
-  animation: orbFloat2 30s ease-in-out infinite;
+  width: 700px;
+  height: 700px;
+  top: 5%;
+  right: -15%;
+  background: rgba(0, 85, 255, 0.55);
+  animation: orbFloat2 18s ease-in-out infinite;
 }
 .orb-3 {
-  width: 420px;
-  height: 420px;
-  bottom: -10%;
-  left: 30%;
-  background: rgba(124, 58, 237, 0.15);
-  animation: orbFloat3 20s ease-in-out infinite;
+  width: 650px;
+  height: 650px;
+  bottom: -15%;
+  left: 25%;
+  background: rgba(139, 0, 255, 0.45);
+  animation: orbFloat3 22s ease-in-out infinite;
 }
 .orb-4 {
-  width: 320px;
-  height: 320px;
-  top: 40%;
-  left: 10%;
-  background: rgba(0, 136, 204, 0.18);
-  animation: orbFloat4 22s ease-in-out infinite;
+  width: 600px;
+  height: 600px;
+  top: 35%;
+  left: 5%;
+  background: rgba(0, 255, 136, 0.40);
+  animation: orbFloat4 16s ease-in-out infinite;
 }
 
 @keyframes orbFloat1 {
@@ -206,7 +206,7 @@
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0A0F1E; }
+::-webkit-scrollbar-track { background: #050810; }
 ::-webkit-scrollbar-thumb { background: rgba(0, 136, 204, 0.3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0, 136, 204, 0.5); }
 
