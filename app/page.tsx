@@ -339,14 +339,14 @@ export default function HomePage() {
               </Link>
               <div className="flex items-center gap-3">
                 <a href="https://t.me/Gramketing" target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-white/50 hover:text-[#0088CC] transition-colors">
-                  <TelegramIcon className="w-5 h-5" />
-                  Telegram
+                  aria-label="Join Telegram"
+                  className="text-white/50 hover:text-[#0088CC] transition-colors">
+                  <TelegramIcon className="w-6 h-6" />
                 </a>
                 <a href="https://x.com/Gramketing" target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors">
-                  <XIcon className="w-4 h-4" />
-                  X
+                  aria-label="Follow on X"
+                  className="text-white/50 hover:text-white transition-colors">
+                  <XIcon className="w-5 h-5" />
                 </a>
               </div>
             </div>

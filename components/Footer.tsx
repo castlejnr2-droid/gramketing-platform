@@ -48,19 +48,19 @@ export function Footer() {
                 href="https://t.me/Gramketing"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-white/40 hover:text-[#0088CC] transition-colors text-sm"
+                aria-label="Join Telegram"
+                className="text-white/40 hover:text-[#0088CC] transition-colors"
               >
                 <TelegramIcon className="w-5 h-5" />
-                <span>Telegram</span>
               </a>
               <a
                 href="https://x.com/Gramketing"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm"
+                aria-label="Follow on X"
+                className="text-white/40 hover:text-white transition-colors"
               >
                 <XIcon className="w-4 h-4" />
-                <span>X</span>
               </a>
             </div>
           </div>
@@ -158,7 +158,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-white/30">
-            &copy; 2024 GRAMKETING. Built on TON.
+            &copy; 2025 GRAMKETING. Built on TON.
           </p>
           <p className="text-xs text-white/20 text-center md:text-right max-w-lg">
             GRAMKETING is not a financial product. Rewards are earned through
