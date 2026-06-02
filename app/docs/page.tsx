@@ -348,18 +348,21 @@ Total Points = (xPoints + telegramPoints)
                 </Section>
 
                 <Section id="referral-tiers" title="Referral Holding Tiers">
-                  <p>The multiplier you gain depends on how many tokens your referred friend holds:</p>
+                  <p>The multiplier you gain depends on which tier your referred friend falls into, based on how many tokens they hold:</p>
                   <div className="space-y-2 mt-3">
                     {[
-                      { tier: 'Tier 1', holding: '≥ 1,000 tokens', mult: '1.2x' },
-                      { tier: 'Tier 2', holding: '≥ 10,000 tokens', mult: '1.5x' },
-                      { tier: 'Tier 3', holding: '≥ 100,000 tokens', mult: '2.0x' },
+                      { tier: 'Tier 1', mult: '1.2x' },
+                      { tier: 'Tier 2', mult: '1.5x' },
+                      { tier: 'Tier 3', mult: '2.0x' },
                     ].map((t) => (
                       <div key={t.tier} className="flex justify-between px-4 py-2 bg-white/[0.03] border border-white/5 rounded-lg">
-                        <span>{t.tier} — {t.holding}</span>
+                        <span>{t.tier}</span>
                         <strong className="text-[#0088CC]">{t.mult}</strong>
                       </div>
                     ))}
+                  </div>
+                  <div className="mt-4 px-4 py-3 rounded-lg bg-[#0088CC]/8 border border-[#0088CC]/20 text-sm text-white/60 leading-relaxed">
+                    <strong className="text-[#0088CC]">Note:</strong> Token amounts for each tier are set by the pool creator when creating the pool. These values vary for every pool depending on the token supply and project requirements. Check each pool&apos;s details page to see the exact thresholds.
                   </div>
                   <p className="mt-3">
                     Tiers are re-evaluated on each scrape cycle. If a referred friend&apos;s holdings

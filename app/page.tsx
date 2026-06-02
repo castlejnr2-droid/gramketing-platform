@@ -311,9 +311,10 @@ export default function HomePage() {
                   Boost Your Earnings with Referrals
                 </h2>
                 <p className="text-white/50 leading-relaxed mb-6">
-                  Refer other marketers and earn bonus points. The more tokens
+                  Refer other contributors and earn bonus points. The more tokens
                   they hold, the bigger your multiplier boost — stacking
-                  additively for every referral.
+                  additively for every referral. Token thresholds are set by
+                  each pool creator and vary per pool.
                 </p>
                 <ul className="space-y-3 text-sm text-white/60">
                   <li className="flex items-start gap-2">
@@ -329,17 +330,20 @@ export default function HomePage() {
                     Multiple referrals stack — the more you refer, the higher your multiplier
                   </li>
                 </ul>
+                <p className="mt-4 text-xs text-white/30 leading-relaxed">
+                  Tier thresholds are set by each pool creator — amounts vary per pool and token supply.
+                </p>
               </div>
               <div className="space-y-3">
                 {[
-                  { tier: 'Tier 1', holding: '≥ 1,000 tokens', mult: '1.2x', color: 'text-blue-300 bg-blue-500/10 border-blue-500/20' },
-                  { tier: 'Tier 2', holding: '≥ 10,000 tokens', mult: '1.5x', color: 'text-purple-300 bg-purple-500/10 border-purple-500/20' },
-                  { tier: 'Tier 3', holding: '≥ 100,000 tokens', mult: '2.0x', color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' },
+                  { tier: 'Tier 1', mult: '1.2x', color: 'text-blue-300 bg-blue-500/10 border-blue-500/20' },
+                  { tier: 'Tier 2', mult: '1.5x', color: 'text-purple-300 bg-purple-500/10 border-purple-500/20' },
+                  { tier: 'Tier 3', mult: '2.0x', color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' },
                 ].map((t) => (
                   <div key={t.tier} className={`flex items-center justify-between px-5 py-3 rounded-xl border ${t.color}`}>
                     <div>
                       <span className="font-semibold">{t.tier}</span>
-                      <span className="text-xs opacity-60 ml-2">{t.holding}</span>
+                      <span className="text-xs opacity-50 ml-2">threshold set by pool creator</span>
                     </div>
                     <span className="text-xl font-bold">{t.mult}</span>
                   </div>
@@ -357,7 +361,7 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold text-white mb-3">Roadmap</h2>
             <p className="text-white/40">What&apos;s built and what&apos;s coming</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="glass-card p-6 border-[#0088CC]/30">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
@@ -389,16 +393,27 @@ export default function HomePage() {
             <div className="glass-card p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/40 border border-white/10">
-                  Phase 3 — Q4
+                  Phase 3 — Q4 2026
                 </span>
               </div>
               <ul className="space-y-2 text-sm text-white/60">
-                {['Mobile App (iOS + Android)', '$mGRAM token launch', 'Pool creation gated by $mGRAM'].map((item) => (
+                {['Mobile App (iOS + Android)', '$mGRAM token launch'].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="text-white/30">🔜</span> {item}
                   </li>
                 ))}
               </ul>
+            </div>
+            <div className="glass-card p-6 opacity-60">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/5 text-white/25 border border-white/10">
+                  Phase 4 — 2027
+                </span>
+              </div>
+              <p className="text-sm font-semibold text-white/40 mb-2">Coming Soon</p>
+              <p className="text-sm text-white/30 leading-relaxed">
+                More features on the way — stay tuned.
+              </p>
             </div>
           </div>
           <div className="text-center mt-8">
