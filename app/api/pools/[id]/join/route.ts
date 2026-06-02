@@ -4,15 +4,16 @@ import { getAuthWallet } from '@/lib/auth';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const walletAddress = await getAuthWallet(req);
     if (!walletAddress) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pool = await prisma.pool.findUnique({ where: { id: params.id } });
+    const pool = await prisma.pool.findUnique({ where: { id } });
     if (!pool) {
       return NextResponse.json({ error: 'Pool not found' }, { status: 404 });
     }
@@ -26,10 +27,10 @@ export async function POST(
 
     // Upsert participant (idempotent join)
     const participant = await prisma.poolParticipant.upsert({
-      where: { poolId_userId: { poolId: params.id, userId: user.id } },
+      where: { poolId_userId: { poolId: id, userId: user.id } },
       update: {},
       create: {
-        poolId: params.id,
+        poolId: id,
         userId: user.id,
       },
     });

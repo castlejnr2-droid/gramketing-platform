@@ -3,14 +3,15 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId'); // optional filter
 
     const participants = await prisma.poolParticipant.findMany({
-      where: { poolId: params.id },
+      where: { poolId: id },
       include: {
         user: {
           select: {
