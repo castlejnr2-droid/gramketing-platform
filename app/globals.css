@@ -148,39 +148,39 @@
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
+  filter: blur(90px);
   will-change: transform;
 }
 .orb-1 {
-  width: 750px;
-  height: 750px;
-  top: -20%;
-  left: -15%;
-  background: rgba(0, 255, 255, 0.50);
+  width: 650px;
+  height: 650px;
+  top: -5%;
+  left: 20%;
+  background: rgba(0, 255, 255, 0.28);
   animation: orbFloat1 15s ease-in-out infinite;
 }
 .orb-2 {
-  width: 700px;
-  height: 700px;
-  top: 5%;
-  right: -15%;
-  background: rgba(0, 85, 255, 0.55);
+  width: 600px;
+  height: 600px;
+  top: 10%;
+  right: 5%;
+  background: rgba(0, 85, 255, 0.32);
   animation: orbFloat2 18s ease-in-out infinite;
 }
 .orb-3 {
-  width: 650px;
-  height: 650px;
-  bottom: -15%;
-  left: 25%;
-  background: rgba(139, 0, 255, 0.45);
+  width: 580px;
+  height: 580px;
+  bottom: -10%;
+  left: 30%;
+  background: rgba(139, 0, 255, 0.25);
   animation: orbFloat3 22s ease-in-out infinite;
 }
 .orb-4 {
-  width: 600px;
-  height: 600px;
-  top: 35%;
-  left: 5%;
-  background: rgba(0, 255, 136, 0.40);
+  width: 520px;
+  height: 520px;
+  top: 30%;
+  left: 35%;
+  background: rgba(79, 70, 229, 0.28);
   animation: orbFloat4 16s ease-in-out infinite;
 }
 
