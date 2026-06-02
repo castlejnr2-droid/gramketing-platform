@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { PoolCard } from '@/components/PoolCard';
 import { ArrowRight, Zap, Users, Trophy, TrendingUp } from 'lucide-react';
-import { HeroBackground } from '@/components/HeroBackground';
 
 function TelegramIcon({ className }: { className?: string }) {
   return (
@@ -60,7 +59,7 @@ const STEPS = [
 export default function HomePage() {
   const [pools, setPools] = useState<Pool[]>([]);
   const [loadingPools, setLoadingPools] = useState(true);
-  const heroRef = useRef<HTMLElement>(null);
+  const heroRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     fetch('/api/pools?status=ACTIVE&limit=3')
@@ -78,14 +77,12 @@ export default function HomePage() {
         className="relative overflow-hidden"
         style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}
       >
-        <HeroBackground heroRef={heroRef} />
-
-        {/* Vignette — dark center so orb color stays at edges */}
+        {/* Vignette — reduced to 50% so orbs show through while text stays readable */}
         <div
           aria-hidden="true"
           style={{
             position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-            background: 'radial-gradient(ellipse 65% 55% at 50% 48%, transparent 0%, rgba(8,12,22,0.72) 100%)',
+            background: 'radial-gradient(ellipse 65% 55% at 50% 48%, transparent 0%, rgba(8,12,22,0.50) 100%)',
           }}
         />
 
