@@ -290,13 +290,13 @@ export default function MarketerStatsPage() {
         <div className="glass-card p-6">
           <h3 className="font-semibold text-white mb-4">Referral Stats</h3>
           <div className="grid grid-cols-2 gap-4">
-            <div className="glass-inner p-4 text-center ".strip()>
+            <div className="glass-inner p-4 text-center">
               <p className="text-2xl font-bold text-purple-400">
                 {marketer.referralCount}
               </p>
               <p className="text-xs text-white/40 mt-1">Referrals</p>
             </div>
-            <div className="glass-inner p-4 text-center ".strip()>
+            <div className="glass-inner p-4 text-center">
               <p className="text-2xl font-bold text-[#0088CC]">
                 {marketer.referralMultiplier.toFixed(2)}x
               </p>
