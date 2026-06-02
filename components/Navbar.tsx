@@ -56,8 +56,8 @@ export function Navbar() {
         scrolled ? 'shadow-lg shadow-black/30' : ''
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div style={{ padding: '1.2rem 2rem 1.2rem 1.5rem' }}>
+        <div className="flex items-center justify-between">
           {/* Brand */}
           <Link
             href="/"
