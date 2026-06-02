@@ -72,14 +72,12 @@ export default function HomePage() {
     <div className="min-h-screen">
       {/* ── Hero ── */}
       <section className="relative pt-32 pb-24 px-4 overflow-hidden">
-        {/* Hero liquid glass glow */}
-        <div className="hero-glow" />
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full"
-            style={{
-              background: 'radial-gradient(ellipse, rgba(0,136,204,0.12) 0%, transparent 70%)',
-            }}
-          />
+        {/* Animated gradient orbs */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+          <div className="orb orb-1" />
+          <div className="orb orb-2" />
+          <div className="orb orb-3" />
+          <div className="orb orb-4" />
         </div>
 
         <div className="relative max-w-4xl mx-auto text-center">
