@@ -56,7 +56,6 @@ const phases = [
     items: [
       { done: false, text: 'Mobile App — iOS' },
       { done: false, text: 'Mobile App — Android' },
-      { done: false, text: 'Pool creation gated by $mGRAM holdings' },
     ],
   },
 ];

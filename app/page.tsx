@@ -369,7 +369,7 @@ export default function HomePage() {
                 </span>
               </div>
               <ul className="space-y-2 text-sm text-white/60">
-                {['Pool creation & escrow', 'X & Telegram verification', 'Live leaderboard', 'Referral system', 'Reward distribution'].map((item) => (
+                {['Pool creation & escrow', 'X & Telegram verification', 'Live leaderboard', 'Referral system', 'Reward distribution', '$mGRAM token launch'].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="text-green-400">✅</span> {item}
                   </li>
@@ -397,7 +397,7 @@ export default function HomePage() {
                 </span>
               </div>
               <ul className="space-y-2 text-sm text-white/60">
-                {['Mobile App (iOS + Android)', '$mGRAM token launch'].map((item) => (
+                {['Mobile App (iOS + Android)'].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="text-white/30">🔜</span> {item}
                   </li>
