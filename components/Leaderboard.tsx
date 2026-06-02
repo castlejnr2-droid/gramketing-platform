@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { getParticipantTier } from '@/lib/points';
 
 interface LeaderboardEntry {
   rank: number;
@@ -28,27 +29,19 @@ function truncateWallet(addr: string): string {
 }
 
 function MedalIcon({ rank }: { rank: number }) {
-  if (rank === 1)
-    return (
-      <span className="text-lg" title="1st Place">
-        🥇
-      </span>
-    );
-  if (rank === 2)
-    return (
-      <span className="text-lg" title="2nd Place">
-        🥈
-      </span>
-    );
-  if (rank === 3)
-    return (
-      <span className="text-lg" title="3rd Place">
-        🥉
-      </span>
-    );
+  if (rank === 1) return <span className="text-lg" title="1st Place">🥇</span>;
+  if (rank === 2) return <span className="text-lg" title="2nd Place">🥈</span>;
+  if (rank === 3) return <span className="text-lg" title="3rd Place">🥉</span>;
+  return <span className="text-sm font-semibold text-white/40 w-7 text-center">#{rank}</span>;
+}
+
+function TierBadge({ totalPoints }: { totalPoints: number }) {
+  const { label, color, bg, border } = getParticipantTier(totalPoints);
   return (
-    <span className="text-sm font-semibold text-white/40 w-7 text-center">
-      #{rank}
+    <span
+      className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${color} ${bg} ${border}`}
+    >
+      {label}
     </span>
   );
 }
@@ -108,7 +101,7 @@ export function Leaderboard({
                   Rank
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-white/40 uppercase tracking-wider">
-                  Marketer
+                  Participant
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-white/40 uppercase tracking-wider">
                   Points
@@ -123,9 +116,7 @@ export function Leaderboard({
                 <tr
                   key={entry.userId}
                   className="hover:bg-white/[0.03] cursor-pointer transition-colors group"
-                  onClick={() =>
-                    router.push(`/leaderboard/${poolId}/${entry.userId}`)
-                  }
+                  onClick={() => router.push(`/leaderboard/${poolId}/${entry.userId}`)}
                 >
                   {/* Rank */}
                   <td className="px-6 py-4">
@@ -134,21 +125,22 @@ export function Leaderboard({
                     </div>
                   </td>
 
-                  {/* Marketer */}
+                  {/* Participant */}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       {/* Avatar */}
                       <div className="w-8 h-8 rounded-full bg-[#0088CC]/20 border border-[#0088CC]/30 flex items-center justify-center text-[#0088CC] text-xs font-bold flex-shrink-0">
-                        {(entry.xHandle ?? entry.walletAddress)
-                          .slice(0, 2)
-                          .toUpperCase()}
+                        {(entry.xHandle ?? entry.walletAddress).slice(0, 2).toUpperCase()}
                       </div>
-                      <div>
-                        {entry.xHandle && (
-                          <p className="text-sm font-medium text-white group-hover:text-[#00AAFF] transition-colors">
-                            @{entry.xHandle}
-                          </p>
-                        )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {entry.xHandle && (
+                            <p className="text-sm font-medium text-white group-hover:text-[#00AAFF] transition-colors">
+                              @{entry.xHandle}
+                            </p>
+                          )}
+                          <TierBadge totalPoints={entry.totalPoints} />
+                        </div>
                         <p className="text-xs text-white/40">
                           {truncateWallet(entry.walletAddress)}
                         </p>
@@ -159,15 +151,11 @@ export function Leaderboard({
                   {/* Points */}
                   <td className="px-6 py-4 text-right">
                     <span className="text-sm font-semibold text-white">
-                      {entry.totalPoints.toLocaleString(undefined, {
-                        maximumFractionDigits: 0,
-                      })}
+                      {entry.totalPoints.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                     <div className="text-xs text-white/30 mt-0.5">
                       {entry.holderBoost > 1 && (
-                        <span className="text-[#0088CC]">
-                          {entry.holderBoost}x boost
-                        </span>
+                        <span className="text-[#0088CC]">{entry.holderBoost}x boost</span>
                       )}
                     </div>
                   </td>
@@ -175,12 +163,7 @@ export function Leaderboard({
                   {/* Estimated reward */}
                   <td className="px-6 py-4 text-right">
                     <span className="text-sm font-semibold text-[#0088CC]">
-                      {estimateReward(
-                        entry.totalPoints,
-                        totalPoints,
-                        totalPoolReward,
-                        tokenSymbol
-                      )}
+                      {estimateReward(entry.totalPoints, totalPoints, totalPoolReward, tokenSymbol)}
                     </span>
                     <div className="text-xs text-white/30 mt-0.5">
                       {totalPoints > 0

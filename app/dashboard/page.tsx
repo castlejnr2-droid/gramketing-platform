@@ -1,4 +1,5 @@
 'use client';
+import { getParticipantTier } from '@/lib/points';
 import { useEffect, useState } from 'react';
 import { useTonWallet } from '@tonconnect/ui-react';
 import { TonConnectButton } from '@tonconnect/ui-react';
@@ -24,6 +25,15 @@ interface AccountInfo {
   walletAddress: string;
   xHandle?: string;
   telegramHandle?: string;
+}
+
+function TierBadge({ totalPoints }: { totalPoints: number }) {
+  const { label, color, bg, border } = getParticipantTier(totalPoints);
+  return (
+    <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${color} ${bg} ${border}`}>
+      {label}
+    </span>
+  );
 }
 
 export default function DashboardPage() {
@@ -157,6 +167,9 @@ export default function DashboardPage() {
                           LIVE
                         </span>
                       </div>
+                      <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+                        <TierBadge totalPoints={p.totalPoints} />
+                      </div>
                       <div className="flex items-center gap-4 text-sm text-white/40">
                         <span>
                           Rank{' '}
@@ -220,6 +233,9 @@ export default function DashboardPage() {
                           ${p.tokenSymbol}
                         </span>
                         <span className="ended-badge">ENDED</span>
+                      </div>
+                      <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+                        <TierBadge totalPoints={p.totalPoints} />
                       </div>
                       <div className="flex items-center gap-4 text-sm text-white/40">
                         <span>

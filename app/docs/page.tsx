@@ -23,15 +23,16 @@ const sections = [
   { id: 'how-pools', label: 'How Pools Work', group: 'Overview' },
   { id: 'leaderboard', label: 'How the Leaderboard Works', group: 'Overview' },
   { id: 'distribution', label: 'Reward Distribution', group: 'Overview' },
-  { id: 'connect-x', label: 'Connect Your X Account', group: 'For Marketers' },
-  { id: 'connect-tg', label: 'Connect Telegram', group: 'For Marketers' },
-  { id: 'submit-posts', label: 'Submitting Posts', group: 'For Marketers' },
-  { id: 'daily-limit', label: 'Daily Submission Limits', group: 'For Marketers' },
-  { id: 'points-calc', label: 'Points Calculation', group: 'For Marketers' },
-  { id: 'holder-boost', label: 'Holder Boost', group: 'For Marketers' },
-  { id: 'referral', label: 'Referral System', group: 'For Marketers' },
-  { id: 'referral-tiers', label: 'Referral Tiers', group: 'For Marketers' },
-  { id: 'points-decrease', label: 'Points Can Decrease', group: 'For Marketers' },
+  { id: 'participant-tiers', label: 'Participant Tiers', group: 'For Contributors & Promoters' },
+  { id: 'connect-x', label: 'Connect Your X Account', group: 'For Contributors & Promoters' },
+  { id: 'connect-tg', label: 'Connect Telegram', group: 'For Contributors & Promoters' },
+  { id: 'submit-posts', label: 'Submitting Posts', group: 'For Contributors & Promoters' },
+  { id: 'daily-limit', label: 'Daily Submission Limits', group: 'For Contributors & Promoters' },
+  { id: 'points-calc', label: 'Points Calculation', group: 'For Contributors & Promoters' },
+  { id: 'holder-boost', label: 'Holder Boost', group: 'For Contributors & Promoters' },
+  { id: 'referral', label: 'Referral System', group: 'For Contributors & Promoters' },
+  { id: 'referral-tiers', label: 'Referral Tiers', group: 'For Contributors & Promoters' },
+  { id: 'points-decrease', label: 'Points Can Decrease', group: 'For Contributors & Promoters' },
   { id: 'create-pool', label: 'Creating a Pool', group: 'For Projects' },
   { id: 'pricing', label: 'Pricing Table', group: 'For Projects' },
   { id: 'escrow', label: 'Escrow System', group: 'For Projects' },
@@ -39,7 +40,7 @@ const sections = [
   { id: 'pool-end', label: 'When Pool Ends', group: 'For Projects' },
 ];
 
-const groups = ['Overview', 'For Marketers', 'For Projects'];
+const groups = ['Overview', 'For Contributors & Promoters', 'For Projects'];
 
 function Section({
   id,
@@ -128,15 +129,14 @@ export default function DocsPage() {
                   <p>
                     GRAMKETING is a Web3 performance marketing platform built on
                     the TON blockchain. It connects projects that want to grow
-                    their community with marketers who want to earn rewards for
-                    their content.
+                    their community with contributors, promoters, and marketers who want to earn rewards for their content.
                   </p>
                   <p>
                     Projects create reward pools funded with their own tokens.
-                    Marketers compete by posting about the project on X
+                    Participants — Contributors, Promoters, and Marketers — compete by posting about the project on X
                     (Twitter) and Telegram. At the end of a pool&apos;s duration,
                     rewards are distributed proportionally based on each
-                    marketer&apos;s accumulated points.
+                    participant&apos;s accumulated points.
                   </p>
                   <p>
                     Everything runs on TON — wallets connect via TON Connect
@@ -150,7 +150,7 @@ export default function DocsPage() {
                   <ol className="list-decimal list-inside space-y-2 ml-2">
                     <li>Project creates a pool and pays an access fee to the platform treasury.</li>
                     <li>Project deposits reward tokens into an escrow smart contract.</li>
-                    <li>Pool goes ACTIVE — marketers can join and submit posts.</li>
+                    <li>Pool goes ACTIVE — contributors, promoters, and marketers can join and submit posts.</li>
                     <li>The scraper runs every 30 minutes, updating view counts and points.</li>
                     <li>When the duration expires, the pool is marked ENDED.</li>
                     <li>Platform admin triggers distribution — rewards flow to winners&apos; wallets.</li>
@@ -165,7 +165,7 @@ export default function DocsPage() {
                   </p>
                   <p>
                     The leaderboard is public — anyone can view it. Click any
-                    marketer&apos;s row to see their full stats breakdown.
+                    participant&apos;s row to see their full stats breakdown.
                   </p>
                 </Section>
 
@@ -192,9 +192,53 @@ Carol: 2,000 pts  → 20% share → 200,000 tokens`}</CodeBlock>
             {/* ── FOR MARKETERS ── */}
             <div>
               <h2 className="text-lg font-semibold text-[#0088CC] mb-4 uppercase tracking-wider">
-                For Marketers
+                For Contributors, Promoters &amp; Marketers
               </h2>
               <div className="space-y-6">
+                <Section id="participant-tiers" title="Participant Tiers">
+                  <p>
+                    Every wallet that joins GRAMKETING is assigned a tier based on their total
+                    points earned across all pools. Tiers are calculated dynamically and update
+                    in real time as you earn points.
+                  </p>
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/10">
+                          <th className="py-2 px-3 text-left text-white/50 font-medium">Tier</th>
+                          <th className="py-2 px-3 text-left text-white/50 font-medium">Points Required</th>
+                          <th className="py-2 px-3 text-left text-white/50 font-medium">Badge</th>
+                          <th className="py-2 px-3 text-left text-white/50 font-medium">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        <tr>
+                          <td className="py-3 px-3 font-semibold text-white/60">Contributor</td>
+                          <td className="py-3 px-3 text-white/50">0 pts (default)</td>
+                          <td className="py-3 px-3"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border text-white/50 bg-white/5 border-white/10">Contributor</span></td>
+                          <td className="py-3 px-3 text-white/50">Default tier for anyone who joins the platform. Start here and earn your way up.</td>
+                        </tr>
+                        <tr>
+                          <td className="py-3 px-3 font-semibold text-[#0088CC]">Promoter</td>
+                          <td className="py-3 px-3 text-white/50">500+ pts</td>
+                          <td className="py-3 px-3"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border text-[#0088CC] bg-[#0088CC]/10 border-[#0088CC]/30">Promoter</span></td>
+                          <td className="py-3 px-3 text-white/50">Earned by reaching 500 total points. Shows you&apos;re actively driving real engagement.</td>
+                        </tr>
+                        <tr>
+                          <td className="py-3 px-3 font-semibold text-yellow-400">Marketer</td>
+                          <td className="py-3 px-3 text-white/50">5,000+ pts</td>
+                          <td className="py-3 px-3"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border text-yellow-400 bg-yellow-400/10 border-yellow-400/30">Marketer</span></td>
+                          <td className="py-3 px-3 text-white/50">Top-tier status for proven performers. Displayed in gold on leaderboards and public profiles.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-4">
+                    Tier badges are shown on the leaderboard, your public stats page, and your dashboard.
+                    They reflect your <strong>total lifetime points</strong> across all pools — not just one pool.
+                  </p>
+                </Section>
+
                 <Section id="connect-x" title="How to Connect Your X Account">
                   <p>
                     Go to Dashboard → Account Settings → enter your X username
@@ -274,7 +318,7 @@ Total Points = (xPoints + telegramPoints)
                 <Section id="referral" title="Referral System">
                   <p>
                     Every pool participant gets a unique referral link. Share it
-                    to bring new marketers to the pool.
+                    to bring new participants to the pool.
                   </p>
                   <p>When a referred friend connects their wallet and holds the pool&apos;s project token:</p>
                   <ul className="list-disc list-inside ml-2 space-y-1">
@@ -395,13 +439,13 @@ Total Points = (xPoints + telegramPoints)
 
                 <Section id="reward-slots" title="Setting Reward Slots">
                   <p>
-                    Reward slots define how many marketers receive rewards.
+                    Reward slots define how many participants receive rewards.
                     Minimum is 3. All slots share the prize pool proportionally
                     by points.
                   </p>
                   <p>
                     Recommendation: set more slots (10–20) to attract more
-                    marketers. Even rank #15 earns something, which incentivizes
+                    participants. Even rank #15 earns something, which incentivizes
                     broader participation.
                   </p>
                 </Section>

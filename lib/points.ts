@@ -61,3 +61,48 @@ export function calculateTotalPoints(input: PointsInput): number {
     input;
   return (xPoints + telegramPoints) * holderBoost * referralMultiplier + referralBonusPoints;
 }
+
+// ── Participant tiers ─────────────────────────────────────────────────────
+export type ParticipantTier = 'Contributor' | 'Promoter' | 'Marketer';
+
+export const PROMOTER_THRESHOLD = 500;
+export const MARKETER_THRESHOLD = 5000;
+
+export interface TierInfo {
+  tier: ParticipantTier;
+  label: string;
+  color: string;       // Tailwind text colour
+  bg: string;          // Tailwind bg colour
+  border: string;      // Tailwind border colour
+  next?: { tier: ParticipantTier; pointsNeeded: number };
+}
+
+export function getParticipantTier(totalPoints: number): TierInfo {
+  if (totalPoints >= MARKETER_THRESHOLD) {
+    return {
+      tier: 'Marketer',
+      label: 'Marketer',
+      color: 'text-yellow-400',
+      bg: 'bg-yellow-400/10',
+      border: 'border-yellow-400/30',
+    };
+  }
+  if (totalPoints >= PROMOTER_THRESHOLD) {
+    return {
+      tier: 'Promoter',
+      label: 'Promoter',
+      color: 'text-[#0088CC]',
+      bg: 'bg-[#0088CC]/10',
+      border: 'border-[#0088CC]/30',
+      next: { tier: 'Marketer', pointsNeeded: MARKETER_THRESHOLD - totalPoints },
+    };
+  }
+  return {
+    tier: 'Contributor',
+    label: 'Contributor',
+    color: 'text-white/50',
+    bg: 'bg-white/5',
+    border: 'border-white/10',
+    next: { tier: 'Promoter', pointsNeeded: PROMOTER_THRESHOLD - totalPoints },
+  };
+}

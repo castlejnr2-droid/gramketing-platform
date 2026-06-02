@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PointsBreakdownCard } from '@/components/PointsBreakdownCard';
 import { ArrowLeft, ExternalLink, Calendar, Trophy } from 'lucide-react';
+import { getParticipantTier } from '@/lib/points';
 
 interface MarketerData {
   userId: string;
@@ -44,6 +45,15 @@ interface PoolInfo {
 function truncateWallet(addr: string): string {
   if (addr.length <= 14) return addr;
   return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+}
+
+function TierBadge({ totalPoints }: { totalPoints: number }) {
+  const { label, color, bg, border } = getParticipantTier(totalPoints);
+  return (
+    <span className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full border ${color} ${bg} ${border}`}>
+      {label}
+    </span>
+  );
 }
 
 export default function MarketerStatsPage() {
@@ -144,6 +154,9 @@ export default function MarketerStatsPage() {
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
+              </div>
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <TierBadge totalPoints={marketer.totalPoints} />
               </div>
               <div className="flex items-center gap-4 text-sm text-white/40 flex-wrap">
                 <span className="flex items-center gap-1.5">
