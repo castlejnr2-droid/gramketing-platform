@@ -42,9 +42,9 @@ const STEPS = [
   },
   {
     num: '02',
-    title: 'Marketers Promote',
+    title: 'Contributors Promote',
     description:
-      'Connect your wallet, join a pool, and submit your X posts and Telegram posts promoting the project.',
+      'Connect your wallet, join a pool, and submit your X posts and Telegram channel posts promoting the project.',
     icon: <TrendingUp className="w-6 h-6 text-[#0088CC]" />,
   },
   {
@@ -114,7 +114,7 @@ export default function HomePage() {
             {[
               { label: 'Active Pools', value: '12+' },
               { label: 'Rewards Distributed', value: '$50K+' },
-              { label: 'Marketers', value: '1,200+' },
+              { label: 'Contributors', value: '1,200+' },
             ].map((stat) => (
               <div key={stat.label} className="glass-card p-4 text-center">
                 <p className="text-xl font-bold text-[#0088CC]">{stat.value}</p>
