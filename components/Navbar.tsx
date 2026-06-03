@@ -1,9 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
-import { Menu, X, Wallet } from 'lucide-react';
+import { Menu, X, Wallet, Copy, LogOut, ChevronDown } from 'lucide-react';
 
 function TelegramIcon({ className }: { className?: string }) {
   return (
@@ -42,15 +42,36 @@ const navLinks = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [walletDropdown, setWalletDropdown] = useState(false);
+  const [copied, setCopied] = useState(false);
   const pathname = usePathname();
   const [tonConnectUI] = useTonConnectUI();
   const wallet = useTonWallet();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setWalletDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleCopyAddress = () => {
+    if (!wallet) return;
+    navigator.clipboard.writeText(wallet.account.address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   return (
     <nav
@@ -105,8 +126,45 @@ export function Navbar() {
             >
               <XIcon className="w-4 h-4" />
             </a>
-            <div className="ml-2">
-              <TonConnectButton />
+            <div className="ml-2 relative" ref={dropdownRef}>
+              {wallet ? (
+                <>
+                  <button
+                    onClick={() => setWalletDropdown((v) => !v)}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium bg-[#0088CC]/10 border border-[#0088CC]/30 text-[#0088CC] hover:bg-[#0088CC]/20 transition-all"
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    {wallet.account.address.slice(0, 6)}...{wallet.account.address.slice(-4)}
+                    <ChevronDown className={`w-3 h-3 transition-transform ${walletDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  {walletDropdown && (
+                    <div className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-white/10 bg-[#0A0F1E]/95 backdrop-blur-[24px] shadow-xl overflow-hidden z-50">
+                      <button
+                        onClick={handleCopyAddress}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        {copied ? 'Copied!' : 'Copy Address'}
+                      </button>
+                      <button
+                        onClick={() => { tonConnectUI.disconnect(); setWalletDropdown(false); }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors border-t border-white/5"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        Disconnect
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <button
+                  onClick={() => tonConnectUI.openModal()}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-[#0088CC] hover:bg-[#0099DD] text-white transition-all"
+                >
+                  <Wallet className="w-3.5 h-3.5" />
+                  Connect Wallet
+                </button>
+              )}
             </div>
           </div>
 
@@ -157,15 +215,30 @@ export function Navbar() {
                 <XIcon className="w-4 h-4" />
               </a>
             </div>
-            <div className="px-4 pt-2 pb-2">
+            <div className="px-4 pt-2 pb-2 space-y-2">
               {wallet ? (
-                <button
-                  onClick={() => tonConnectUI.disconnect()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#0088CC]/10 border border-[#0088CC]/30 text-[#0088CC] hover:bg-[#0088CC]/20 transition-all"
-                >
-                  <Wallet className="w-4 h-4" />
-                  {wallet.account.address.slice(0, 6)}...{wallet.account.address.slice(-4)}
-                </button>
+                <>
+                  <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#0088CC]/10 border border-[#0088CC]/30 text-[#0088CC]">
+                    <Wallet className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">{wallet.account.address.slice(0, 6)}...{wallet.account.address.slice(-4)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCopyAddress}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-white/60 hover:text-white hover:border-white/20 transition-all"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                    <button
+                      onClick={() => { tonConnectUI.disconnect(); setMenuOpen(false); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Disconnect
+                    </button>
+                  </div>
+                </>
               ) : (
                 <button
                   onClick={() => tonConnectUI.openModal()}
