@@ -2,11 +2,8 @@
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const manifestUrl =
-    process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL ??
-    '/tonconnect-manifest.json';
   return (
-    <TonConnectUIProvider manifestUrl={manifestUrl}>
+    <TonConnectUIProvider manifestUrl="https://gramketing-platform.vercel.app/tonconnect-manifest.json">
       {children}
     </TonConnectUIProvider>
   );
