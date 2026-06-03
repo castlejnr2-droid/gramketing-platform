@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { NextRequest } from 'next/server';
+import { Address } from '@ton/ton';
 
 const secret = new TextEncoder().encode(
   process.env.JWT_SECRET ?? 'dev-secret-change-me-minimum-32-chars!!'
@@ -33,6 +34,19 @@ export async function getAuthWallet(req: NextRequest): Promise<string | null> {
   return payload?.walletAddress ?? null;
 }
 
+function toRaw(addr: string): string | null {
+  try {
+    return Address.parse(addr).toRawString();
+  } catch {
+    return null;
+  }
+}
+
 export function isAdmin(walletAddress: string): boolean {
-  return walletAddress === process.env.ADMIN_WALLET_ADDRESS;
+  const adminEnv = process.env.ADMIN_WALLET_ADDRESS;
+  if (!adminEnv) return false;
+  const rawWallet = toRaw(walletAddress);
+  const rawAdmin = toRaw(adminEnv);
+  if (!rawWallet || !rawAdmin) return false;
+  return rawWallet === rawAdmin;
 }
