@@ -1,8 +1,7 @@
 'use client';
-import { useTonWallet } from '@tonconnect/ui-react';
-import { TonConnectButton } from '@tonconnect/ui-react';
+import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import { CreatePoolStepper } from '@/components/CreatePoolStepper';
-import { Shield, Coins, Trophy } from 'lucide-react';
+import { Shield, Coins, Trophy, Wallet } from 'lucide-react';
 
 const INFO_CARDS = [
   {
@@ -24,6 +23,7 @@ const INFO_CARDS = [
 
 export default function CreatePoolPage() {
   const wallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
 
   if (!wallet) {
     return (
@@ -37,7 +37,13 @@ export default function CreatePoolPage() {
             You need a TON wallet to create a reward pool. The wallet will sign
             the access fee transaction and own the pool contract.
           </p>
-          <TonConnectButton />
+          <button
+            onClick={() => tonConnectUI.openModal()}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold bg-[#0088CC] hover:bg-[#0099DD] text-white transition-all"
+          >
+            <Wallet className="w-4 h-4" />
+            Connect Wallet
+          </button>
         </div>
       </div>
     );

@@ -1,11 +1,10 @@
 'use client';
 import { getParticipantTier } from '@/lib/points';
 import { useEffect, useState } from 'react';
-import { useTonWallet } from '@tonconnect/ui-react';
-import { TonConnectButton } from '@tonconnect/ui-react';
+import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Link from 'next/link';
 import { ReferralCard } from '@/components/ReferralCard';
-import { Trophy, TrendingUp, Settings, ChevronRight, CheckCircle, Layers } from 'lucide-react';
+import { Trophy, TrendingUp, Settings, ChevronRight, CheckCircle, Layers, Wallet } from 'lucide-react';
 
 interface MyPool {
   poolId: string;
@@ -48,6 +47,7 @@ function TierBadge({ totalPoints }: { totalPoints: number }) {
 
 export default function DashboardPage() {
   const wallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
   const [activePools, setActivePools] = useState<MyPool[]>([]);
   const [endedPools, setEndedPools] = useState<MyPool[]>([]);
   const [account, setAccount] = useState<AccountInfo | null>(null);
@@ -147,7 +147,13 @@ export default function DashboardPage() {
             Connect your TON wallet to view your dashboard, track your rankings,
             and manage your pool participations.
           </p>
-          <TonConnectButton />
+          <button
+            onClick={() => tonConnectUI.openModal()}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold bg-[#0088CC] hover:bg-[#0099DD] text-white transition-all"
+          >
+            <Wallet className="w-4 h-4" />
+            Connect Wallet
+          </button>
         </div>
       </div>
     );

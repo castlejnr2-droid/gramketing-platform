@@ -2,8 +2,8 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { TonConnectButton } from '@tonconnect/ui-react';
-import { Menu, X } from 'lucide-react';
+import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
+import { Menu, X, Wallet } from 'lucide-react';
 
 function TelegramIcon({ className }: { className?: string }) {
   return (
@@ -43,6 +43,8 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const [tonConnectUI] = useTonConnectUI();
+  const wallet = useTonWallet();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -156,7 +158,23 @@ export function Navbar() {
               </a>
             </div>
             <div className="px-4 pt-2 pb-2">
-              <TonConnectButton />
+              {wallet ? (
+                <button
+                  onClick={() => tonConnectUI.disconnect()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#0088CC]/10 border border-[#0088CC]/30 text-[#0088CC] hover:bg-[#0088CC]/20 transition-all"
+                >
+                  <Wallet className="w-4 h-4" />
+                  {wallet.account.address.slice(0, 6)}...{wallet.account.address.slice(-4)}
+                </button>
+              ) : (
+                <button
+                  onClick={() => tonConnectUI.openModal()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#0088CC] hover:bg-[#0099DD] text-white transition-all"
+                >
+                  <Wallet className="w-4 h-4" />
+                  Connect Wallet
+                </button>
+              )}
             </div>
           </div>
         </div>
