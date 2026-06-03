@@ -39,6 +39,15 @@ interface ProRataPreview {
   accessFeeRefunded: boolean;
 }
 
+interface BannedRow {
+  id: string;
+  walletAddress: string;
+  reason?: string;
+  telegramChannel?: string;
+  xLink?: string;
+  bannedAt: string;
+}
+
 interface RevenueRecord {
   id: string;
   tokenAmount: string;
@@ -97,7 +106,10 @@ export default function AdminPage() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [banWallet, setBanWallet] = useState('');
   const [banReason, setBanReason] = useState('');
+  const [banTelegram, setBanTelegram] = useState('');
+  const [banX, setBanX] = useState('');
   const [banLoading, setBanLoading] = useState(false);
+  const [bannedList, setBannedList] = useState<BannedRow[]>([]);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
 
   useEffect(() => {
@@ -106,14 +118,16 @@ export default function AdminPage() {
     Promise.all([
       fetch('/api/admin/pools', { credentials: 'include' }).then((r) => r.json()),
       fetch('/api/admin/revenue', { credentials: 'include' }).then((r) => r.json()),
+      fetch('/api/admin/ban', { credentials: 'include' }).then((r) => r.json()),
     ])
-      .then(([poolsData, revData]) => {
+      .then(([poolsData, revData, banData]) => {
         if (poolsData.error === 'Unauthorized') {
           setIsAdmin(false);
         } else {
           setIsAdmin(true);
           setPools(poolsData.pools ?? []);
           setRevenue(revData);
+          setBannedList(banData.banned ?? []);
         }
       })
       .catch(() => {})
@@ -197,13 +211,25 @@ export default function AdminPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ walletAddress: banWallet, reason: banReason }),
+        body: JSON.stringify({
+          walletAddress: banWallet,
+          reason: banReason,
+          telegramChannel: banTelegram || undefined,
+          xLink: banX || undefined,
+        }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? 'Failed');
       setFeedback({ msg: `Banned ${banWallet}`, ok: true });
       setBanWallet('');
       setBanReason('');
+      setBanTelegram('');
+      setBanX('');
+      // Refresh banned list
+      fetch('/api/admin/ban', { credentials: 'include' })
+        .then((r) => r.json())
+        .then((d) => setBannedList(d.banned ?? []))
+        .catch(() => {});
     } catch (e: unknown) {
       setFeedback({
         msg: e instanceof Error ? e.message : 'Ban failed',
@@ -440,7 +466,7 @@ export default function AdminPage() {
         </section>
 
         {/* Ban marketer */}
-        <section>
+        <section className="mb-12">
           <h2 className="text-xl font-semibold text-white mb-5 flex items-center gap-2">
             <XCircle className="w-5 h-5 text-red-400" />
             Ban Marketer
@@ -469,6 +495,28 @@ export default function AdminPage() {
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-red-500/40"
                 />
               </div>
+              <div>
+                <label className="block text-sm text-white/60 mb-1.5">
+                  Telegram Channel <span className="text-white/30">(optional)</span>
+                </label>
+                <input
+                  value={banTelegram}
+                  onChange={(e) => setBanTelegram(e.target.value)}
+                  placeholder="https://t.me/..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-red-500/40"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/60 mb-1.5">
+                  X / Twitter <span className="text-white/30">(optional)</span>
+                </label>
+                <input
+                  value={banX}
+                  onChange={(e) => setBanX(e.target.value)}
+                  placeholder="https://x.com/..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-red-500/40"
+                />
+              </div>
               <button
                 onClick={handleBan}
                 disabled={banLoading || !banWallet.trim()}
@@ -484,6 +532,52 @@ export default function AdminPage() {
             </div>
           </div>
         </section>
+
+        {/* Banned marketers list */}
+        {bannedList.length > 0 && (
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-5 flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-red-400/60" />
+              Banned Marketers <span className="text-sm font-normal text-white/30">({bannedList.length})</span>
+            </h2>
+            <div className="glass-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-white/10">
+                    <tr>
+                      {['Wallet', 'Reason', 'Telegram', 'X / Twitter', 'Banned At'].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-white/40 uppercase tracking-wider">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {bannedList.map((b) => (
+                      <tr key={b.id} className="hover:bg-white/[0.02]">
+                        <td className="px-4 py-3 font-mono text-xs text-red-400/80">
+                          {b.walletAddress.slice(0, 8)}...{b.walletAddress.slice(-6)}
+                        </td>
+                        <td className="px-4 py-3 text-white/50 text-xs">{b.reason || '—'}</td>
+                        <td className="px-4 py-3 text-xs">
+                          {b.telegramChannel
+                            ? <a href={b.telegramChannel} target="_blank" rel="noopener noreferrer" className="text-[#0088CC] hover:underline truncate max-w-[140px] block">{b.telegramChannel}</a>
+                            : <span className="text-white/20">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          {b.xLink
+                            ? <a href={b.xLink} target="_blank" rel="noopener noreferrer" className="text-white/60 hover:underline truncate max-w-[140px] block">{b.xLink}</a>
+                            : <span className="text-white/20">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-white/30 text-xs">{new Date(b.bannedAt).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
       </div>
 
       {/* Cancel Pool Modal */}

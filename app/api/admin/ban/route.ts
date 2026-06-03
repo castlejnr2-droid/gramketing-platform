@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { walletAddress: targetWallet, reason } = await req.json();
+    const { walletAddress: targetWallet, reason, telegramChannel, xLink } = await req.json();
     if (!targetWallet) {
       return NextResponse.json(
         { error: 'Missing walletAddress' },
@@ -42,8 +42,24 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // TODO: add banned: Boolean field to User model and set it here
-    // await prisma.user.update({ where: { id: user.id }, data: { banned: true } });
+    // Persist ban record (upsert in case already banned)
+    await prisma.bannedMarketer.upsert({
+      where: { walletAddress: targetWallet },
+      update: {
+        reason: reason || null,
+        telegramChannel: telegramChannel || null,
+        xLink: xLink || null,
+        bannedAt: new Date(),
+        bannedByWallet: walletAddress,
+      },
+      create: {
+        walletAddress: targetWallet,
+        reason: reason || null,
+        telegramChannel: telegramChannel || null,
+        xLink: xLink || null,
+        bannedByWallet: walletAddress,
+      },
+    });
 
     console.log(
       `[ADMIN] Banned user ${user.walletAddress}. Reason: ${reason}. ` +
@@ -57,6 +73,24 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('POST /api/admin/ban error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const walletAddress = await getAuthWallet(req);
+    if (!walletAddress || !isAdmin(walletAddress)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const banned = await prisma.bannedMarketer.findMany({
+      orderBy: { bannedAt: 'desc' },
+    });
+
+    return NextResponse.json({ banned });
+  } catch (err) {
+    console.error('GET /api/admin/ban error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
