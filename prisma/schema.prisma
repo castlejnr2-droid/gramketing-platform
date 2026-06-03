@@ -67,6 +67,9 @@ model Pool {
   jettonMasterAddress  String
   durationDays         Int
   rewardSlots          Int
+  tier1Threshold       BigInt   @default(0)
+  tier2Threshold       BigInt   @default(0)
+  tier3Threshold       BigInt   @default(0)
   accessFeePaidIn      FeeCurrency
   accessFeeTxHash      String?
   startDate            DateTime

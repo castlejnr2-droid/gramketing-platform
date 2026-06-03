@@ -77,6 +77,9 @@ export function CreatePoolStepper() {
   const [durationDays, setDurationDays] = useState(7);
   const [totalReward, setTotalReward] = useState('');
   const [rewardSlots, setRewardSlots] = useState(10);
+  const [tier1Threshold, setTier1Threshold] = useState('');
+  const [tier2Threshold, setTier2Threshold] = useState('');
+  const [tier3Threshold, setTier3Threshold] = useState('');
 
   // Step 3
   const [feeCurrency, setFeeCurrency] = useState<FeeCurrency>('TON');
@@ -173,6 +176,9 @@ export function CreatePoolStepper() {
           totalReward,
           durationDays,
           rewardSlots,
+          tier1Threshold: parseInt(tier1Threshold) || 0,
+          tier2Threshold: parseInt(tier2Threshold) || 0,
+          tier3Threshold: parseInt(tier3Threshold) || 0,
           accessFeePaidIn: feeCurrency,
           accessFeeTxHash: paymentTxHash,
         }),
@@ -405,6 +411,40 @@ export function CreatePoolStepper() {
                 Top {rewardSlots} marketers by points will share the reward
                 pool proportionally.
               </p>
+            </div>
+
+            {/* Referral Boost Tiers */}
+            <div className="pt-2">
+              <p className="text-sm font-semibold text-white mb-1">Referral Boost Tiers</p>
+              <p className="text-xs text-white/40 mb-4">
+                Set the minimum token holdings required for each referral multiplier tier.
+                Leave at 0 to disable that tier.
+              </p>
+              <div className="space-y-3">
+                {[
+                  { label: 'Tier 1', mult: '1.2×', value: tier1Threshold, set: setTier1Threshold, color: 'text-blue-300' },
+                  { label: 'Tier 2', mult: '1.5×', value: tier2Threshold, set: setTier2Threshold, color: 'text-purple-300' },
+                  { label: 'Tier 3', mult: '2.0×', value: tier3Threshold, set: setTier3Threshold, color: 'text-yellow-300' },
+                ].map((tier) => (
+                  <div key={tier.label} className="flex items-center gap-3">
+                    <div className="w-24 shrink-0">
+                      <span className={`text-sm font-semibold ${tier.color}`}>{tier.label}</span>
+                      <span className="text-xs text-white/30 ml-1">→ {tier.mult}</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={tier.value}
+                      onChange={(e) => tier.set(e.target.value)}
+                      placeholder={`e.g. 1000`}
+                      min="0"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#0088CC]/50"
+                    />
+                    <span className="text-xs text-white/30 shrink-0">
+                      min {tokenSymbol || 'tokens'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

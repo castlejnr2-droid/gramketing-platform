@@ -5,7 +5,7 @@ import { useTonWallet } from '@tonconnect/ui-react';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import Link from 'next/link';
 import { ReferralCard } from '@/components/ReferralCard';
-import { Trophy, TrendingUp, Settings, ChevronRight, CheckCircle } from 'lucide-react';
+import { Trophy, TrendingUp, Settings, ChevronRight, CheckCircle, Layers } from 'lucide-react';
 
 interface MyPool {
   poolId: string;
@@ -57,21 +57,25 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!wallet) return;
-    fetch(`/api/pools?status=ENDED&limit=20`, { credentials: 'include' })
+    fetch(`/api/pools?ownerAddress=${encodeURIComponent(wallet.account.address)}&limit=50`)
       .then((r) => r.json())
       .then((d) => {
-        const myPools = (d.pools ?? []).filter(
-          (p: { project?: { ownerWalletAddress?: string; name: string }; participantCount: number; id: string; tokenSymbol: string; totalReward: string; status: string; endDate: string }) =>
-            p.project?.ownerWalletAddress === wallet.account.address
-        );
-        setOwnedEndedPools(myPools.map((p: { id: string; project: { name: string }; tokenSymbol: string; totalReward: string; status: string; endDate: string; participantCount: number }) => ({
+        setOwnedEndedPools((d.pools ?? []).map((p: {
+          id: string;
+          project: { name: string };
+          tokenSymbol: string;
+          totalReward: string;
+          status: string;
+          endDate: string;
+          _count: { participants: number };
+        }) => ({
           id: p.id,
           projectName: p.project.name,
           tokenSymbol: p.tokenSymbol,
           totalReward: p.totalReward,
           status: p.status,
           endDate: p.endDate,
-          participantCount: p.participantCount,
+          participantCount: p._count.participants,
         })));
       })
       .catch(() => {});
@@ -168,6 +172,55 @@ export default function DashboardPage() {
             {wallet.account.address.slice(0, 8)}...{wallet.account.address.slice(-6)}
           </p>
         </div>
+
+        {/* My Created Pools */}
+        <section className="mb-12">
+          <h2 className="text-xl font-semibold text-white mb-5 flex items-center gap-2">
+            <Layers className="w-5 h-5 text-[#0088CC]" />
+            My Created Pools
+          </h2>
+          {ownedEndedPools.length === 0 ? (
+            <div className="glass-card p-10 text-center text-white/40">
+              <p className="mb-4">You haven&apos;t created any pools yet.</p>
+              <Link href="/create-pool" className="btn-primary text-sm inline-flex items-center gap-2">
+                Create Pool <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {ownedEndedPools.map((p) => (
+                <div key={p.id} className="glass-card p-5">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-white">{p.projectName}</h3>
+                        <span className="text-xs text-[#0088CC] bg-[#0088CC]/10 px-2 py-0.5 rounded font-mono">
+                          ${p.tokenSymbol}
+                        </span>
+                        {p.status === 'ACTIVE' ? (
+                          <span className="live-badge flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                            LIVE
+                          </span>
+                        ) : (
+                          <span className="ended-badge">{p.status}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-white/40">
+                        <span>Reward: <span className="text-white/70">{p.totalReward} {p.tokenSymbol}</span></span>
+                        <span>{p.participantCount} participants</span>
+                        <span>Ends: {new Date(p.endDate).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <Link href={`/pools/${p.id}`} className="btn-secondary text-sm flex items-center gap-2">
+                      View <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Active Pools */}
         <section className="mb-12">

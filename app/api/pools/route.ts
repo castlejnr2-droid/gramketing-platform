@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status'); // ACTIVE | ENDED | DISTRIBUTED
     const search = searchParams.get('search');
+    const ownerAddress = searchParams.get('ownerAddress');
     const limit = parseInt(searchParams.get('limit') ?? '50');
 
     const where: Record<string, unknown> = {};
@@ -22,12 +23,16 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    if (ownerAddress) {
+      where.project = { ownerWalletAddress: ownerAddress };
+    }
+
     const pools = await prisma.pool.findMany({
       where,
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
-        project: { select: { id: true, name: true, logoUrl: true } },
+        project: { select: { id: true, name: true, logoUrl: true, ownerWalletAddress: true } },
         _count: { select: { participants: true } },
       },
     });
@@ -57,6 +62,9 @@ export async function POST(req: NextRequest) {
       totalReward,
       durationDays,
       rewardSlots,
+      tier1Threshold,
+      tier2Threshold,
+      tier3Threshold,
       accessFeePaidIn,
       accessFeeTxHash,
     } = body;
@@ -112,6 +120,9 @@ export async function POST(req: NextRequest) {
         jettonMasterAddress,
         durationDays,
         rewardSlots,
+        tier1Threshold: BigInt(tier1Threshold ?? 0),
+        tier2Threshold: BigInt(tier2Threshold ?? 0),
+        tier3Threshold: BigInt(tier3Threshold ?? 0),
         accessFeePaidIn: accessFeePaidIn ?? 'TON',
         accessFeeTxHash: accessFeeTxHash || null,
         startDate: now,
