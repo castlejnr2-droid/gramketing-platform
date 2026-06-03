@@ -1,20 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Address } from '@ton/ton';
+import { verifyJwt } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   const adminEnv = process.env.ADMIN_WALLET_ADDRESS || 'NOT SET';
-  const testWallet = '0:0d845d74b46bb612509fc86b51314f0bb82bc72fd3ab2dc0ac6a1d8c9f29cae7';
+  const cookie = req.cookies.get('gramketing_token');
 
+  let jwtWallet = null;
   let rawAdmin = null;
-  let rawWallet = null;
+  let rawJwt = null;
+
+  if (cookie) {
+    try {
+      const payload = await verifyJwt(cookie.value);
+      jwtWallet = payload?.walletAddress || 'not in payload';
+      try { rawJwt = Address.parse(jwtWallet).toRawString(); } catch(e) { rawJwt = 'parse error: ' + String(e); }
+    } catch(e) {
+      jwtWallet = 'jwt error: ' + String(e);
+    }
+  }
 
   try { rawAdmin = Address.parse(adminEnv).toRawString(); } catch(e) { rawAdmin = 'parse error: ' + String(e); }
-  try { rawWallet = Address.parse(testWallet).toRawString(); } catch(e) { rawWallet = 'parse error: ' + String(e); }
 
   return NextResponse.json({
-    adminEnv,
+    hasCookie: !!cookie,
+    jwtWallet,
+    rawJwt,
     rawAdmin,
-    rawWallet,
-    match: rawAdmin === rawWallet
+    match: rawJwt === rawAdmin
   });
 }
