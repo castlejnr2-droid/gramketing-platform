@@ -128,7 +128,7 @@ export function CreatePoolStepper() {
       const tonAmount = fees.ton.tokenAmount;
       // Convert TON to nanoton
       const nanoton = BigInt(Math.round(tonAmount * 1e9)).toString();
-      const treasuryWallet = process.env.NEXT_PUBLIC_TREASURY_WALLET_ADDRESS ?? '';
+      const treasuryWallet = process.env.NEXT_PUBLIC_TREASURY_ADDRESS ?? '';
 
       // Build transaction
       const tx = {
