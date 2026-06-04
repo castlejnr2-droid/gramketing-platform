@@ -350,10 +350,11 @@ export default function AdminPage() {
             badge={needsActionCount}
           />
           <NavCard
-            href="/admin/pools"
+            href="/admin/submissions"
             icon={<FileText className="w-5 h-5 text-purple-400" />}
             title="Submissions"
-            description="Review posts and scrape data per pool"
+            description="Review posts, filter by pool or platform, re-scrape"
+            badge={s.submissions}
           />
           <NavCard
             href="#ban"
