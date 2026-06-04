@@ -7,7 +7,7 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { SubmitPostModal } from '@/components/SubmitPostModal';
 import { ReferralCard } from '@/components/ReferralCard';
 import { PointsBreakdownCard } from '@/components/PointsBreakdownCard';
-import { Users, Trophy, Clock, Plus, Wallet } from 'lucide-react';
+import { Users, Trophy, Clock, Plus, Wallet, ExternalLink } from 'lucide-react';
 
 interface PoolData {
   id: string;
@@ -18,6 +18,8 @@ interface PoolData {
   startDate: string;
   endDate: string;
   rewardSlots: number;
+  contractAddress?: string;
+  jettonMasterAddress: string;
   project: { id: string; name: string; logoUrl?: string; description?: string; tokenSymbol: string };
   _count: { participants: number };
 }
@@ -175,20 +177,32 @@ export default function MiniAppPoolDetailPage() {
         </div>
 
         {/* Join / Submit */}
-        {!wallet ? (
-          <button onClick={() => tonConnectUI.openModal()} className="w-full btn-primary flex items-center justify-center gap-2">
-            <Wallet className="w-4 h-4" /> Connect Wallet
-          </button>
-        ) : !joined ? (
-          <button onClick={handleJoin} disabled={joiningPool || pool.status !== 'ACTIVE'} className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-40">
-            {joiningPool ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-            Join Pool
-          </button>
-        ) : (
-          <button onClick={() => setSubmitOpen(true)} disabled={pool.status !== 'ACTIVE'} className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-40">
-            <Plus className="w-4 h-4" /> Submit Post
-          </button>
-        )}
+        <div className="flex flex-col gap-2">
+          {!wallet ? (
+            <button onClick={() => tonConnectUI.openModal()} className="w-full btn-primary flex items-center justify-center gap-2">
+              <Wallet className="w-4 h-4" /> Connect Wallet
+            </button>
+          ) : !joined ? (
+            <button onClick={handleJoin} disabled={joiningPool || pool.status !== 'ACTIVE'} className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-40">
+              {joiningPool ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+              Join Pool
+            </button>
+          ) : (
+            <button onClick={() => setSubmitOpen(true)} disabled={pool.status !== 'ACTIVE'} className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-40">
+              <Plus className="w-4 h-4" /> Submit Post
+            </button>
+          )}
+          {pool.contractAddress && (
+            <a
+              href={`https://tonscan.org/address/${pool.contractAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full btn-secondary flex items-center justify-center gap-2 text-xs"
+            >
+              View Contract <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -242,6 +256,22 @@ export default function MiniAppPoolDetailPage() {
                           <p className="text-[10px] text-white/30">{sub.views.toLocaleString()} views</p>
                         </div>
                       </div>
+                      <div className="flex items-center gap-3 mt-2 text-[10px] text-white/30">
+                        {sub.platform === 'X' && (
+                          <>
+                            <span>{sub.likes.toLocaleString()} likes</span>
+                            <span>{sub.reposts.toLocaleString()} reposts</span>
+                          </>
+                        )}
+                        {sub.platform === 'TELEGRAM' && (
+                          <span>{sub.reactions.toLocaleString()} reactions</span>
+                        )}
+                        <span className="ml-auto">
+                          {sub.lastScrapedAt
+                            ? `Updated ${new Date(sub.lastScrapedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                            : 'Pending scrape'}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -251,7 +281,9 @@ export default function MiniAppPoolDetailPage() {
         </Tabs.Content>
 
         <Tabs.Content value="my-stats">
-          {!myStats ? (
+          {!wallet ? (
+            <div className="glass-card p-10 text-center text-white/40">Connect your wallet to see your stats.</div>
+          ) : !myStats ? (
             <div className="glass-card p-10 text-center text-white/40">Join this pool to see your stats.</div>
           ) : (
             <div className="space-y-4">

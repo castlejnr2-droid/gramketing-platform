@@ -4,6 +4,7 @@ import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Link from 'next/link';
 import { getParticipantTier } from '@/lib/points';
 import { Trophy, TrendingUp, Layers, ChevronRight, Wallet } from 'lucide-react';
+import { ReferralCard } from '@/components/ReferralCard';
 
 interface MyPool {
   poolId: string;
@@ -114,7 +115,7 @@ export default function MiniAppDashboardPage() {
           <div className="space-y-3">
             {activePools.map((p) => (
               <div key={p.poolId} className="glass-card p-4">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3 mb-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-semibold text-white text-sm">{p.projectName}</span>
@@ -129,6 +130,14 @@ export default function MiniAppDashboardPage() {
                   <Link href={`/miniapp/pools/${p.poolId}`} className="btn-secondary text-xs flex items-center gap-1 flex-shrink-0">
                     View <ChevronRight className="w-3 h-3" />
                   </Link>
+                </div>
+                <div className="pt-3 border-t border-white/5">
+                  <ReferralCard
+                    poolId={p.poolId}
+                    referralCode={p.referralCode}
+                    successfulReferrals={0}
+                    bonusPointsEarned={p.referralBonusPoints}
+                  />
                 </div>
               </div>
             ))}
