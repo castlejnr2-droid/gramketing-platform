@@ -2,10 +2,7 @@ import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import {
-  calculateXPoints,
-  calculateTelegramPoints,
   calculateTotalPoints,
-  REFERRAL_BASE_BONUS,
   CampaignType,
 } from '../lib/points';
 import { fetchTelegramPostMetrics } from '../lib/telegram';
@@ -118,7 +115,6 @@ async function scrapeAllActivePools() {
     where: { status: 'ACTIVE' },
     include: {
       participants: { include: { user: true } },
-      submissions: { where: { status: { in: ['PENDING', 'VERIFIED'] } } },
       project: true,
     },
   });
@@ -203,11 +199,20 @@ async function scrapeAllActivePools() {
       referralBoostMap.set(participant.userId, boost);
     }
 
-    // ── Phase 5: Scrape submissions & compute points ───────────────────
-    const submissionsByUser = new Map<string, typeof pool.submissions>();
-    for (const sub of pool.submissions) {
-      if (!submissionsByUser.has(sub.userId)) submissionsByUser.set(sub.userId, []);
-      submissionsByUser.get(sub.userId)!.push(sub);
+    // ── Phase 5: Scrape PoolPost records & compute points ─────────────
+    // Only the specific post links participants submitted are scraped —
+    // never entire channels or X accounts.
+    const poolPosts = await prisma.poolPost.findMany({
+      where: { poolId: pool.id },
+      include: { participant: true },
+    });
+
+    // Group posts by userId for easy lookup
+    const postsByUser = new Map<string, typeof poolPosts>();
+    for (const post of poolPosts) {
+      const uid = post.participant.userId;
+      if (!postsByUser.has(uid)) postsByUser.set(uid, []);
+      postsByUser.get(uid)!.push(post);
     }
 
     for (const participant of pool.participants) {
@@ -218,37 +223,29 @@ async function scrapeAllActivePools() {
       let xPoints = 0;
       let telegramPoints = 0;
 
-      const subs = submissionsByUser.get(userId) ?? [];
-      for (const sub of subs) {
-        if (sub.platform === 'X') {
-          const { views, likes, reposts } = await fetchXPostMetrics(sub.postUrl);
-          const pts = calculateXPoints(views, likes, reposts);
+      const posts = postsByUser.get(userId) ?? [];
+
+      for (const post of posts) {
+        if (post.platform === 'X') {
+          const { views, likes, reposts } = await fetchXPostMetrics(post.postLink);
+          // Keep last valid score if views drop below 100 threshold
+          const pts = views >= 100
+            ? views * 0.8 + likes * 0.1 + reposts * 0.1
+            : post.points;
+          await prisma.poolPost.update({
+            where: { id: post.id },
+            data: { views, likes, reposts, points: pts, lastScrapedAt: now },
+          });
           xPoints += pts;
-          await prisma.submission.update({
-            where: { id: sub.id },
-            data: {
-              currentViews: views,
-              likes,
-              reposts,
-              currentPoints: pts,
-              lastScrapedAt: now,
-              status: 'VERIFIED',
-            },
-          });
         } else {
-          const { views, reactions } = await fetchTelegramPostMetrics(sub.postUrl);
-          const pts = calculateTelegramPoints(views, reactions);
-          telegramPoints += pts;
-          await prisma.submission.update({
-            where: { id: sub.id },
-            data: {
-              currentViews: views,
-              reactions,
-              currentPoints: pts,
-              lastScrapedAt: now,
-              status: 'VERIFIED',
-            },
+          // TELEGRAM
+          const { views, reactions } = await fetchTelegramPostMetrics(post.postLink);
+          const pts = views * 0.8 + reactions * 0.2;
+          await prisma.poolPost.update({
+            where: { id: post.id },
+            data: { views, reactions, points: pts, lastScrapedAt: now },
           });
+          telegramPoints += pts;
         }
       }
 
