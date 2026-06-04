@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useTonWallet } from '@tonconnect/ui-react';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
@@ -390,10 +391,15 @@ export default function AdminPage() {
 
         {/* Pools table */}
         <section className="mb-12">
-          <h2 className="text-xl font-semibold text-white mb-5 flex items-center gap-2">
-            <Users className="w-5 h-5 text-[#0088CC]" />
-            All Pools
-          </h2>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-[#0088CC]" />
+              All Pools
+            </h2>
+            <Link href="/admin/pools" className="text-xs text-[#0088CC] hover:underline flex items-center gap-1">
+              Full pool manager →
+            </Link>
+          </div>
           <div className="glass-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
