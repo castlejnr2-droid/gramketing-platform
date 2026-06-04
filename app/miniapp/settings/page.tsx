@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
-import { CheckCircle, Settings, Wallet } from 'lucide-react';
+import Link from 'next/link';
+import { CheckCircle, Settings, Wallet, BookOpen, Map, ChevronRight } from 'lucide-react';
 
 interface AccountInfo {
   walletAddress: string;
@@ -345,6 +346,29 @@ export default function MiniAppSettingsPage() {
             className="text-sm text-red-400 hover:text-red-300 transition-colors">
             Disconnect wallet
           </button>
+        </div>
+
+        {/* Resources */}
+        <div className="glass-card p-5">
+          <label className="block text-sm font-medium text-white/70 mb-3">Resources</label>
+          <div className="space-y-2">
+            <Link href="/miniapp/docs"
+              className="flex items-center justify-between gap-3 py-2 hover:text-white transition-colors text-white/60">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-[#0088CC]" />
+                <span className="text-sm">Documentation</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/30" />
+            </Link>
+            <Link href="/miniapp/roadmap"
+              className="flex items-center justify-between gap-3 py-2 hover:text-white transition-colors text-white/60">
+              <div className="flex items-center gap-2">
+                <Map className="w-4 h-4 text-[#0088CC]" />
+                <span className="text-sm">Roadmap</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/30" />
+            </Link>
+          </div>
         </div>
       </div>
     </div>

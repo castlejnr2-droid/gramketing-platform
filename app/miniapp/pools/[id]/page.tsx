@@ -7,6 +7,7 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { SubmitPostModal } from '@/components/SubmitPostModal';
 import { ReferralCard } from '@/components/ReferralCard';
 import { PointsBreakdownCard } from '@/components/PointsBreakdownCard';
+import Link from 'next/link';
 import { Users, Trophy, Clock, Plus, Wallet, ExternalLink } from 'lucide-react';
 
 interface PoolData {
@@ -149,7 +150,9 @@ export default function MiniAppPoolDetailPage() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h1 className="text-lg font-bold text-white">{pool.project.name}</h1>
+              <Link href={`/miniapp/project/${pool.project.id}`} className="text-lg font-bold text-white hover:text-[#0088CC] transition-colors">
+                {pool.project.name}
+              </Link>
               <span className="text-xs text-[#0088CC] font-mono bg-[#0088CC]/10 px-2 py-0.5 rounded">${pool.tokenSymbol}</span>
               {pool.status === 'ACTIVE'
                 ? <span className="live-badge flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />LIVE</span>
