@@ -12,16 +12,6 @@ import {
 } from 'lucide-react';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 
-interface FeeEntry {
-  usdAmount: number;
-  tokenAmount: number;
-}
-
-interface FeeRow {
-  mgram: FeeEntry;
-  ton: FeeEntry;
-}
-
 interface Prices {
   ton: number;
   mgram: number;
@@ -29,7 +19,16 @@ interface Prices {
 
 interface PriceData {
   prices: Prices;
-  fees: Record<string, FeeRow>;
+}
+
+interface FeeTxData {
+  to: string;
+  amount: string;      // nanoTON as string
+  payload?: string;    // base64 BOC — only present for jetton (mGRAM) payments
+  expectedFee: {
+    usdAmount: number;
+    tokenAmount: number;
+  };
 }
 
 type FeeCurrency = 'TON' | 'MGRAM';
@@ -86,9 +85,12 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const [tier2Threshold, setTier2Threshold] = useState('');
   const [tier3Threshold, setTier3Threshold] = useState('');
 
-  // Step 3
+  // Step 3 — payment
   const [feeCurrency, setFeeCurrency] = useState<FeeCurrency>('TON');
   const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [feeTxData, setFeeTxData] = useState<FeeTxData | null>(null);
+  const [feeTxLoading, setFeeTxLoading] = useState(false);
+  const [feeTxError, setFeeTxError] = useState<string | null>(null);
   const [paymentTxHash, setPaymentTxHash] = useState('');
 
   // Step 4
@@ -101,6 +103,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
 
+  // Fetch live prices for fee table display
   useEffect(() => {
     if (step === 2) {
       fetch('/api/prices')
@@ -109,6 +112,38 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
         .catch(() => {});
     }
   }, [step]);
+
+  // Pre-fetch authoritative fee transaction params whenever the payment step is
+  // visible and the user changes duration or currency. This lets the Pay button
+  // show the exact server-calculated amount immediately on click.
+  useEffect(() => {
+    if (step !== 2) return;
+    let cancelled = false;
+    setFeeTxData(null);
+    setFeeTxError(null);
+    setFeeTxLoading(true);
+
+    fetch(`/api/fee-tx?durationDays=${durationDays}&currency=${feeCurrency}`, {
+      credentials: 'include',
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d.error) {
+          setFeeTxError(d.error);
+        } else {
+          setFeeTxData(d as FeeTxData);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFeeTxError('Could not load fee details. Please try again.');
+      })
+      .finally(() => {
+        if (!cancelled) setFeeTxLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [step, durationDays, feeCurrency]);
 
   const validate1 = () => {
     if (!projectName.trim()) return 'Project name is required';
@@ -134,35 +169,29 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
     return null;
   };
 
-  const handlePayWithTON = async () => {
-    if (!wallet) return;
-    const fees = priceData?.fees[durationDays];
-    if (!fees) return;
-
+  const handlePayFee = async () => {
+    if (!wallet || !feeTxData) return;
     setLoading(true);
     setError(null);
     try {
-      const tonAmount = fees.ton.tokenAmount;
-      // Convert TON to nanoton
-      const nanoton = BigInt(Math.round(tonAmount * 1e9)).toString();
-      const treasuryWallet = process.env.NEXT_PUBLIC_TREASURY_ADDRESS ?? '';
-
-      // Build transaction
-      const tx = {
-        validUntil: Math.floor(Date.now() / 1000) + 600,
-        messages: [
-          {
-            address: treasuryWallet,
-            amount: nanoton,
-          },
-        ],
+      // feeTxData was pre-fetched by the useEffect above.
+      // For TON fees: { to: treasuryAddr, amount: nanoTON }
+      // For mGRAM fees: { to: senderJettonWallet, amount: gasNano, payload: base64BOC }
+      const message: { address: string; amount: string; payload?: string } = {
+        address: feeTxData.to,
+        amount: feeTxData.amount,
       };
+      if (feeTxData.payload) message.payload = feeTxData.payload;
 
-      const result = await tonConnectUI.sendTransaction(tx);
+      const result = await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [message],
+      });
+
       setPaymentTxHash(result.boc);
       setStep(3);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Transaction failed');
+      setError(e instanceof Error ? e.message : 'Transaction cancelled or failed');
     } finally {
       setLoading(false);
     }
@@ -292,7 +321,6 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
     return () => stopPolling();
   }, []);
 
-  const currentFees = priceData?.fees[durationDays];
   const usdFees = USD_FEE_TABLE[durationDays];
 
   return (
@@ -585,7 +613,8 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                 Pay Access Fee
               </h2>
               <p className="text-sm text-white/40">
-                Dollar-pegged fee, calculated at current market price.
+                Dollar-pegged fee, calculated at current market price and sent
+                directly to the platform treasury.
               </p>
             </div>
 
@@ -594,15 +623,9 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="py-2 text-left text-white/40 font-medium">
-                      Duration
-                    </th>
-                    <th className="py-2 text-right text-white/40 font-medium">
-                      Pay with $mGRAM
-                    </th>
-                    <th className="py-2 text-right text-white/40 font-medium">
-                      Pay with TON
-                    </th>
+                    <th className="py-2 text-left text-white/40 font-medium">Duration</th>
+                    <th className="py-2 text-right text-white/40 font-medium">$mGRAM</th>
+                    <th className="py-2 text-right text-white/40 font-medium">TON</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -614,19 +637,15 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                       }`}
                     >
                       <td className="py-2.5 text-white/70">{d.label}</td>
-                      <td className="py-2.5 text-right text-white/70">
-                        ${USD_FEE_TABLE[d.days].mgram}
-                      </td>
-                      <td className="py-2.5 text-right text-white/70">
-                        ${USD_FEE_TABLE[d.days].ton}
-                      </td>
+                      <td className="py-2.5 text-right text-white/70">${USD_FEE_TABLE[d.days].mgram}</td>
+                      <td className="py-2.5 text-right text-white/70">${USD_FEE_TABLE[d.days].ton}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Selected fee */}
+            {/* Currency picker */}
             <div className="p-4 rounded-xl bg-[#0088CC]/10 border border-[#0088CC]/20">
               <p className="text-sm text-white/60 mb-3">
                 Selected:{' '}
@@ -644,15 +663,12 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                   }`}
                 >
                   <p className="font-semibold">$mGRAM</p>
-                  <p className="text-xs mt-0.5">
+                  <p className="text-xs mt-0.5 opacity-70">
                     ${usdFees.mgram}
-                    {currentFees && priceData && priceData.prices.mgram > 0 ? (
-                      <span className="text-white/40">
-                        {' '}
-                        ≈ {currentFees.mgram.tokenAmount.toFixed(2)} mGRAM
-                      </span>
+                    {priceData && priceData.prices.mgram > 0 ? (
+                      <span> · {(usdFees.mgram / priceData.prices.mgram).toFixed(2)} mGRAM</span>
                     ) : (
-                      <span className="text-white/30"> (not yet launched)</span>
+                      <span> · rate loading…</span>
                     )}
                   </p>
                 </button>
@@ -665,37 +681,58 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                   }`}
                 >
                   <p className="font-semibold">TON</p>
-                  <p className="text-xs mt-0.5">
+                  <p className="text-xs mt-0.5 opacity-70">
                     ${usdFees.ton}
-                    {currentFees && priceData && priceData.prices.ton > 0 && (
-                      <span className="text-white/40">
-                        {' '}
-                        ≈ {currentFees.ton.tokenAmount.toFixed(4)} TON
-                      </span>
+                    {priceData && priceData.prices.ton > 0 && (
+                      <span> · {(usdFees.ton / priceData.prices.ton).toFixed(4)} TON</span>
                     )}
                   </p>
                 </button>
               </div>
             </div>
 
+            {/* Exact amount from server */}
+            {feeTxData && !feeTxLoading && (
+              <div className="px-4 py-3 rounded-xl bg-white/[0.03] border border-white/8 text-xs text-white/50 flex items-center justify-between">
+                <span>You will send</span>
+                <span className="font-semibold text-white/80">
+                  {feeCurrency === 'TON'
+                    ? `${feeTxData.expectedFee.tokenAmount.toFixed(6)} TON`
+                    : `${feeTxData.expectedFee.tokenAmount.toFixed(4)} mGRAM`}
+                  <span className="text-white/30 ml-1">(≈ ${feeTxData.expectedFee.usdAmount.toFixed(2)})</span>
+                </span>
+              </div>
+            )}
+
+            {feeTxError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                {feeTxError}
+              </div>
+            )}
+
             {priceData && (
               <p className="text-xs text-white/30">
                 Live price: 1 TON = ${priceData.prices.ton.toFixed(2)} USD.
-                Amount auto-adjusts to current market price.
+                Final amount is calculated server-side at time of payment.
               </p>
             )}
 
             <button
-              onClick={handlePayWithTON}
-              disabled={loading || feeCurrency === 'MGRAM'}
+              onClick={handlePayFee}
+              disabled={loading || feeTxLoading || !feeTxData || !!feeTxError}
               className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : null}
-              {feeCurrency === 'TON'
-                ? `Pay ${currentFees?.ton.tokenAmount.toFixed(4) ?? '...'} TON`
-                : '$mGRAM payment coming soon'}
+              {(loading || feeTxLoading) && <Loader2 className="w-4 h-4 animate-spin" />}
+              {feeTxLoading
+                ? 'Loading fee…'
+                : feeTxError
+                ? 'Fee unavailable — retry'
+                : feeTxData
+                ? feeCurrency === 'TON'
+                  ? `Pay ${feeTxData.expectedFee.tokenAmount.toFixed(6)} TON`
+                  : `Pay ${feeTxData.expectedFee.tokenAmount.toFixed(4)} mGRAM`
+                : 'Loading…'}
             </button>
           </div>
         )}
