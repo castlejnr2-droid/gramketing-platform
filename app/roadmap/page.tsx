@@ -32,6 +32,10 @@ const phases = [
       { done: true, text: 'TON wallet auth (TON Connect 2.0)' },
       { done: true, text: 'Dollar-pegged access fees via CoinGecko' },
       { done: true, text: '$mGRAM token launch on TON' },
+      { done: true, text: 'Telegram Bot — outranked alerts' },
+      { done: true, text: 'Telegram Bot — pool ending soon notifications' },
+      { done: true, text: 'Telegram Bot — rewards distributed notifications' },
+      { done: true, text: 'Telegram Bot — new pools announcements' },
     ],
   },
   {
@@ -40,10 +44,6 @@ const phases = [
     period: 'Q3 2026',
     status: 'upcoming' as const,
     items: [
-      { done: false, text: 'Telegram Bot — outranked alerts' },
-      { done: false, text: 'Telegram Bot — pool ending soon notifications' },
-      { done: false, text: 'Telegram Bot — rewards distributed notifications' },
-      { done: false, text: 'Telegram Bot — new pools announcements' },
       { done: false, text: 'Telegram Mini App — join pools in-app' },
       { done: false, text: '$mGRAM staking and governance' },
     ],

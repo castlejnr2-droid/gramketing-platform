@@ -9,6 +9,7 @@ import {
   CampaignType,
 } from '../lib/points';
 import { fetchTelegramPostMetrics } from '../lib/telegram';
+import { notifyOutranked, notifyPoolEndingSoon } from '../lib/telegram-notify';
 
 const prisma = new PrismaClient();
 
@@ -97,17 +98,44 @@ async function scrapeAllActivePools() {
     await prisma.pool.update({ where: { id: pool.id }, data: { status: 'ENDED' } });
   }
 
+  // Notify participants of pools ending within ~24 hours (fire once: 23–25 h window)
+  const in23h = new Date(now.getTime() + 23 * 60 * 60 * 1000);
+  const in25h = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+  const endingSoonPools = await prisma.pool.findMany({
+    where: { status: 'ACTIVE', endDate: { gte: in23h, lte: in25h } },
+    include: { participants: true, project: true },
+  });
+  for (const pool of endingSoonPools) {
+    const hoursLeft = Math.round((pool.endDate.getTime() - now.getTime()) / 3_600_000);
+    const poolName = pool.project.name;
+    for (const participant of pool.participants) {
+      await notifyPoolEndingSoon(participant.userId, poolName, hoursLeft);
+    }
+  }
+
   // Scrape active pools
   const activePools = await prisma.pool.findMany({
     where: { status: 'ACTIVE' },
     include: {
       participants: { include: { user: true } },
       submissions: { where: { status: { in: ['PENDING', 'VERIFIED'] } } },
+      project: true,
     },
   });
 
   for (const pool of activePools) {
     console.log(`Scraping pool ${pool.id} (${pool.tokenSymbol})`);
+
+    // Capture previous rankings to detect rank drops
+    const prevSnapshot = await prisma.leaderboardSnapshot.findFirst({
+      where: { poolId: pool.id },
+      orderBy: { snapshotAt: 'desc' },
+    });
+    const prevRankMap = new Map<string, number>();
+    if (prevSnapshot) {
+      const rankings = prevSnapshot.rankings as Array<{ userId: string; rank: number }>;
+      for (const r of rankings) prevRankMap.set(r.userId, r.rank);
+    }
     const campaignType = (pool.campaignType as CampaignType) ?? 'both';
 
     // ── Phase 1: Fetch all participant token balances ──────────────────
@@ -240,6 +268,24 @@ async function scrapeAllActivePools() {
     }
 
     await saveLeaderboardSnapshot(pool.id);
+
+    // Detect rank drops and notify outranked participants
+    if (prevRankMap.size > 0) {
+      const newSnapshot = await prisma.leaderboardSnapshot.findFirst({
+        where: { poolId: pool.id },
+        orderBy: { snapshotAt: 'desc' },
+      });
+      if (newSnapshot) {
+        const newRankings = newSnapshot.rankings as Array<{ userId: string; rank: number }>;
+        const poolName = pool.project.name;
+        for (const r of newRankings) {
+          const prevRank = prevRankMap.get(r.userId);
+          if (prevRank !== undefined && r.rank > prevRank) {
+            await notifyOutranked(r.userId, poolName, r.rank);
+          }
+        }
+      }
+    }
   }
 
   console.log(`[${new Date().toISOString()}] Scrape cycle complete.`);

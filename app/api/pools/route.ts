@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
+import { notifyNewPool } from '@/lib/telegram-notify';
 
 export async function GET(req: NextRequest) {
   try {
@@ -143,6 +144,9 @@ export async function POST(req: NextRequest) {
         project: true,
       },
     });
+
+    // Notify opted-in users about the new pool (fire-and-forget)
+    notifyNewPool(project.name, project.name, pool.totalReward).catch(console.error);
 
     return NextResponse.json({ pool }, { status: 201 });
   } catch (err) {

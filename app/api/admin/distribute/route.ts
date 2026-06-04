@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet, isAdmin } from '@/lib/auth';
 import { calculateDistribution } from '@/lib/distribution';
+import { notifyRewardsDistributed } from '@/lib/telegram-notify';
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,10 +49,18 @@ export async function POST(req: NextRequest) {
     // });
 
     // Mark pool as distributed
-    await prisma.pool.update({
+    const updatedPool = await prisma.pool.update({
       where: { id: poolId },
       data: { status: 'DISTRIBUTED' },
+      include: { project: true },
     });
+
+    // Notify each winner
+    const poolName = updatedPool.project.name;
+    for (const winner of winners) {
+      const tokenAmount = winner.tokenAmount ?? '0';
+      notifyRewardsDistributed(winner.userId, poolName, tokenAmount).catch(console.error);
+    }
 
     return NextResponse.json({
       success: true,

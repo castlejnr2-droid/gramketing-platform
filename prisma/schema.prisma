@@ -43,6 +43,20 @@ model User {
   submissions       Submission[]
   referralsGiven    ReferralBoost[]   @relation("Referrer")
   referralsReceived ReferralBoost[]   @relation("Referred")
+  telegramNotificationPrefs TelegramNotificationPrefs?
+}
+
+model TelegramNotificationPrefs {
+  id                       String   @id @default(cuid())
+  userId                   String   @unique
+  user                     User     @relation(fields: [userId], references: [id])
+  telegramChatId           String
+  notifyOutranked          Boolean  @default(true)
+  notifyPoolEndingSoon     Boolean  @default(true)
+  notifyRewardsDistributed Boolean  @default(true)
+  notifyNewPools           Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 }
 
 model Project {
