@@ -101,6 +101,45 @@ export default function MiniAppDashboardPage() {
         )}
       </div>
 
+      {/* Created pools */}
+      <section>
+        <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+          <Layers className="w-4 h-4 text-[#0088CC]" /> My Created Pools
+        </h2>
+        {ownedPools.length === 0 ? (
+          <div className="glass-card p-8 text-center text-white/40 text-sm">
+            <p className="mb-3">You haven&apos;t created any pools yet.</p>
+            <Link href="/create-pool" className="btn-primary text-sm inline-flex items-center gap-2">
+              Create Pool <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {ownedPools.map((p) => (
+              <div key={p.id} className="glass-card p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-semibold text-white text-sm">{p.projectName}</span>
+                      <span className="text-xs text-[#0088CC] bg-[#0088CC]/10 px-1.5 py-0.5 rounded font-mono">${p.tokenSymbol}</span>
+                      {p.status === 'ACTIVE'
+                        ? <span className="live-badge flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />LIVE</span>
+                        : <span className="ended-badge text-[10px]">{p.status}</span>}
+                    </div>
+                    <p className="text-xs text-white/40">
+                      {p.totalReward} {p.tokenSymbol} · {p.participantCount} participants · ends {new Date(p.endDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Link href={`/miniapp/pools/${p.id}`} className="btn-secondary text-xs flex items-center gap-1 flex-shrink-0">
+                    View <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Active pools */}
       <section>
         <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
@@ -144,35 +183,6 @@ export default function MiniAppDashboardPage() {
           </div>
         )}
       </section>
-
-      {/* Owned pools */}
-      {ownedPools.length > 0 && (
-        <section>
-          <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[#0088CC]" /> My Created Pools
-          </h2>
-          <div className="space-y-3">
-            {ownedPools.map((p) => (
-              <div key={p.id} className="glass-card p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-white text-sm">{p.projectName}</span>
-                      {p.status === 'ACTIVE'
-                        ? <span className="live-badge flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />LIVE</span>
-                        : <span className="ended-badge text-[10px]">{p.status}</span>}
-                    </div>
-                    <p className="text-xs text-white/40">{p.participantCount} participants · {p.totalReward} {p.tokenSymbol}</p>
-                  </div>
-                  <Link href={`/miniapp/pools/${p.id}`} className="btn-secondary text-xs flex items-center gap-1 flex-shrink-0">
-                    View <ChevronRight className="w-3 h-3" />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Ended pools */}
       {endedPools.length > 0 && (
