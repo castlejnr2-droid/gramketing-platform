@@ -86,7 +86,7 @@ export default function MiniAppDocsPage() {
               are distributed proportionally based on each participant&apos;s accumulated points.
             </p>
             <p>
-              Everything runs on TON — wallets connect via TON Connect 2.0, payments are made in TON or
+              Everything runs on TON. Wallets connect via TON Connect 2.0, payments are made in TON or
               $mGRAM, and reward distribution is handled by a Tact smart contract.
             </p>
           </AccordionItem>
@@ -96,10 +96,10 @@ export default function MiniAppDocsPage() {
             <ol className="list-decimal list-inside space-y-2 ml-2">
               <li>Project creates a pool and pays an access fee to the platform treasury.</li>
               <li>Project deposits reward tokens into an escrow smart contract.</li>
-              <li>Pool goes ACTIVE — contributors, promoters, and marketers can join and submit posts.</li>
+              <li>Pool goes ACTIVE. Contributors, promoters, and marketers can join and submit posts.</li>
               <li>The scraper runs every 30 minutes, updating view counts and points.</li>
               <li>When the duration expires, the pool is marked ENDED.</li>
-              <li>Platform admin triggers distribution — rewards flow to winners&apos; wallets.</li>
+              <li>Platform admin triggers distribution and rewards flow to winners&apos; wallets.</li>
             </ol>
           </AccordionItem>
 
@@ -109,7 +109,7 @@ export default function MiniAppDocsPage() {
               when the scraper runs. Each update is saved as a snapshot in the database.
             </p>
             <p>
-              The leaderboard is public — anyone can view it. Tap any participant&apos;s row to see their
+              The leaderboard is public and anyone can view it. Tap any participant&apos;s row to see their
               full stats breakdown.
             </p>
             <p className="font-medium text-white/70">Detailed scoring example</p>
@@ -186,8 +186,8 @@ Telegram: https://t.me/yourchannel/456`}</CodeBlock>
             <div className="p-3 rounded-xl bg-[#0088CC]/5 border border-[#0088CC]/20 mt-1">
               <p className="text-xs font-semibold text-[#0088CC] mb-1">Telegram: Channel Posts Only</p>
               <p className="text-xs text-white/60">
-                Only posts from <strong className="text-white">public Telegram channels</strong> are supported —
-                not group messages or DMs. Channel posts have a URL like{' '}
+                Only posts from <strong className="text-white">public Telegram channels</strong> are supported.
+                Group messages and DMs are not tracked. Channel posts have a URL like{' '}
                 <code className="text-[#0088CC] bg-[#0088CC]/10 px-1 rounded">t.me/yourchannel/123</code>.
               </p>
             </div>
@@ -197,7 +197,7 @@ Telegram: https://t.me/yourchannel/456`}</CodeBlock>
             <p>
               You can submit a maximum of{' '}
               <strong className="text-white">2 posts per day</strong> per pool. This applies across
-              both platforms — 2 X posts, 2 Telegram posts, or one of each.
+              both platforms: 2 X posts, 2 Telegram posts, or one of each.
             </p>
             <p>The daily limit resets at midnight UTC.</p>
           </AccordionItem>
@@ -265,7 +265,7 @@ totalPoints = (contentScore × holderBoost × referralBoost)
 
           <AccordionItem title="Holder Boost (1.0x – 2.0x)">
             <p>
-              Your holder boost is calculated relative to the highest holder in the pool — not against a
+              Your holder boost is calculated relative to the highest holder in the pool, not against a
               fixed threshold.
             </p>
             <CodeBlock>{`holderBoost = 1.0 + (yourBalance / topBalanceInPool)
@@ -295,10 +295,10 @@ Range: 1.0x (no referrals) to 2.0x (top referrer)`}</CodeBlock>
           <AccordionItem title="How Points Can Decrease">
             <p>Points are recalculated on every scrape cycle. Your total can decrease if:</p>
             <ul className="list-disc list-inside ml-2 space-y-1">
-              <li>You sell project tokens — holder boost drops</li>
-              <li>Another participant becomes the new top holder — everyone else&apos;s boost drops</li>
-              <li>A referred friend sells tokens — their balance stops contributing to your referral boost</li>
-              <li>A competing referrer gains more holdings — your referral boost drops</li>
+              <li>You sell project tokens, which drops your holder boost</li>
+              <li>Another participant becomes the new top holder, which lowers everyone else&apos;s boost</li>
+              <li>A referred friend sells tokens, so their balance stops contributing to your referral boost</li>
+              <li>A competing referrer gains more holdings, which brings your referral boost down</li>
             </ul>
             <p>Base post scores (views, likes, reposts) are cumulative and only increase.</p>
           </AccordionItem>
@@ -378,7 +378,7 @@ Range: 1.0x (no referrals) to 2.0x (top referrer)`}</CodeBlock>
           <AccordionItem title="What Happens When a Pool Ends">
             <ol className="list-decimal list-inside space-y-2 ml-2">
               <li>Pool status automatically changes to ENDED when duration expires</li>
-              <li>A final leaderboard snapshot is saved — results are frozen</li>
+              <li>A final leaderboard snapshot is saved and results are frozen</li>
               <li>Platform admin and project owner review the final leaderboard</li>
               <li>Project owner receives a notification on their dashboard</li>
               <li>Smart contract distributes tokens proportionally to top N wallets</li>

@@ -214,16 +214,15 @@ export default function DocsPage() {
                   </p>
                   <p>
                     Projects create reward pools funded with their own tokens.
-                    Participants — Contributors, Promoters, and Marketers —
-                    compete by posting about the project on X (Twitter) and
-                    Telegram. At the end of a pool&apos;s duration, rewards are
-                    distributed proportionally based on each participant&apos;s
-                    accumulated points.
+                    Contributors, Promoters, and Marketers compete by posting
+                    about the project on X (Twitter) and Telegram. At the end of
+                    a pool&apos;s duration, rewards are distributed proportionally
+                    based on each participant&apos;s accumulated points.
                   </p>
                   <p>
-                    Everything runs on TON — wallets connect via TON Connect
-                    2.0, payments are made in TON or $mGRAM, and reward
-                    distribution is handled by a Tact smart contract.
+                    Everything runs on TON. Wallets connect via TON Connect 2.0,
+                    payments are made in TON or $mGRAM, and reward distribution
+                    is handled by a Tact smart contract.
                   </p>
                 </Section>
 
@@ -232,10 +231,10 @@ export default function DocsPage() {
                   <ol className="list-decimal list-inside space-y-2 ml-2">
                     <li>Project creates a pool and pays an access fee to the platform treasury.</li>
                     <li>Project deposits reward tokens into an escrow smart contract.</li>
-                    <li>Pool goes ACTIVE — contributors, promoters, and marketers can join and submit posts.</li>
+                    <li>Pool goes ACTIVE. Contributors, promoters, and marketers can join and submit posts.</li>
                     <li>The scraper runs every 30 minutes, updating view counts and points.</li>
                     <li>When the duration expires, the pool is marked ENDED.</li>
-                    <li>Platform admin triggers distribution — rewards flow to winners&apos; wallets.</li>
+                    <li>Platform admin triggers distribution and rewards flow to winners&apos; wallets.</li>
                   </ol>
                 </Section>
 
@@ -246,7 +245,7 @@ export default function DocsPage() {
                     Each update is saved as a snapshot in the database.
                   </p>
                   <p>
-                    The leaderboard is public — anyone can view it. Click any
+                    The leaderboard is public and anyone can view it. Click any
                     participant&apos;s row to see their full stats breakdown.
                   </p>
                   <p className="font-medium text-white/70">Detailed scoring example</p>
@@ -360,14 +359,14 @@ Telegram: https://t.me/yourchannel/456`}</CodeBlock>
                     </p>
                     <p className="text-sm text-white/60">
                       Only posts from <strong className="text-white">public Telegram channels</strong> are
-                      supported — not group messages, private chats, or DMs.
+                      supported. Group messages, private chats, and DMs are not tracked.
                       Channel posts have a public URL in the format{' '}
                       <code className="text-[#0088CC] bg-[#0088CC]/10 px-1 rounded">
                         t.me/yourchannel/123
                       </code>{' '}
                       and are the only post type where view counts are publicly
-                      accessible. Group messages and DMs do not expose view
-                      data, so they cannot be tracked or verified.
+                      accessible. Group messages and DMs don&apos;t expose view
+                      data, so they can&apos;t be tracked or verified.
                     </p>
                   </div>
                 </Section>
@@ -376,7 +375,7 @@ Telegram: https://t.me/yourchannel/456`}</CodeBlock>
                   <p>
                     You can submit a maximum of{' '}
                     <strong className="text-white">2 posts per day</strong>{' '}
-                    per pool. This applies across both platforms — 2 X posts, 2
+                    per pool. This applies across both platforms: 2 X posts, 2
                     Telegram posts, or one of each.
                   </p>
                   <p>
@@ -450,7 +449,7 @@ totalPoints = (contentScore × holderBoost × referralBoost)
                 <Section id="holder-boost" title="Holder Boost (Proportional, 1.0x – 2.0x)">
                   <p>
                     Every scrape cycle, the platform checks each participant&apos;s balance of the pool&apos;s project token via the TON RPC.
-                    Your holder boost is calculated <strong className="text-white">relative to the highest holder in the pool</strong> — not against a fixed threshold.
+                    Your holder boost is calculated <strong className="text-white">relative to the highest holder in the pool</strong>, not against a fixed threshold.
                   </p>
                   <CodeBlock>{`holderBoost = 1.0 + (yourBalance / topBalanceInPool)
 
@@ -480,7 +479,7 @@ Examples (pool top holder = 100,000 tokens):
 
                   <p className="mt-2 font-medium text-white/70">Referral Boost (Proportional, 1.0x – 2.0x)</p>
                   <p>
-                    Just like the holder boost, your referral boost is calculated <strong className="text-white">pool-wide</strong> — relative to the participant with the highest total referred holdings.
+                    Just like the holder boost, your referral boost is calculated <strong className="text-white">pool-wide</strong>, relative to the participant with the highest total referred holdings.
                   </p>
                   <CodeBlock>{`referredTotal    = sum of token balances of all YOUR token-holding referrals
 referralBoost    = 1.0 + (referredTotal / topReferredTotalInPool)
@@ -505,16 +504,16 @@ Examples (pool top referrer's total = 200,000 tokens):
                   </p>
                   <ul className="list-disc list-inside ml-2 space-y-1">
                     <li>
-                      You sell project tokens — your <strong className="text-yellow-400">holder boost</strong> drops proportionally (or to 1.0x if you sell everything)
+                      You sell project tokens, which drops your <strong className="text-yellow-400">holder boost</strong> proportionally (or back to 1.0x if you sell everything)
                     </li>
                     <li>
-                      Another participant buys more tokens and becomes the new top holder — everyone else&apos;s holder boost decreases relative to the new top
+                      Another participant buys more tokens and becomes the new top holder, which lowers everyone else&apos;s holder boost relative to the new top
                     </li>
                     <li>
-                      A referred friend sells tokens — their balance no longer contributes to your <strong className="text-purple-400">referral boost</strong>, which recalculates downward
+                      A referred friend sells tokens, so their balance no longer counts toward your <strong className="text-purple-400">referral boost</strong>, which recalculates downward
                     </li>
                     <li>
-                      A competing referrer gains more referred holdings than you — your referral boost decreases relative to the new pool maximum
+                      A competing referrer gains more referred holdings than you, which brings your referral boost down relative to the new pool maximum
                     </li>
                   </ul>
                   <p>
@@ -645,7 +644,7 @@ Examples (pool top referrer's total = 200,000 tokens):
                 <Section id="pool-end" title="What Happens When a Pool Ends">
                   <ol className="list-decimal list-inside space-y-2 ml-2">
                     <li>Pool status automatically changes to ENDED when duration expires</li>
-                    <li>A final leaderboard snapshot is saved — results are frozen</li>
+                    <li>A final leaderboard snapshot is saved and results are frozen</li>
                     <li>Platform admin and the project owner both review the final leaderboard before distribution is triggered</li>
                     <li>Project owner receives a notification on their dashboard when their pool ends and can view the final frozen leaderboard</li>
                     <li>Smart contract distributes tokens proportionally to top N wallets</li>
