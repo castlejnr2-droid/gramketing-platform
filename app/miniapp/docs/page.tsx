@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { ScoringExample } from '@/components/ScoringExample';
 
 function TelegramIcon({ className }: { className?: string }) {
   return (
@@ -110,6 +111,8 @@ export default function MiniAppDocsPage() {
               The leaderboard is public — anyone can view it. Tap any participant&apos;s row to see their
               full stats breakdown.
             </p>
+            <p className="font-medium text-white/70">Detailed scoring example</p>
+            <ScoringExample />
           </AccordionItem>
 
           <AccordionItem title="Reward Distribution">

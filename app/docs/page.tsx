@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { ScoringExample } from '@/components/ScoringExample';
 
 function TelegramIcon({ className }: { className?: string }) {
   return (
@@ -248,6 +249,8 @@ export default function DocsPage() {
                     The leaderboard is public — anyone can view it. Click any
                     participant&apos;s row to see their full stats breakdown.
                   </p>
+                  <p className="font-medium text-white/70">Detailed scoring example</p>
+                  <ScoringExample />
                 </Section>
 
                 <Section id="distribution" title="Reward Distribution">
