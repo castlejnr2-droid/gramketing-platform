@@ -16,43 +16,54 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const requestedUserId = searchParams.get('userId');
 
-    const authUser = await prisma.user.findUniqueOrThrow({
-      where: { walletAddress },
-    });
+    const authUser = await prisma.user.findUniqueOrThrow({ where: { walletAddress } });
 
-    // Determine which user's submissions to return
     const targetUserId = requestedUserId ?? authUser.id;
 
-    const submissions = await prisma.submission.findMany({
-      where: {
-        poolId: poolId,
-        userId: targetUserId,
-      },
-      orderBy: { submittedAt: 'desc' },
+    // Find the participant for the target user in this pool
+    const targetParticipant = await prisma.poolParticipant.findUnique({
+      where: { poolId_userId: { poolId, userId: targetUserId } },
     });
 
-    // Get participant stats for the auth user
+    // Return their PoolPost records
+    const poolPosts = targetParticipant
+      ? await prisma.poolPost.findMany({
+          where: { participantId: targetParticipant.id },
+          orderBy: { submittedAt: 'desc' },
+        })
+      : [];
+
+    // Map to the shape the frontend expects
+    const submissions = poolPosts.map((p) => ({
+      id: p.id,
+      platform: p.platform,
+      postUrl: p.postLink,
+      views: p.views,
+      likes: p.likes,
+      reposts: p.reposts,
+      reactions: p.reactions,
+      points: p.points,
+      submittedAt: p.submittedAt.toISOString(),
+      lastScrapedAt: p.lastScrapedAt?.toISOString() ?? null,
+    }));
+
+    // Participant stats for the auth user
     let myStats = null;
-    const participant = await prisma.poolParticipant.findUnique({
-      where: {
-        poolId_userId: {
-          poolId: poolId,
-          userId: authUser.id,
-        },
-      },
+    const authParticipant = await prisma.poolParticipant.findUnique({
+      where: { poolId_userId: { poolId, userId: authUser.id } },
     });
 
-    if (participant) {
+    if (authParticipant) {
       myStats = {
-        totalPoints: participant.totalPoints,
-        xPoints: participant.xPoints,
-        telegramPoints: participant.telegramPoints,
-        referralBonusPoints: participant.referralBonusPoints,
-        referralMultiplier: participant.referralMultiplier,
-        holderBoost: participant.holderBoost,
-        referralCode: participant.referralCode,
+        totalPoints: authParticipant.totalPoints,
+        xPoints: authParticipant.xPoints,
+        telegramPoints: authParticipant.telegramPoints,
+        referralBonusPoints: authParticipant.referralBonusPoints,
+        referralMultiplier: authParticipant.referralMultiplier,
+        holderBoost: authParticipant.holderBoost,
+        referralCode: authParticipant.referralCode,
         successfulReferrals: await prisma.referralBoost.count({
-          where: { referrerId: authUser.id, poolId: poolId },
+          where: { referrerId: authUser.id, poolId },
         }),
       };
     }

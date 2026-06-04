@@ -68,11 +68,13 @@ interface Submission {
   id: string;
   platform: 'X' | 'TELEGRAM';
   postUrl: string;
-  currentViews: number;
-  currentPoints: number;
-  status: string;
+  views: number;
+  likes: number;
+  reposts: number;
+  reactions: number;
+  points: number;
   submittedAt: string;
-  lastScrapedAt?: string;
+  lastScrapedAt?: string | null;
 }
 
 function formatCountdown(endDate: string): string {
@@ -410,28 +412,47 @@ export default function PoolDetailPage() {
                       {submissions.map((sub) => (
                         <div
                           key={sub.id}
-                          className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5"
+                          className="p-3 rounded-xl bg-white/[0.03] border border-white/5"
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#0088CC]/20 text-[#0088CC]">
-                              {sub.platform}
-                            </span>
-                            <a
-                              href={sub.postUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-white/60 hover:text-white truncate max-w-xs transition-colors"
-                            >
-                              {sub.postUrl}
-                            </a>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#0088CC]/20 text-[#0088CC] flex-shrink-0">
+                                {sub.platform}
+                              </span>
+                              <a
+                                href={sub.postUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-white/60 hover:text-white truncate transition-colors"
+                              >
+                                {sub.postUrl}
+                              </a>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm font-semibold text-[#0088CC]">
+                                {sub.points.toFixed(0)} pts
+                              </p>
+                              <p className="text-xs text-white/30">
+                                {sub.views.toLocaleString()} views
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-[#0088CC]">
-                              {sub.currentPoints.toFixed(0)} pts
-                            </p>
-                            <p className="text-xs text-white/30">
-                              {sub.currentViews.toLocaleString()} views
-                            </p>
+                          {/* Per-post metrics */}
+                          <div className="flex items-center gap-4 mt-2 text-xs text-white/30">
+                            {sub.platform === 'X' && (
+                              <>
+                                <span>{sub.likes.toLocaleString()} likes</span>
+                                <span>{sub.reposts.toLocaleString()} reposts</span>
+                              </>
+                            )}
+                            {sub.platform === 'TELEGRAM' && (
+                              <span>{sub.reactions.toLocaleString()} reactions</span>
+                            )}
+                            <span className="ml-auto">
+                              {sub.lastScrapedAt
+                                ? `Updated ${new Date(sub.lastScrapedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                : 'Pending first scrape'}
+                            </span>
                           </div>
                         </div>
                       ))}
