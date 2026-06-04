@@ -56,7 +56,7 @@ const STEPS = [
   'Done',
 ];
 
-export function CreatePoolStepper() {
+export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const router = useRouter();
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
@@ -702,7 +702,7 @@ export function CreatePoolStepper() {
             <div className="flex flex-col sm:flex-row gap-3 w-full mt-4">
               <button
                 className="btn-primary flex-1 flex items-center justify-center gap-2"
-                onClick={() => router.push(`/pools/${createdPoolId}`)}
+                onClick={() => router.push(`${basePath}/pools/${createdPoolId}`)}
               >
                 View Pool Page
                 <ExternalLink className="w-4 h-4" />
