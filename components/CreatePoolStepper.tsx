@@ -211,16 +211,26 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   };
 
   const handleDepositTokens = async () => {
-    if (!wallet) return;
+    if (!wallet || !createdPoolId) return;
     setLoading(true);
     setError(null);
     try {
-      // Build jetton transfer transaction to contract address
-      // The project owner transfers totalReward tokens to the escrow contract
-      // In practice this uses TonConnect to send a jetton transfer message
-      // For now we show a stub success
-      // TODO: Implement full jetton transfer via TonConnect
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Fetch TonConnect transaction params from server (cell-building done server-side)
+      const res = await fetch(`/api/deposit-tx?poolId=${createdPoolId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error ?? 'Failed to build deposit transaction');
+      }
+      const { to, amount, payload } = await res.json();
+
+      // Send the jetton transfer via the user's TonConnect wallet
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [{ address: to, amount, payload }],
+      });
+
       setDepositDone(true);
       setStep(4);
     } catch (e: unknown) {
@@ -673,19 +683,28 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
               </ul>
             </div>
 
-            <button
-              onClick={handleDepositTokens}
-              disabled={loading}
-              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : null}
-              Deposit {totalReward} {tokenSymbol}
-            </button>
-            <p className="text-xs text-white/30 text-center">
-              You&apos;ll need to approve a jetton transfer in your TON wallet.
-            </p>
+            {!createdPoolId && (
+              <p className="text-sm text-white/40 text-center">
+                Click <span className="text-white/70 font-medium">Create Pool</span> below first to deploy the escrow contract.
+              </p>
+            )}
+            {createdPoolId && (
+              <>
+                <button
+                  onClick={handleDepositTokens}
+                  disabled={loading}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40"
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : null}
+                  Deposit {totalReward} {tokenSymbol}
+                </button>
+                <p className="text-xs text-white/30 text-center">
+                  You&apos;ll need to approve a jetton transfer in your TON wallet.
+                </p>
+              </>
+            )}
           </div>
         )}
 

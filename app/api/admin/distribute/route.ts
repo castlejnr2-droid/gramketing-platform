@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthWallet, isAdmin } from '@/lib/auth';
 import { calculateDistribution } from '@/lib/distribution';
 import { notifyRewardsDistributed } from '@/lib/telegram-notify';
+import { sendDistributeRewards } from '@/lib/gramketing-pool-contract';
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,18 +38,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // TODO: Call smart contract distributeRewards via TON SDK
-    // Build the winners map (Address -> shareBasisPoints)
-    // and send DistributeRewards message to pool.contractAddress
-    // Example using @ton/ton:
-    //
-    // const client = new TonClient({ endpoint: process.env.TON_ENDPOINT! });
-    // const contract = client.open(Address.parse(pool.contractAddress!));
-    // await contract.sendDistributeRewards(adminKeyPair, {
-    //   winners: new Map(winners.map(w => [Address.parse(w.walletAddress), w.shareBasisPoints])),
-    // });
+    if (!pool.contractAddress) {
+      return NextResponse.json(
+        { error: 'Pool has no deployed contract address — cannot distribute on-chain' },
+        { status: 400 },
+      );
+    }
 
-    // Mark pool as distributed
+    // Send DistributeRewards message to the on-chain escrow contract
+    await sendDistributeRewards(
+      pool.contractAddress,
+      winners.map((w) => ({
+        walletAddress: w.walletAddress,
+        shareBasisPoints: w.shareBasisPoints,
+      })),
+    );
+
+    // Mark pool as distributed in DB
     const updatedPool = await prisma.pool.update({
       where: { id: poolId },
       data: { status: 'DISTRIBUTED' },
@@ -66,7 +72,6 @@ export async function POST(req: NextRequest) {
       success: true,
       winners,
       totalWinners: winners.length,
-      note: 'Smart contract call not yet implemented — pool marked DISTRIBUTED in DB',
     });
   } catch (err) {
     console.error('POST /api/admin/distribute error:', err);

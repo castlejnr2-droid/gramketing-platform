@@ -11,7 +11,8 @@
     "scraper": "ts-node jobs/scraper.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "compile:contract": "tact --config tact.config.json"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",
@@ -40,6 +41,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@tact-lang/compiler": "^1.6.13",
     "@types/node": "^20",
     "@types/node-cron": "^3.0.11",
     "@types/react": "^18",

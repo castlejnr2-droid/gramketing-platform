@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 import { notifyNewPool } from '@/lib/telegram-notify';
+import { deployAndInitPool } from '@/lib/gramketing-pool-contract';
 
 export async function GET(req: NextRequest) {
   try {
@@ -144,6 +145,28 @@ export async function POST(req: NextRequest) {
         project: true,
       },
     });
+
+    // Deploy escrow contract on-chain and send CreatePool message
+    try {
+      const { contractAddress: deployedAddress } = await deployAndInitPool({
+        ownerAddress: walletAddress,
+        adminAddress: process.env.ADMIN_WALLET_ADDRESS!,
+        jettonMasterAddress,
+        totalReward: String(totalReward),
+        durationDays,
+        rewardSlots,
+      });
+
+      await prisma.pool.update({
+        where: { id: pool.id },
+        data: { contractAddress: deployedAddress },
+      });
+
+      pool.contractAddress = deployedAddress;
+    } catch (deployErr) {
+      console.error('Contract deployment failed (pool created in DB):', deployErr);
+      // Pool is still created in DB; creator can retry deposit later
+    }
 
     // Notify opted-in users about the new pool (fire-and-forget)
     notifyNewPool(project.name, project.name, pool.totalReward).catch(console.error);

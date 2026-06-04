@@ -1,0 +1,13 @@
+{
+  "projects": [
+    {
+      "name": "gramketing_pool",
+      "path": "contracts/gramketing_pool.tact",
+      "output": "contracts/output",
+      "options": {
+        "debug": false,
+        "external": false
+      }
+    }
+  ]
+}

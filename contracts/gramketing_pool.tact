@@ -17,7 +17,8 @@ message DistributeRewards {
     winners: map<Address, Int>; // address -> sharePercent (basis points, sum = 10000)
 }
 
-message JettonTransfer {
+// TEP-74 standard jetton transfer opcode: 0x0f8a7ea5
+message(0x0f8a7ea5) JettonTransfer {
     queryId: Int as uint64;
     amount: Int as coins;
     destination: Address;
@@ -27,7 +28,8 @@ message JettonTransfer {
     forwardPayload: Slice as remaining;
 }
 
-message JettonTransferNotification {
+// TEP-74 standard jetton transfer_notification opcode: 0x7362d09c
+message(0x7362d09c) JettonTransferNotification {
     queryId: Int as uint64;
     amount: Int as coins;
     sender: Address;

@@ -1,0 +1,776 @@
+#pragma version =0.4.6;
+#pragma allow-post-modification;
+#pragma compute-asm-ltr;
+
+;; gramketing_pool_GramketingPool.headers.fc
+;;
+;; Header files for GramketingPool
+;; NOTE: declarations are sorted for optimal order
+;;
+
+;; __tact_context_get
+(int, slice, int, slice) __tact_context_get() inline;
+
+;; __tact_context_get_sender
+slice __tact_context_get_sender() inline;
+
+;; __tact_dict_min_slice_int
+(slice, int, int) __tact_dict_min_slice_int(cell d, int kl, int vl) inline;
+
+;; __tact_dict_next_slice_int
+(slice, int, int) __tact_dict_next_slice_int(cell d, int kl, slice pivot, int vl) inline;
+
+;; $DeployOk$_store
+builder $DeployOk$_store(builder build_0, (int) v) inline;
+
+;; $DeployOk$_store_cell
+cell $DeployOk$_store_cell((int) v, builder b) inline;
+
+;; $JettonTransfer$_store
+builder $JettonTransfer$_store(builder build_0, (int, int, slice, slice, cell, int, slice) v) inline;
+
+;; $JettonTransfer$_store_cell
+cell $JettonTransfer$_store_cell((int, int, slice, slice, cell, int, slice) v, builder b) inline;
+
+;; $PoolCreated$_store
+builder $PoolCreated$_store(builder build_0, (slice, int, int, int, int, int) v) inline;
+
+;; $PoolCreated$_store_cell
+cell $PoolCreated$_store_cell((slice, int, int, int, int, int) v, builder b) inline;
+
+;; $PoolEnded$_store
+builder $PoolEnded$_store(builder build_0, (int) v) inline;
+
+;; $PoolEnded$_store_cell
+cell $PoolEnded$_store_cell((int) v, builder b) inline;
+
+;; $RewardsDistributed$_store
+builder $RewardsDistributed$_store(builder build_0, (int, int) v) inline;
+
+;; $RewardsDistributed$_store_cell
+cell $RewardsDistributed$_store_cell((int, int) v, builder b) inline;
+
+;; $GramketingPool$_store
+builder $GramketingPool$_store(builder build_0, (slice, slice, slice, int, int, int, int, int, int, int) v) inline;
+
+;; $GramketingPool$_load
+(slice, ((slice, slice, slice, int, int, int, int, int, int, int))) $GramketingPool$_load(slice sc_0) inline;
+
+;; $Context$_get_value
+_ $Context$_get_value((int, slice, int, slice) v) inline;
+
+;; $PoolInfo$_to_external
+(slice, slice, slice, int, int, int, int, int, int, int) $PoolInfo$_to_external(((slice, slice, slice, int, int, int, int, int, int, int)) v) inline;
+
+;; $GramketingPool$init$_load
+(slice, ((slice, slice))) $GramketingPool$init$_load(slice sc_0) inline;
+
+;; $GramketingPool$_contract_init
+(slice, slice, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_init(slice $owner, slice $admin) impure inline;
+
+;; $GramketingPool$_contract_load
+(slice, slice, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_load() impure inline;
+
+;; $GramketingPool$_contract_store
+() $GramketingPool$_contract_store((slice, slice, slice, int, int, int, int, int, int, int) v) impure inline;
+
+;; $global_emit
+() $global_emit(cell $body) impure inline;
+
+;; $GramketingPool$_fun_requirePlatformToken
+((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_requirePlatformToken((slice, slice, slice, int, int, int, int, int, int, int) $self) impure inline_ref;
+
+;; $PoolInfo$_constructor_owner_admin_jettonWalletAddress_totalReward_depositedAmount_durationDays_rewardSlots_startTime_endTime_status
+((slice, slice, slice, int, int, int, int, int, int, int)) $PoolInfo$_constructor_owner_admin_jettonWalletAddress_totalReward_depositedAmount_durationDays_rewardSlots_startTime_endTime_status(slice $owner, slice $admin, slice $jettonWalletAddress, int $totalReward, int $depositedAmount, int $durationDays, int $rewardSlots, int $startTime, int $endTime, int $status) inline;
+
+;; $GramketingPool$_fun_poolInfo
+((slice, slice, slice, int, int, int, int, int, int, int), (slice, slice, slice, int, int, int, int, int, int, int)) $GramketingPool$_fun_poolInfo((slice, slice, slice, int, int, int, int, int, int, int) $self) impure inline_ref;
+
+;; $MessageParameters$_constructor_bounce_to_value_mode_body
+((int, cell, int, slice, int)) $MessageParameters$_constructor_bounce_to_value_mode_body(int $bounce, slice $to, int $value, int $mode, cell $body) inline;
+
+;; $GramketingPool$_fun_notify
+((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_notify((slice, slice, slice, int, int, int, int, int, int, int) $self, cell $body) impure inline;
+
+;; $PoolCreated$_constructor_jettonWalletAddress_totalReward_durationDays_rewardSlots_startTime_endTime
+((slice, int, int, int, int, int)) $PoolCreated$_constructor_jettonWalletAddress_totalReward_durationDays_rewardSlots_startTime_endTime(slice $jettonWalletAddress, int $totalReward, int $durationDays, int $rewardSlots, int $startTime, int $endTime) inline;
+
+;; $SendParameters$_constructor_to_value_mode_body
+((int, cell, cell, cell, int, slice, int)) $SendParameters$_constructor_to_value_mode_body(slice $to, int $value, int $mode, cell $body) inline;
+
+;; $JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload
+((int, int, slice, slice, cell, int, slice)) $JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(int $queryId, int $amount, slice $destination, slice $responseDestination, cell $customPayload, int $forwardTonAmount, slice $forwardPayload) inline;
+
+;; $RewardsDistributed$_constructor_totalDistributed_winnerCount
+((int, int)) $RewardsDistributed$_constructor_totalDistributed_winnerCount(int $totalDistributed, int $winnerCount) inline;
+
+;; $DeployOk$_constructor_queryId
+((int)) $DeployOk$_constructor_queryId(int $queryId) inline;
+
+;; $PoolEnded$_constructor_endTime
+((int)) $PoolEnded$_constructor_endTime(int $endTime) inline;
+
+
+;; gramketing_pool_GramketingPool.stdlib.fc
+global (int, slice, int, slice) __tact_context;
+global slice __tact_context_sender;
+global cell __tact_child_contract_codes;
+global int __tact_randomized;
+
+(slice, slice, int) __tact_dict_min(cell dict, int key_len) asm(dict key_len -> 1 0 2) """
+    DICTMIN  NULLSWAPIFNOT2
+""";
+
+(slice, slice, int) __tact_dict_next(cell dict, int key_len, slice pivot) asm(pivot dict key_len -> 1 0 2) """
+    DICTGETNEXT NULLSWAPIFNOT2
+""";
+
+(int, slice, int, slice) __tact_context_get() inline {
+    return __tact_context;
+}
+
+slice __tact_context_get_sender() inline {
+    return __tact_context_sender;
+}
+
+(slice, int, int) __tact_dict_min_slice_int(cell d, int kl, int vl) inline {
+    var (key, value, flag) = __tact_dict_min(d, kl);
+    if (flag) {
+        return (key, value~load_int(vl), flag);
+    } else {
+        return (null(), null(), flag);
+    }
+}
+
+(slice, int, int) __tact_dict_next_slice_int(cell d, int kl, slice pivot, int vl) inline {
+    var (key, value, flag) = __tact_dict_next(d, kl, pivot);
+    if (flag) {
+        return (key, value~load_int(vl), flag);
+    } else {
+        return (null(), null(), flag);
+    }
+}
+
+builder $global_beginCell() impure asm """
+    NEWC
+""";
+
+slice $global_emptySlice() impure asm """
+    b{} PUSHSLICE
+""";
+
+int $global_myBalance() impure asm """
+    BALANCE FIRST
+""";
+
+() $global_nativeReserve(int $amount, int $mode) impure asm """
+    RAWRESERVE
+""";
+
+() $global_message((int, cell, int, slice, int) $params) impure asm """
+    NEWC
+    b{01} STSLICECONST  // store tag = $0 and ihr_disabled = true
+    1 STI               // store `bounce`
+    b{000} STSLICECONST // store bounced = false and src = addr_none
+    STSLICE             // store `to`
+    SWAP
+    STGRAMS             // store `value`
+    106 PUSHINT         // 1 + 4 + 4 + 64 + 32 + 1
+    STZEROES
+    // → Stack state
+    // s0: Builder
+    // s1: `body`
+    // s2: `mode`
+    STDICT
+    ENDC
+    SWAP
+    SENDRAWMSG
+""";
+
+() $global_send((int, cell, cell, cell, int, slice, int) $params) impure asm """
+    NEWC
+    b{01} STSLICECONST  // store tag = $0 and ihr_disabled = true
+    1 STI               // store `bounce`
+    b{000} STSLICECONST // store bounced = false and src = addr_none
+    STSLICE             // store `to`
+    SWAP
+    STGRAMS             // store `value`
+    105 PUSHINT         // 1 + 4 + 4 + 64 + 32
+    STZEROES            // store currency_collection, ihr_fee, fwd_fee, created_lt and created_at
+    // → Stack state
+    // s0: Builder
+    // s1: `data`
+    // s2: `code`
+    // s3: `body`
+    // s4: `mode`
+
+    // Group 2: Placing the Builder after code and data, then checking those for nullability
+    s2 XCHG0
+    DUP2
+    ISNULL
+    SWAP
+    ISNULL
+    AND
+    // → Stack state
+    // s0: -1 (true) if `data` and `code` are both null, 0 (false) otherwise
+    // s1: `code`
+    // s2: `data`
+    // s3: Builder
+    // s4: `body`
+    // s5: `mode`
+
+    // Group 3: Left branch of the IFELSE, executed if s0 is -1 (true)
+    <{
+        DROP2 // drop `data` and `code`, since either of those is null
+        b{0} STSLICECONST
+    }> PUSHCONT
+
+    // Group 3: Right branch of the IFELSE, executed if s0 is 0 (false)
+    <{
+        // _ split_depth:(Maybe (## 5))
+        //   special:(Maybe TickTock)
+        //   code:(Maybe ^Cell)
+        //   data:(Maybe ^Cell)
+        //   library:(Maybe ^Cell)
+        // = StateInit;
+        ROT                // place message Builder on top
+        b{10} STSLICECONST // store Maybe = true, Either = false
+        // Start composing inlined StateInit
+        b{00} STSLICECONST // store split_depth and special first
+        STDICT             // store code
+        STDICT             // store data
+        b{0} STSLICECONST  // store library
+    }> PUSHCONT
+
+    // Group 3: IFELSE that does the branching shown above
+    IFELSE
+    // → Stack state
+    // s0: Builder
+    // s1: null or StateInit
+    // s2: `body`
+    // s3: `mode`
+
+    // Group 4: Finalizing the message
+    STDICT // store `body` as ref with an extra Maybe bit, since `body` might be null
+    ENDC
+    // → Stack state
+    // s0: Cell
+    // s1: `mode`
+
+    // Group 5: Sending the message, with `mode` on top
+    SWAP
+    SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
+""";
+
+() $global_sendRawMessage(cell $msg, int $mode) impure asm """
+    SENDRAWMSG
+""";
+
+cell $Builder$_fun_endCell(builder $self) impure asm """
+    ENDC
+""";
+
+builder $Builder$_fun_storeRef(cell $cell, builder $self) impure asm """
+    STREF
+""";
+
+() $global_emit(cell $body) impure inline {
+    cell $c = $Builder$_fun_endCell($Builder$_fun_storeRef($body, store_uint($global_beginCell(), 15211807202738752817960438464513, 104)));
+    $global_sendRawMessage($c, 0);
+}
+
+int $global_now() impure asm """
+    NOW
+""";
+
+((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_notify((slice, slice, slice, int, int, int, int, int, int, int) $self, cell $body) impure inline {
+    var (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
+    slice $to = __tact_context_get_sender();
+    int $bounce = false;
+    if (false) {
+        int $balance = $global_myBalance();
+        int $balanceBeforeMessage = ($balance - $Context$_get_value(__tact_context_get()));
+        if (($balanceBeforeMessage < 0)) {
+            $global_nativeReserve(0, 0);
+            $global_message($MessageParameters$_constructor_bounce_to_value_mode_body($bounce, $to, 0, 130, $body));
+            return (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), ());
+        }
+    }
+    $global_message($MessageParameters$_constructor_bounce_to_value_mode_body($bounce, $to, 0, 66, $body));
+    return (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), ());
+}
+
+;; gramketing_pool_GramketingPool.constants.fc
+;; EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c
+slice __gen_slice_address_61ab4641fa30d9310391025086eec65d200d79268e1b7cd402565e01ba64be3c() asm """
+    B{b5ee9c72410101010024000043800000000000000000000000000000000000000000000000000000000000000000104aec829d} B>boc <s PUSHSLICE
+""";
+
+;; gramketing_pool_GramketingPool.storage.fc
+;;
+;; Type: Context
+;; TLB: _ bounceable:bool sender:address value:int257 raw:^slice = Context
+;;
+
+_ $Context$_get_value((int, slice, int, slice) v) inline {
+    var (v'bounceable, v'sender, v'value, v'raw) = v;
+    return v'value;
+}
+
+;;
+;; Type: SendParameters
+;; TLB: _ mode:int257 body:Maybe ^cell code:Maybe ^cell data:Maybe ^cell value:int257 to:address bounce:bool = SendParameters
+;;
+
+((int, cell, cell, cell, int, slice, int)) $SendParameters$_constructor_to_value_mode_body(slice $to, int $value, int $mode, cell $body) inline {
+    return ($mode, $body, null(), null(), $value, $to, true);
+}
+
+;;
+;; Type: MessageParameters
+;; TLB: _ mode:int257 body:Maybe ^cell value:int257 to:address bounce:bool = MessageParameters
+;;
+
+((int, cell, int, slice, int)) $MessageParameters$_constructor_bounce_to_value_mode_body(int $bounce, slice $to, int $value, int $mode, cell $body) inline {
+    return ($mode, $body, $value, $to, $bounce);
+}
+
+;;
+;; Type: DeployOk
+;; Header: 0xaff90f57
+;; TLB: deploy_ok#aff90f57 queryId:uint64 = DeployOk
+;;
+
+builder $DeployOk$_store(builder build_0, (int) v) inline {
+    var (v'queryId) = v;
+    build_0 = store_uint(build_0, 2952335191, 32);
+    build_0 = build_0.store_uint(v'queryId, 64);
+    return build_0;
+}
+
+cell $DeployOk$_store_cell((int) v, builder b) inline {
+    return $DeployOk$_store(b, v).end_cell();
+}
+
+((int)) $DeployOk$_constructor_queryId(int $queryId) inline {
+    return ($queryId);
+}
+
+;;
+;; Type: JettonTransfer
+;; Header: 0x0f8a7ea5
+;; TLB: jetton_transfer#0f8a7ea5 queryId:uint64 amount:coins destination:address responseDestination:address customPayload:Maybe ^cell forwardTonAmount:coins forwardPayload:remainder<slice> = JettonTransfer
+;;
+
+builder $JettonTransfer$_store(builder build_0, (int, int, slice, slice, cell, int, slice) v) inline {
+    var (v'queryId, v'amount, v'destination, v'responseDestination, v'customPayload, v'forwardTonAmount, v'forwardPayload) = v;
+    build_0 = store_uint(build_0, 260734629, 32);
+    build_0 = build_0.store_uint(v'queryId, 64);
+    build_0 = build_0.store_varuint16(v'amount);
+    build_0 = build_0.store_slice(v'destination);
+    build_0 = build_0.store_slice(v'responseDestination);
+    build_0 = build_0.store_maybe_ref(v'customPayload);
+    build_0 = build_0.store_varuint16(v'forwardTonAmount);
+    build_0 = build_0.store_slice(v'forwardPayload);
+    return build_0;
+}
+
+cell $JettonTransfer$_store_cell((int, int, slice, slice, cell, int, slice) v, builder b) inline {
+    return $JettonTransfer$_store(b, v).end_cell();
+}
+
+((int, int, slice, slice, cell, int, slice)) $JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(int $queryId, int $amount, slice $destination, slice $responseDestination, cell $customPayload, int $forwardTonAmount, slice $forwardPayload) inline {
+    return ($queryId, $amount, $destination, $responseDestination, $customPayload, $forwardTonAmount, $forwardPayload);
+}
+
+;;
+;; Type: PoolCreated
+;; Header: 0x43320e0c
+;; TLB: pool_created#43320e0c jettonWalletAddress:address totalReward:coins durationDays:uint8 rewardSlots:uint8 startTime:uint64 endTime:uint64 = PoolCreated
+;;
+
+builder $PoolCreated$_store(builder build_0, (slice, int, int, int, int, int) v) inline {
+    var (v'jettonWalletAddress, v'totalReward, v'durationDays, v'rewardSlots, v'startTime, v'endTime) = v;
+    build_0 = store_uint(build_0, 1127353868, 32);
+    build_0 = build_0.store_slice(v'jettonWalletAddress);
+    build_0 = build_0.store_varuint16(v'totalReward);
+    build_0 = build_0.store_uint(v'durationDays, 8);
+    build_0 = build_0.store_uint(v'rewardSlots, 8);
+    build_0 = build_0.store_uint(v'startTime, 64);
+    build_0 = build_0.store_uint(v'endTime, 64);
+    return build_0;
+}
+
+cell $PoolCreated$_store_cell((slice, int, int, int, int, int) v, builder b) inline {
+    return $PoolCreated$_store(b, v).end_cell();
+}
+
+((slice, int, int, int, int, int)) $PoolCreated$_constructor_jettonWalletAddress_totalReward_durationDays_rewardSlots_startTime_endTime(slice $jettonWalletAddress, int $totalReward, int $durationDays, int $rewardSlots, int $startTime, int $endTime) inline {
+    return ($jettonWalletAddress, $totalReward, $durationDays, $rewardSlots, $startTime, $endTime);
+}
+
+;;
+;; Type: PoolEnded
+;; Header: 0xf6c074b7
+;; TLB: pool_ended#f6c074b7 endTime:uint64 = PoolEnded
+;;
+
+builder $PoolEnded$_store(builder build_0, (int) v) inline {
+    var (v'endTime) = v;
+    build_0 = store_uint(build_0, 4139807927, 32);
+    build_0 = build_0.store_uint(v'endTime, 64);
+    return build_0;
+}
+
+cell $PoolEnded$_store_cell((int) v, builder b) inline {
+    return $PoolEnded$_store(b, v).end_cell();
+}
+
+((int)) $PoolEnded$_constructor_endTime(int $endTime) inline {
+    return ($endTime);
+}
+
+;;
+;; Type: RewardsDistributed
+;; Header: 0x6455af70
+;; TLB: rewards_distributed#6455af70 totalDistributed:coins winnerCount:uint8 = RewardsDistributed
+;;
+
+builder $RewardsDistributed$_store(builder build_0, (int, int) v) inline {
+    var (v'totalDistributed, v'winnerCount) = v;
+    build_0 = store_uint(build_0, 1683337072, 32);
+    build_0 = build_0.store_varuint16(v'totalDistributed);
+    build_0 = build_0.store_uint(v'winnerCount, 8);
+    return build_0;
+}
+
+cell $RewardsDistributed$_store_cell((int, int) v, builder b) inline {
+    return $RewardsDistributed$_store(b, v).end_cell();
+}
+
+((int, int)) $RewardsDistributed$_constructor_totalDistributed_winnerCount(int $totalDistributed, int $winnerCount) inline {
+    return ($totalDistributed, $winnerCount);
+}
+
+;;
+;; Type: PoolInfo
+;; TLB: _ owner:address admin:address jettonWalletAddress:address totalReward:coins depositedAmount:coins durationDays:uint8 rewardSlots:uint8 startTime:uint64 endTime:uint64 status:uint8 = PoolInfo
+;;
+
+(slice, slice, slice, int, int, int, int, int, int, int) $PoolInfo$_to_external(((slice, slice, slice, int, int, int, int, int, int, int)) v) inline {
+    var (v'owner, v'admin, v'jettonWalletAddress, v'totalReward, v'depositedAmount, v'durationDays, v'rewardSlots, v'startTime, v'endTime, v'status) = v; 
+    return (v'owner, v'admin, v'jettonWalletAddress, v'totalReward, v'depositedAmount, v'durationDays, v'rewardSlots, v'startTime, v'endTime, v'status);
+}
+
+((slice, slice, slice, int, int, int, int, int, int, int)) $PoolInfo$_constructor_owner_admin_jettonWalletAddress_totalReward_depositedAmount_durationDays_rewardSlots_startTime_endTime_status(slice $owner, slice $admin, slice $jettonWalletAddress, int $totalReward, int $depositedAmount, int $durationDays, int $rewardSlots, int $startTime, int $endTime, int $status) inline {
+    return ($owner, $admin, $jettonWalletAddress, $totalReward, $depositedAmount, $durationDays, $rewardSlots, $startTime, $endTime, $status);
+}
+
+;;
+;; Type: GramketingPool
+;; TLB: _ owner:address admin:address jettonWalletAddress:address totalReward:coins durationDays:uint8 rewardSlots:uint8 startTime:uint64 endTime:uint64 status:uint8 depositedAmount:coins = GramketingPool
+;;
+
+builder $GramketingPool$_store(builder build_0, (slice, slice, slice, int, int, int, int, int, int, int) v) inline {
+    var (v'owner, v'admin, v'jettonWalletAddress, v'totalReward, v'durationDays, v'rewardSlots, v'startTime, v'endTime, v'status, v'depositedAmount) = v;
+    build_0 = build_0.store_slice(v'owner);
+    build_0 = build_0.store_slice(v'admin);
+    build_0 = build_0.store_slice(v'jettonWalletAddress);
+    build_0 = build_0.store_varuint16(v'totalReward);
+    build_0 = build_0.store_uint(v'durationDays, 8);
+    build_0 = build_0.store_uint(v'rewardSlots, 8);
+    build_0 = build_0.store_uint(v'startTime, 64);
+    var build_1 = begin_cell();
+    build_1 = build_1.store_uint(v'endTime, 64);
+    build_1 = build_1.store_uint(v'status, 8);
+    build_1 = build_1.store_varuint16(v'depositedAmount);
+    build_0 = store_builder_ref(build_0, build_1);
+    return build_0;
+}
+
+(slice, ((slice, slice, slice, int, int, int, int, int, int, int))) $GramketingPool$_load(slice sc_0) inline {
+    var v'owner = sc_0~load_msg_addr();
+    var v'admin = sc_0~load_msg_addr();
+    var v'jettonWalletAddress = sc_0~load_msg_addr();
+    var v'totalReward = sc_0~load_varuint16();
+    var v'durationDays = sc_0~load_uint(8);
+    var v'rewardSlots = sc_0~load_uint(8);
+    var v'startTime = sc_0~load_uint(64);
+    slice sc_1 = sc_0~load_ref().begin_parse();
+    var v'endTime = sc_1~load_uint(64);
+    var v'status = sc_1~load_uint(8);
+    var v'depositedAmount = sc_1~load_varuint16();
+    return (sc_0, (v'owner, v'admin, v'jettonWalletAddress, v'totalReward, v'durationDays, v'rewardSlots, v'startTime, v'endTime, v'status, v'depositedAmount));
+}
+
+(slice, ((slice, slice))) $GramketingPool$init$_load(slice sc_0) inline {
+    var v'owner = sc_0~load_msg_addr();
+    var v'admin = sc_0~load_msg_addr();
+    return (sc_0, (v'owner, v'admin));
+}
+
+(slice, slice, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_load() impure inline {
+    slice $sc = get_data().begin_parse();
+    int $loaded = $sc~load_int(1);
+    if ($loaded) {
+        return $sc~$GramketingPool$_load();
+    }
+    else {
+        (slice $owner, slice $admin) = $sc~$GramketingPool$init$_load();
+        $sc.end_parse();
+        return $GramketingPool$_contract_init($owner, $admin);
+    }
+}
+
+() $GramketingPool$_contract_store((slice, slice, slice, int, int, int, int, int, int, int) v) impure inline {
+    builder b = begin_cell();
+    b = b.store_int(true, 1);
+    b = $GramketingPool$_store(b, v);
+    set_data(b.end_cell());
+}
+
+;;
+;; Contract GramketingPool functions
+;;
+
+(slice, slice, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_init(slice $owner, slice $admin) impure inline {
+    var (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = (null(), null(), null(), null(), null(), null(), null(), null(), null(), null());
+    $self'owner = $owner;
+    $self'admin = $admin;
+    $self'jettonWalletAddress = __gen_slice_address_61ab4641fa30d9310391025086eec65d200d79268e1b7cd402565e01ba64be3c();
+    $self'totalReward = 0;
+    $self'durationDays = 0;
+    $self'rewardSlots = 0;
+    $self'startTime = 0;
+    $self'endTime = 0;
+    $self'status = 0;
+    $self'depositedAmount = 0;
+    return ($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount);
+}
+
+((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_requirePlatformToken((slice, slice, slice, int, int, int, int, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
+    return (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), ());
+}
+
+((slice, slice, slice, int, int, int, int, int, int, int), (slice, slice, slice, int, int, int, int, int, int, int)) $GramketingPool$_fun_poolInfo((slice, slice, slice, int, int, int, int, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
+    var $fresh$ret_0 = $PoolInfo$_constructor_owner_admin_jettonWalletAddress_totalReward_depositedAmount_durationDays_rewardSlots_startTime_endTime_status($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'depositedAmount, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status);
+    return (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), $fresh$ret_0);
+}
+
+;;
+;; Get methods of a Contract GramketingPool
+;;
+
+_ %poolInfo() method_id(106583) {
+    var self = $GramketingPool$_contract_load();
+    var res = self~$GramketingPool$_fun_poolInfo();
+    return $PoolInfo$_to_external(res);
+}
+
+;;
+;; Routing of a Contract GramketingPool
+;;
+
+;; message opcode reader utility: only binary receivers
+;; Returns 32 bit message opcode, otherwise throws the "Invalid incoming message" exit code
+(slice, int) ~load_opcode_internal(slice s) asm( -> 1 0) "32 LDUQ 130 THROWIFNOT";
+
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+    
+    ;; Context
+    var cs = in_msg_cell.begin_parse();
+    cs~skip_bits(2);
+    var msg_bounceable = cs~load_int(1);
+    var msg_bounced = cs~load_int(1);
+    slice msg_sender_addr = cs~load_msg_addr();
+    __tact_context = (msg_bounceable, msg_sender_addr, msg_value, cs);
+    __tact_context_sender = msg_sender_addr;
+    
+    ;; Load contract data
+    var ($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount) = $GramketingPool$_contract_load();
+    
+    ;; Handle bounced messages
+    if (msg_bounced) { return (); }
+    int op = 0;
+    int in_msg_length = slice_bits(in_msg);
+    if (in_msg_length >= 32) {
+        op = in_msg~load_uint(32);
+        ;; Receive CreatePool message
+        if (op == 2970805445) {
+            var $msg'jettonWalletAddress = in_msg~load_msg_addr();
+            var $msg'totalReward = in_msg~load_varuint16();
+            var $msg'durationDays = in_msg~load_uint(8);
+            var $msg'rewardSlots = in_msg~load_uint(8);
+            throw_unless(29498, ( equal_slices_bits(__tact_context_get_sender(), $self'owner) ));
+            throw_unless(5961, ($self'status == 0));
+            throw_unless(55690, ( (( (( (($msg'durationDays == 7)) ? (true) : (($msg'durationDays == 14)) )) ? (true) : (($msg'durationDays == 21)) )) ? (true) : (($msg'durationDays == 28)) ));
+            throw_unless(33515, ($msg'rewardSlots >= 3));
+            ($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)~$GramketingPool$_fun_requirePlatformToken();
+            $self'jettonWalletAddress = $msg'jettonWalletAddress;
+            $self'totalReward = $msg'totalReward;
+            $self'durationDays = $msg'durationDays;
+            $self'rewardSlots = $msg'rewardSlots;
+            $self'startTime = $global_now();
+            $self'endTime = ($global_now() + ((($msg'durationDays * 24) * 60) * 60));
+            $global_emit($PoolCreated$_store_cell($PoolCreated$_constructor_jettonWalletAddress_totalReward_durationDays_rewardSlots_startTime_endTime($msg'jettonWalletAddress, $msg'totalReward, $msg'durationDays, $msg'rewardSlots, $self'startTime, $self'endTime), begin_cell()));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            return ();
+        }
+        
+        ;; Receive JettonTransferNotification message
+        if (op == 0x7362d09c) {
+            var $msg'queryId = in_msg~load_uint(64);
+            var $msg'amount = in_msg~load_varuint16();
+            var $msg'sender = in_msg~load_msg_addr();
+            var $msg'forwardPayload = in_msg;
+            throw_unless(62796, ( equal_slices_bits(__tact_context_get_sender(), $self'jettonWalletAddress) ));
+            $self'depositedAmount = ($self'depositedAmount + $msg'amount);
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            return ();
+        }
+        
+        ;; Receive DistributeRewards message
+        if (op == 4022601275) {
+            var $msg'winners = in_msg~load_dict();
+            throw_unless(43187, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
+            throw_unless(19935, ( (($self'status == 1)) ? (true) : (($global_now() > $self'endTime)) ));
+            throw_unless(9050, ($self'status != 2));
+            $self'status = 2;
+            int $totalDistributed = 0;
+            int $winnerCount = 0;
+            var ($addr, $shareBasisPoints, $fresh$flag_1) = __tact_dict_min_slice_int($msg'winners, 267, 257);
+            while ($fresh$flag_1) {
+                int $amount = (($self'depositedAmount * $shareBasisPoints) / 10000);
+                $totalDistributed = ($totalDistributed + $amount);
+                $winnerCount = ($winnerCount + 1);
+                $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(0, $amount, $addr, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
+                ($addr, $shareBasisPoints, $fresh$flag_1) = __tact_dict_next_slice_int($msg'winners, 267, $addr, 257);
+            }
+            int $dust = ($self'depositedAmount - $totalDistributed);
+            if (($dust > 0)) {
+                $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(1, $dust, $self'owner, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
+            }
+            $global_emit($RewardsDistributed$_store_cell($RewardsDistributed$_constructor_totalDistributed_winnerCount($totalDistributed, $winnerCount), begin_cell()));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            return ();
+        }
+        
+        ;; Receive Deploy message
+        if (op == 0x946a98b6) {
+            var $deploy'queryId = in_msg~load_uint(64);
+            ($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)~$GramketingPool$_fun_notify($DeployOk$_store_cell($DeployOk$_constructor_queryId($deploy'queryId), begin_cell()));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            return ();
+        }
+        
+    }
+    ;; Empty Receiver and Text Receivers
+    var text_op = slice_hash(in_msg);
+    ;; Receive "endPool" message
+    if (text_op == 0x308fb107779030082ad974039ec4ac023028bcf2ca85833b6c93e8592bed6b36) {
+        throw_unless(52626, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
+        throw_unless(53782, ($self'status == 0));
+        $self'status = 1;
+        $global_emit($PoolEnded$_store_cell($PoolEnded$_constructor_endTime($global_now()), begin_cell()));
+        $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+        return ();
+    }
+    ;; Receive "cancelPool" message
+    if (text_op == 0x2a7e70db43fc6f496c1d46154d0b19cd97cec3535f5169ee4fa545ca1a23df78) {
+        throw_unless(34390, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
+        throw_unless(9050, ($self'status != 2));
+        $self'status = 1;
+        if (($self'depositedAmount > 0)) {
+            $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(2, $self'depositedAmount, $self'owner, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
+        }
+        $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+        return ();
+    }
+    ;; Throw if not handled
+    throw(130);
+}
+
+
+() __tact_selector_hack_asm() impure asm """
+@atend @ 1 {
+        execute current@ context@ current!
+        {
+            // The core idea of this function is to save gas by avoiding unnecessary dict jump, when recv_internal/recv_external is called
+            // We want to extract recv_internal/recv_external from the dict and select needed function
+            // not by jumping to the needed function by it's index, but by using usual IF statements.
+
+            }END> b> // Close previous builder, now we have a cell of previous code on top of the stack
+
+            <{ // Start of the new code builder
+                SETCP0
+                // Swap the new code builder with the previous code, now we have previous code on top of the stack
+                swap
+                // Transform cell to slice and load first ref from the previous code, now we have the dict on top of the stack
+                <s ref@
+
+                // Extract the recv_internal from the dict
+                dup 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot
+                swap
+
+                // Delete the recv_internal from the dict
+                0 swap @procdictkeylen idict- drop
+                // Delete the recv_external from the dict (it's okay if it's not there)
+                -1 swap @procdictkeylen idict- drop
+                // Delete the __tact_selector_hack from the dict
+                65535 swap @procdictkeylen idict- drop
+
+                // Bring the code builder from the bottom of the stack
+                // because if recv_external extraction is optional, and the number of elements on the stack is not fixed
+                depth 1- roll
+                // Swap with the dict from which we extracted recv_internal and (maybe) recv_external
+                swap
+
+                // Check if the dict is empty
+                dup null?
+                // Store a copy of this flag in the bottom of the stack
+                dup depth 1- -roll
+                {
+                    // If the dict is empty, just drop it (it will be null if it's empty)
+                    drop
+                }
+                {
+                    // If the dict is not empty, prepare continuation to be stored in c3
+                    <{
+                        // Save this dict as first ref in this continuation, it will be pushed in runtime by DICTPUSHCONST
+                        swap @procdictkeylen DICTPUSHCONST
+                        // Jump to the needed function by it's index
+                        DICTIGETJMPZ
+                        // If such key is not found, throw 11 along with the key as an argument
+                        11 THROWARG
+                    }> PUSHCONT
+                    // Store the continuation in c3
+                    c3 POP
+                } cond
+
+                // Function id is on top of the (runtime) stack
+                DUP IFNOTJMP:<{
+                    // place recv_internal here
+                    DROP swap @addop
+                }>
+
+                // Bring back the flag, indicating if the dict is empty or not from the bottom of the stack
+                depth 1- roll
+                {
+                    // If the dict is empty, throw 11
+                    11 THROWARG
+                }
+                {
+                    // If the dict is not empty, jump to continuation from c3
+                    c3 PUSH JMPX
+                } cond
+            }> b>
+        } : }END>c
+        current@ context! current!
+    } does @atend !
+""";
+
+() __tact_selector_hack() method_id(65535) {
+    return __tact_selector_hack_asm();
+}
