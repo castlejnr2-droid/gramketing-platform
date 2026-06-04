@@ -36,7 +36,6 @@ interface ProRataPreview {
   dailyRate: number;
   participantTokens: number;
   refundTokens: number;
-  accessFeeRefunded: boolean;
 }
 
 interface WinnerPreview {
@@ -652,15 +651,11 @@ export default function AdminPage() {
                       {cancelPreview.participantTokens} {cancelModal.tokenSymbol}
                     </span>
                   </div>
-                  <div className="flex justify-between px-4 py-3 border-b border-white/10">
+                  <div className="flex justify-between px-4 py-3">
                     <span className="text-white/60">Project refund</span>
                     <span className="text-white font-semibold">
                       {cancelPreview.refundTokens} {cancelModal.tokenSymbol}
                     </span>
-                  </div>
-                  <div className="flex justify-between px-4 py-3">
-                    <span className="text-white/60">Access fee</span>
-                    <span className="text-red-400 text-xs font-semibold">Non-refundable</span>
                   </div>
                 </div>
 

@@ -122,6 +122,5 @@ export function calculateProRata(pool: PoolForProRata) {
     dailyRate: Math.round(dailyRate * 100) / 100,
     participantTokens: Math.round(participantTokens * 100) / 100,
     refundTokens: Math.round(refundTokens * 100) / 100,
-    accessFeeRefunded: false,
   };
 }
