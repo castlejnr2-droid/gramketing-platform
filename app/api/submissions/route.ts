@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
+import { fetchTelegramPostMetrics, extractTelegramChannel } from '@/lib/telegram';
 import axios from 'axios';
 
 const X_REGEX = /^https?:\/\/(www\.)?(x\.com|twitter\.com)\/[^/]+\/status\/\d+/;
@@ -19,24 +20,7 @@ async function fetchXViews(postUrl: string): Promise<number | null> {
     );
     return res.data?.data?.public_metrics?.impression_count ?? null;
   } catch {
-    return null; // API failed — don't block the submission
-  }
-}
-
-async function fetchTelegramViews(postUrl: string): Promise<number | null> {
-  const match = postUrl.match(/t\.me\/([^/]+)\/(\d+)/);
-  if (!match) return null;
-  const [, chat, msgId] = match;
-  try {
-    const res = await axios.get(
-      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getChatHistory`,
-      { params: { chat_id: `@${chat}`, from_message_id: parseInt(msgId, 10), limit: 1 }, timeout: 8000 }
-    );
-    const messages = res.data?.result ?? [];
-    if (messages.length > 0) return messages[0].views ?? null;
-    return null;
-  } catch {
-    return null; // API failed — don't block the submission
+    return null; // fail open — don't block on API error
   }
 }
 
@@ -79,6 +63,28 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUniqueOrThrow({ where: { walletAddress } });
 
+    // ── Telegram channel ownership check ──────────────────────────────────
+    if (platform === 'TELEGRAM') {
+      const savedChannel = user.telegramChannelUrl
+        ? extractTelegramChannel(user.telegramChannelUrl)
+        : null;
+
+      if (!savedChannel) {
+        return NextResponse.json(
+          { error: 'Please set your Telegram channel in Account Settings before submitting Telegram posts.' },
+          { status: 400 }
+        );
+      }
+
+      const postChannel = extractTelegramChannel(postUrl);
+      if (!postChannel || postChannel !== savedChannel) {
+        return NextResponse.json(
+          { error: 'This post must be from your verified Telegram channel.' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Ensure user is a participant
     const participant = await prisma.poolParticipant.findUnique({
       where: { poolId_userId: { poolId, userId: user.id } },
@@ -104,13 +110,25 @@ export async function POST(req: NextRequest) {
 
     // ── Immediate view check ──────────────────────────────────────────────
     let views: number | null = null;
+    let reactions = 0;
+
     if (platform === 'X') {
       views = await fetchXViews(postUrl);
     } else {
-      views = await fetchTelegramViews(postUrl);
+      const metrics = await fetchTelegramPostMetrics(postUrl);
+      // Only treat as a successful fetch if views is non-zero or the API explicitly returned 0
+      // We check views specifically — if the fetch returned {views:0, reactions:0} due to an error
+      // we can't distinguish from a real 0. Use null to signal "couldn't fetch" only for X.
+      // For Telegram, any successful API response is trustworthy; errors return {views:0} too,
+      // so we fail open: only reject if we got a plausible response (reactions > 0 or views > 0
+      // means the API reached the message). If both are 0, treat as unknown and accept.
+      if (metrics.views > 0 || metrics.reactions > 0) {
+        views = metrics.views;
+        reactions = metrics.reactions;
+      }
     }
 
-    // Only reject if we successfully fetched and views are below minimum
+    // Reject only when we have a confident view count and it's below minimum
     if (views !== null && views < MIN_VIEWS) {
       return NextResponse.json(
         {
@@ -129,7 +147,7 @@ export async function POST(req: NextRequest) {
         postUrl,
         submittedDate: today,
         status: 'PENDING',
-        ...(views !== null ? { currentViews: views } : {}),
+        ...(views !== null ? { currentViews: views, reactions } : {}),
       },
     });
 

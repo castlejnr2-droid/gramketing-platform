@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthWallet, isAdmin } from '@/lib/auth';
 import axios from 'axios';
 import { calculateXPoints, calculateTelegramPoints } from '@/lib/points';
+import { fetchTelegramPostMetrics } from '@/lib/telegram';
 
 async function fetchXPostMetrics(postUrl: string): Promise<{ views: number; likes: number; reposts: number }> {
   const match = postUrl.match(/status\/(\d+)/);
@@ -64,7 +65,9 @@ export async function POST(req: NextRequest) {
         reposts = metrics.reposts;
         points = calculateXPoints(views, likes, reposts);
       } else {
-        // Telegram: views only for now
+        const metrics = await fetchTelegramPostMetrics(submission.postUrl);
+        views = metrics.views;
+        reactions = metrics.reactions;
         points = calculateTelegramPoints(views, reactions);
       }
 

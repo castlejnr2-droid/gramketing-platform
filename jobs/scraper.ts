@@ -8,6 +8,7 @@ import {
   REFERRAL_BASE_BONUS,
   CampaignType,
 } from '../lib/points';
+import { fetchTelegramPostMetrics } from '../lib/telegram';
 
 const prisma = new PrismaClient();
 
@@ -35,37 +36,6 @@ async function fetchXPostMetrics(postUrl: string): Promise<XMetrics> {
     };
   } catch {
     return { views: 0, likes: 0, reposts: 0 };
-  }
-}
-
-// ── Telegram scraping ─────────────────────────────────────────────────────
-interface TelegramMetrics {
-  views: number;
-  reactions: number;
-}
-
-async function fetchTelegramPostMetrics(postUrl: string): Promise<TelegramMetrics> {
-  const match = postUrl.match(/t\.me\/([^/]+)\/(\d+)/);
-  if (!match) return { views: 0, reactions: 0 };
-  const [, chat, msgId] = match;
-  try {
-    const res = await axios.get(
-      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getChatHistory`,
-      { params: { chat_id: `@${chat}`, from_message_id: parseInt(msgId, 10), limit: 1 } }
-    );
-    const messages = res.data?.result ?? [];
-    if (messages.length > 0) {
-      return {
-        views: messages[0].views ?? 0,
-        reactions: (messages[0].reactions?.results ?? []).reduce(
-          (sum: number, r: { count: number }) => sum + (r.count ?? 0),
-          0
-        ),
-      };
-    }
-    return { views: 0, reactions: 0 };
-  } catch {
-    return { views: 0, reactions: 0 };
   }
 }
 
