@@ -868,6 +868,53 @@ export function dictValueParserDistributeRewards(): DictionaryValue<DistributeRe
     }
 }
 
+export type CancelPool = {
+    $$type: 'CancelPool';
+    winners: Dictionary<Address, bigint>;
+}
+
+export function storeCancelPool(src: CancelPool) {
+    return (builder: Builder) => {
+        const b_0 = builder;
+        b_0.storeUint(2782688174, 32);
+        b_0.storeDict(src.winners, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257));
+    };
+}
+
+export function loadCancelPool(slice: Slice) {
+    const sc_0 = slice;
+    if (sc_0.loadUint(32) !== 2782688174) { throw Error('Invalid prefix'); }
+    const _winners = Dictionary.load(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), sc_0);
+    return { $$type: 'CancelPool' as const, winners: _winners };
+}
+
+export function loadTupleCancelPool(source: TupleReader) {
+    const _winners = Dictionary.loadDirect(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), source.readCellOpt());
+    return { $$type: 'CancelPool' as const, winners: _winners };
+}
+
+export function loadGetterTupleCancelPool(source: TupleReader) {
+    const _winners = Dictionary.loadDirect(Dictionary.Keys.Address(), Dictionary.Values.BigInt(257), source.readCellOpt());
+    return { $$type: 'CancelPool' as const, winners: _winners };
+}
+
+export function storeTupleCancelPool(source: CancelPool) {
+    const builder = new TupleBuilder();
+    builder.writeCell(source.winners.size > 0 ? beginCell().storeDictDirect(source.winners, Dictionary.Keys.Address(), Dictionary.Values.BigInt(257)).endCell() : null);
+    return builder.build();
+}
+
+export function dictValueParserCancelPool(): DictionaryValue<CancelPool> {
+    return {
+        serialize: (src, builder) => {
+            builder.storeRef(beginCell().store(storeCancelPool(src)).endCell());
+        },
+        parse: (src) => {
+            return loadCancelPool(src.loadRef().beginParse());
+        }
+    }
+}
+
 export type JettonTransfer = {
     $$type: 'JettonTransfer';
     queryId: bigint;
@@ -1412,7 +1459,7 @@ function initGramketingPool_init_args(src: GramketingPool_init_args) {
 }
 
 async function GramketingPool_init(owner: Address, admin: Address) {
-    const __code = Cell.fromHex('b5ee9c7241021101000638000262ff008e88f4a413f4bcf2c80bed53208e9c30eda2edfb01d072d721d200d200fa4021103450666f04f86102f862e1ed43d9010301dba66815fb5134348000638a3e903e903e903e8034c1f4c1f4cff5007434cff4c1fe800c040e840e440e040dc40d840d440d1b06a38cfe903e901640b4406342180000000000000000000000000000000000000000000000000000000000000000011c151c00151c0038b6cf1b2aa0020014547987547938547a982a02eced44d0d200018e28fa40fa40fa40fa00d307d307d33fd401d0d33fd307fa0030103a1039103810371036103510346c1a8e33fa40fa405902d1018d086000000000000000000000000000000000000000000000000000000000000000000470547000547000e20b925f0be029d749c21fe30009f90120040d02fe09d31f218210b112e4c5ba8eea31fa40fa00d307d3073081733af8422dc705f2f48117492dc000f2f48200d98a22c007917f9322c00ee2917f9322c015e2917f9322c01ce2f2f4820082eb21c202f2f4109b5e37106a105b104a103b4acd6c625475462af823f8232ca718a73ca73ca0103b4acd53cdc8e02182107362d09c050600cc5550821043320e0c5007cb1f15ce5003fa02cb07cb07cb3fcb3fc9c88258c000000000000000000000000101cb67ccc970fb001059104806045033074515c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54db3102c4ba8e4931d33f31fa00308200f54cf84228c705f2f41aa010791068105710461035443012c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54db31e0218210efc4063bbae302018210946a98b6bae30209070c03d431f404308200a8b3f84229c705f2f4814ddf2ac001917f94f82323bce2f2f481235a0ac3021af2f47270530a81010b81010159f4826fa520965023d7003058966c216d326d01e2908ae85b3b53b0a120c2009130e30d500ac85982106455af705003cb1f01fa02cb07c9080a0b01fc52e0a8812710a9045133a002a4820afaf08072706d82089896808b08271045104a0356134133c8556082100f8a7ea55008cb1f16cb3f5004fa0212cecef40001fa02cec92c0350665a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0009004081010b2d028101014133f4746fa520965023d7003058966c216d326d01e2103400e2820afaf08072716d82089896808b081034103656100356114133c8556082100f8a7ea55008cb1f16cb3f5004fa0212cecef40001fa02cec92a50335a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb000088c88258c000000000000000000000000101cb67ccc970fb0010795516c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54db3100d6d33f30c8018210aff90f5758cb1fcb3fc9108a10791068105710461035443012f84270705003804201503304c8cf8580ca00cf8440ce01fa02806acf40f400c901fb00c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54db31029e82f0308fb107779030082ad974039ec4ac023028bcf2ca85833b6c93e8592bed6b36bae30282f02a7e70db43fc6f496c1d46154d0b19cd97cec3535f5169ee4fa545ca1a23df78bae3025f0af2c0820e0f00e2308200cd92f84228c705f2f48200d21609c00019f2f471f823c8018210f6c074b758cb1fcb3fc9c88258c000000000000000000000000101cb67ccc970fb00107910681057104610354403c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54019882008656f84228c705f2f481235a09c30219f2f47129c200e300107910681057104610354403c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed541000d8820afaf08072206d82089896808b082f513e513f03c8556082100f8a7ea55008cb1f16cb3f5004fa0212cecef40001fa02cec92855205a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb00c9ead9e0');
+    const __code = Cell.fromHex('b5ee9c72410213010006eb000262ff008e88f4a413f4bcf2c80bed53208e9c30eda2edfb01d072d721d200d200fa4021103450666f04f86102f862e1ed43d9010301dba66815fb5134348000638a3e903e903e903e8034c1f4c1f4cff5007434cff4c1fe800c040e840e440e040dc40d840d440d1b06a38cfe903e901640b4406342180000000000000000000000000000000000000000000000000000000000000000011c151c00151c0038b6cf1b2aa0020014547987547938547a982a02eaed44d0d200018e28fa40fa40fa40fa00d307d307d33fd401d0d33fd307fa0030103a1039103810371036103510346c1a8e33fa40fa405902d1018d086000000000000000000000000000000000000000000000000000000000000000000470547000547000e20b925f0be029d749c21fe30009f901041102fe09d31f218210b112e4c5ba8eea31fa40fa00d307d3073081733af8422dc705f2f48117492dc000f2f48200d98a22c007917f9322c00ee2917f9322c015e2917f9322c01ce2f2f4820082eb21c202f2f4109b5e37106a105b104a103b4acd6c625475462af823f8232ca718a73ca73ca0103b4acd53cdc8e02182107362d09c050600cc5550821043320e0c5007cb1f15ce5003fa02cb07cb07cb3fcb3fc9c88258c000000000000000000000000101cb67ccc970fb001059104806045033074515c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54db3103d8ba8e4931d33f31fa00308200f54cf84228c705f2f41aa010791068105710461035443012c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54db31e0218210efc4063bbae302218210a5dc73aebae302018210946a98b6bae30209070c1003d431f404308200a8b3f84229c705f2f4814ddf2ac001917f94f82323bce2f2f481235a0ac3021af2f47270530a81010b81010159f4826fa520965023d7003058966c216d326d01e2908ae85b3b53b0a120c2009130e30d500ac85982106455af705003cb1f01fa02cb07c9080a0b01fc52e0a8812710a9045133a002a4820afaf08072706d82089896808b08271045104a0356134133c8556082100f8a7ea55008cb1f16cb3f5004fa0212cecef40001fa02cec92c0350665a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0009004081010b2d028101014133f4746fa520965023d7003058966c216d326d01e2103400e2820afaf08072716d82089896808b081034103656100356114133c8556082100f8a7ea55008cb1f16cb3f5004fa0212cecef40001fa02cec92a50335a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb000088c88258c000000000000000000000000101cb67ccc970fb0010795516c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54db3103ee31f4043082008656f84229c705f2f481235a0ac3021af2f472702a81010b81010159f4826fa520965023d7003058966c216d326d01e2908ead52d0a8812710a90420c2009130e30d81010b2c028101014133f4746fa520965023d7003058966c216d326d01e2e85b3a52aaa120c2009130e30d107955160d0e0f00e85122a0820afaf08072706d82089896808b0827104510490356124133c8556082100f8a7ea55008cb1f16cb3f5004fa0212cecef40001fa02cec92b0350555a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb0000de820afaf08072716d82089896808b082e10451047513f4133c8556082100f8a7ea55008cb1f16cb3f5004fa0212cecef40001fa02cec92850335a6d6d40037fc8cf8580ca00cf8440ce01fa028069cf40025c6e016eb0935bcf819d58cf8680cf8480f400f400cf81e2f400c901fb000050c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54db3100d6d33f30c8018210aff90f5758cb1fcb3fc9108a10791068105710461035443012f84270705003804201503304c8cf8580ca00cf8440ce01fa02806acf40f400c901fb00c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed54db31015482f0308fb107779030082ad974039ec4ac023028bcf2ca85833b6c93e8592bed6b36bae3025f0af2c0821200e08200cd92f84228c705f2f48200d21609c00019f2f471f823c8018210f6c074b758cb1fcb3fc9c88258c000000000000000000000000101cb67ccc970fb00107910681057104610354403c87f01ca005590509ace17ce15ce5003fa02cb07cb07cb3f01c8cb3f12cb0758fa02cdc9ed5474d6bd2a');
     const builder = beginCell();
     builder.storeUint(0, 1);
     initGramketingPool_init_args({ $$type: 'GramketingPool_init_args', owner, admin })(builder);
@@ -1536,6 +1583,7 @@ const GramketingPool_types: ABIType[] = [
     {"name":"FactoryDeploy","header":1829761339,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"cashback","type":{"kind":"simple","type":"address","optional":false}}]},
     {"name":"CreatePool","header":2970805445,"fields":[{"name":"jettonWalletAddress","type":{"kind":"simple","type":"address","optional":false}},{"name":"totalReward","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"durationDays","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"rewardSlots","type":{"kind":"simple","type":"uint","optional":false,"format":8}}]},
     {"name":"DistributeRewards","header":4022601275,"fields":[{"name":"winners","type":{"kind":"dict","key":"address","value":"int"}}]},
+    {"name":"CancelPool","header":2782688174,"fields":[{"name":"winners","type":{"kind":"dict","key":"address","value":"int"}}]},
     {"name":"JettonTransfer","header":260734629,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"destination","type":{"kind":"simple","type":"address","optional":false}},{"name":"responseDestination","type":{"kind":"simple","type":"address","optional":false}},{"name":"customPayload","type":{"kind":"simple","type":"cell","optional":true}},{"name":"forwardTonAmount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"forwardPayload","type":{"kind":"simple","type":"slice","optional":false,"format":"remainder"}}]},
     {"name":"JettonTransferNotification","header":1935855772,"fields":[{"name":"queryId","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"amount","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"sender","type":{"kind":"simple","type":"address","optional":false}},{"name":"forwardPayload","type":{"kind":"simple","type":"slice","optional":false,"format":"remainder"}}]},
     {"name":"PoolCreated","header":1127353868,"fields":[{"name":"jettonWalletAddress","type":{"kind":"simple","type":"address","optional":false}},{"name":"totalReward","type":{"kind":"simple","type":"uint","optional":false,"format":"coins"}},{"name":"durationDays","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"rewardSlots","type":{"kind":"simple","type":"uint","optional":false,"format":8}},{"name":"startTime","type":{"kind":"simple","type":"uint","optional":false,"format":64}},{"name":"endTime","type":{"kind":"simple","type":"uint","optional":false,"format":64}}]},
@@ -1551,6 +1599,7 @@ const GramketingPool_opcodes = {
     "FactoryDeploy": 1829761339,
     "CreatePool": 2970805445,
     "DistributeRewards": 4022601275,
+    "CancelPool": 2782688174,
     "JettonTransfer": 260734629,
     "JettonTransferNotification": 1935855772,
     "PoolCreated": 1127353868,
@@ -1571,7 +1620,7 @@ const GramketingPool_receivers: ABIReceiver[] = [
     {"receiver":"internal","message":{"kind":"typed","type":"JettonTransferNotification"}},
     {"receiver":"internal","message":{"kind":"typed","type":"DistributeRewards"}},
     {"receiver":"internal","message":{"kind":"text","text":"endPool"}},
-    {"receiver":"internal","message":{"kind":"text","text":"cancelPool"}},
+    {"receiver":"internal","message":{"kind":"typed","type":"CancelPool"}},
     {"receiver":"internal","message":{"kind":"typed","type":"Deploy"}},
 ]
 
@@ -1613,7 +1662,7 @@ export class GramketingPool implements Contract {
         this.init = init;
     }
     
-    async send(provider: ContractProvider, via: Sender, args: { value: bigint, bounce?: boolean| null | undefined }, message: CreatePool | JettonTransferNotification | DistributeRewards | "endPool" | "cancelPool" | Deploy) {
+    async send(provider: ContractProvider, via: Sender, args: { value: bigint, bounce?: boolean| null | undefined }, message: CreatePool | JettonTransferNotification | DistributeRewards | "endPool" | CancelPool | Deploy) {
         
         let body: Cell | null = null;
         if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'CreatePool') {
@@ -1628,8 +1677,8 @@ export class GramketingPool implements Contract {
         if (message === "endPool") {
             body = beginCell().storeUint(0, 32).storeStringTail(message).endCell();
         }
-        if (message === "cancelPool") {
-            body = beginCell().storeUint(0, 32).storeStringTail(message).endCell();
+        if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'CancelPool') {
+            body = beginCell().store(storeCancelPool(message)).endCell();
         }
         if (message && typeof message === 'object' && !(message instanceof Slice) && message.$$type === 'Deploy') {
             body = beginCell().store(storeDeploy(message)).endCell();

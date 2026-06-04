@@ -657,6 +657,30 @@ _ %poolInfo() method_id(106583) {
             return ();
         }
         
+        ;; Receive CancelPool message
+        if (op == 2782688174) {
+            var $msg'winners = in_msg~load_dict();
+            throw_unless(34390, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
+            throw_unless(9050, ($self'status != 2));
+            $self'status = 2;
+            int $totalDistributed = 0;
+            var ($addr, $shareBasisPoints, $fresh$flag_2) = __tact_dict_min_slice_int($msg'winners, 267, 257);
+            while ($fresh$flag_2) {
+                int $amount = (($self'depositedAmount * $shareBasisPoints) / 10000);
+                if (($amount > 0)) {
+                    $totalDistributed = ($totalDistributed + $amount);
+                    $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(0, $amount, $addr, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
+                }
+                ($addr, $shareBasisPoints, $fresh$flag_2) = __tact_dict_next_slice_int($msg'winners, 267, $addr, 257);
+            }
+            int $refund = ($self'depositedAmount - $totalDistributed);
+            if (($refund > 0)) {
+                $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(1, $refund, $self'owner, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
+            }
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            return ();
+        }
+        
         ;; Receive Deploy message
         if (op == 0x946a98b6) {
             var $deploy'queryId = in_msg~load_uint(64);
@@ -674,17 +698,6 @@ _ %poolInfo() method_id(106583) {
         throw_unless(53782, ($self'status == 0));
         $self'status = 1;
         $global_emit($PoolEnded$_store_cell($PoolEnded$_constructor_endTime($global_now()), begin_cell()));
-        $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
-        return ();
-    }
-    ;; Receive "cancelPool" message
-    if (text_op == 0x2a7e70db43fc6f496c1d46154d0b19cd97cec3535f5169ee4fa545ca1a23df78) {
-        throw_unless(34390, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
-        throw_unless(9050, ($self'status != 2));
-        $self'status = 1;
-        if (($self'depositedAmount > 0)) {
-            $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(2, $self'depositedAmount, $self'owner, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
-        }
         $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
         return ();
     }

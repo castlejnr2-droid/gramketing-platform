@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet, isAdmin } from '@/lib/auth';
 import { calculateDistribution } from '@/lib/distribution';
+import { sendCancelPool } from '@/lib/gramketing-pool-contract';
 
 export async function GET(req: NextRequest) {
   // Return cancellation preview without committing
@@ -44,23 +45,35 @@ export async function POST(req: NextRequest) {
 
     const proRata = calculateProRata(pool);
 
-    // Get distribution plan for participant share
-    const winners = await calculateDistribution(poolId);
-    const participantShare = proRata.participantTokens;
-    const refundShare = proRata.refundTokens;
+    // Get distribution plan capped to reward slots
+    const allWinners = await calculateDistribution(poolId);
+    const topWinners = allWinners.slice(0, pool.rewardSlots);
 
-    await prisma.pool.update({ where: { id: poolId }, data: { status: 'ENDED' } });
+    // Scale each winner's share down by the participant fraction of elapsed time.
+    // participantBasisPoints represents the fraction of the total reward the participants
+    // collectively receive (daysElapsed / durationDays * 10000).
+    const participantBasisPoints = Math.round(
+      (proRata.daysElapsed / proRata.totalDays) * 10000,
+    );
+    const scaledWinners = topWinners.map(w => ({
+      walletAddress: w.walletAddress,
+      shareBasisPoints: Math.round(w.shareBasisPoints * participantBasisPoints / 10000),
+    }));
 
-    // TODO: Call smart contract cancelPool with pro-rata split via TON SDK:
-    // 1. Send participantTokens to escrow, trigger distributeRewards with winner shares
-    // 2. Send refundTokens back to project owner wallet
-    // Access fee paid to treasury is never refunded.
+    if (!pool.contractAddress) {
+      return NextResponse.json({ error: 'Pool has no contract address' }, { status: 400 });
+    }
+
+    // Send CancelPool message to the smart contract.
+    // The contract distributes scaled shares to winners and refunds the remainder to the owner.
+    await sendCancelPool(pool.contractAddress, scaledWinners);
+
+    await prisma.pool.update({ where: { id: poolId }, data: { status: 'DISTRIBUTED' } });
 
     return NextResponse.json({
       success: true,
       proRata,
-      winners: winners.slice(0, pool.rewardSlots),
-      note: 'Pool cancelled with pro-rata split. Smart contract calls not yet implemented.',
+      winners: topWinners,
     });
   } catch (err) {
     console.error('POST /api/admin/cancel-pool error:', err);

@@ -9,6 +9,7 @@ import {
   GramketingPool,
   storeCreatePool,
   storeDistributeRewards,
+  storeCancelPool,
 } from '../contracts/output/gramketing_pool_GramketingPool';
 import { getAdminWallet, getTonClient, sleep } from './ton-admin';
 
@@ -204,6 +205,58 @@ export async function sendDistributeRewards(
           .store(
             storeDistributeRewards({
               $$type: 'DistributeRewards',
+              winners: winnersDict,
+            }),
+          )
+          .endCell(),
+      }),
+    ],
+    sendMode: SendMode.PAY_GAS_SEPARATELY,
+  });
+}
+
+// ── Cancellation ─────────────────────────────────────────────────────────────
+
+/**
+ * Sends the CancelPool message to the pool contract from the admin wallet.
+ * Winners receive their pro-rata share; the remainder is refunded to the pool owner.
+ *
+ * shareBasisPoints values should already be scaled to reflect only the participant
+ * fraction (i.e. sum ≤ 10000 × daysElapsed/durationDays).
+ */
+export async function sendCancelPool(
+  contractAddressStr: string,
+  winners: { walletAddress: string; shareBasisPoints: number }[],
+): Promise<void> {
+  const { keyPair, contract: walletContract } = await getAdminWallet();
+
+  const contractAddress = Address.parse(contractAddressStr);
+
+  const winnersDict = Dictionary.empty(
+    Dictionary.Keys.Address(),
+    Dictionary.Values.BigInt(257),
+  );
+  for (const winner of winners) {
+    if (winner.shareBasisPoints > 0) {
+      winnersDict.set(Address.parse(winner.walletAddress), BigInt(winner.shareBasisPoints));
+    }
+  }
+
+  // Budget: 0.07 TON per winner (jetton transfer gas) + 0.1 TON base + 0.07 for owner refund
+  const gasAmount = toNano('0.1') + BigInt(winners.length + 1) * toNano('0.07');
+
+  const seqno = await walletContract.getSeqno();
+  await walletContract.sendTransfer({
+    secretKey: keyPair.secretKey,
+    seqno,
+    messages: [
+      internal({
+        to: contractAddress,
+        value: gasAmount,
+        body: beginCell()
+          .store(
+            storeCancelPool({
+              $$type: 'CancelPool',
               winners: winnersDict,
             }),
           )

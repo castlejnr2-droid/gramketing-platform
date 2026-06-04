@@ -17,6 +17,12 @@ message DistributeRewards {
     winners: map<Address, Int>; // address -> sharePercent (basis points, sum = 10000)
 }
 
+// Pro-rata cancellation: basis points sum to (daysElapsed/durationDays * 10000),
+// remainder is automatically refunded to owner.
+message CancelPool {
+    winners: map<Address, Int>; // address -> shareBasisPoints (sum ≤ 10000)
+}
+
 // TEP-74 standard jetton transfer opcode: 0x0f8a7ea5
 message(0x0f8a7ea5) JettonTransfer {
     queryId: Int as uint64;
@@ -203,22 +209,48 @@ contract GramketingPool with Deployable {
         emit(PoolEnded{ endTime: now() }.toCell());
     }
 
-    // Admin can cancel pool and refund owner
-    receive("cancelPool") {
+    // Admin cancels pool with pro-rata split.
+    // Winners receive (depositedAmount * shareBasisPoints / 10000) each.
+    // The remainder (project owner's pro-rata refund + rounding dust) is returned to owner.
+    receive(msg: CancelPool) {
         require(sender() == self.admin, "Only admin can cancel pool");
         require(self.status != POOL_DISTRIBUTED, "Already distributed");
 
-        self.status = POOL_ENDED;
+        self.status = POOL_DISTRIBUTED;
 
-        // Refund all deposited tokens to owner
-        if (self.depositedAmount > 0) {
+        let totalDistributed: Int = 0;
+
+        foreach(addr, shareBasisPoints in msg.winners) {
+            let amount: Int = self.depositedAmount * shareBasisPoints / 10000;
+            if (amount > 0) {
+                totalDistributed = totalDistributed + amount;
+                send(SendParameters{
+                    to: self.jettonWalletAddress,
+                    value: ton("0.05"),
+                    mode: SendIgnoreErrors,
+                    body: JettonTransfer{
+                        queryId: 0,
+                        amount: amount,
+                        destination: addr,
+                        responseDestination: self.owner,
+                        customPayload: null,
+                        forwardTonAmount: ton("0.01"),
+                        forwardPayload: emptySlice()
+                    }.toCell()
+                });
+            }
+        }
+
+        // Refund the project owner's pro-rata share (plus any rounding dust)
+        let refund: Int = self.depositedAmount - totalDistributed;
+        if (refund > 0) {
             send(SendParameters{
                 to: self.jettonWalletAddress,
                 value: ton("0.05"),
                 mode: SendIgnoreErrors,
                 body: JettonTransfer{
-                    queryId: 2,
-                    amount: self.depositedAmount,
+                    queryId: 1,
+                    amount: refund,
                     destination: self.owner,
                     responseDestination: self.owner,
                     customPayload: null,

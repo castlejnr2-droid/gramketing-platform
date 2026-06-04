@@ -1,9 +1,9 @@
 # Tact compilation report
 Contract: GramketingPool
-BoC Size: 1604 bytes
+BoC Size: 1783 bytes
 
 ## Structures (Structs and Messages)
-Total structures: 22
+Total structures: 23
 
 ### DataSize
 TL-B: `_ cells:int257 bits:int257 refs:int257 = DataSize`
@@ -64,6 +64,10 @@ Signature: `CreatePool{jettonWalletAddress:address,totalReward:coins,durationDay
 ### DistributeRewards
 TL-B: `distribute_rewards#efc4063b winners:dict<address, int> = DistributeRewards`
 Signature: `DistributeRewards{winners:dict<address, int>}`
+
+### CancelPool
+TL-B: `cancel_pool#a5dc73ae winners:dict<address, int> = CancelPool`
+Signature: `CancelPool{winners:dict<address, int>}`
 
 ### JettonTransfer
 TL-B: `jetton_transfer#0f8a7ea5 queryId:uint64 amount:coins destination:address responseDestination:address customPayload:Maybe ^cell forwardTonAmount:coins forwardPayload:remainder<slice> = JettonTransfer`
