@@ -49,7 +49,7 @@ export function MiniAppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen" style={{ position: 'relative', zIndex: 1 }}>
       <div className="flex-1 pb-16">{children}</div>
 
       {/* Bottom tab bar */}
