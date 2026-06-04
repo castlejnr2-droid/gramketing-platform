@@ -1,9 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import axios from 'axios';
 import { calculateTotalPoints, CampaignType } from '@/lib/points';
 import { fetchTelegramPostMetrics } from '@/lib/telegram';
-
-const prisma = new PrismaClient();
+import { logAdminEvent } from '@/lib/admin-log';
 
 // ── X / Twitter scraping ──────────────────────────────────────────────────────
 
@@ -184,6 +183,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
   }
 
   let scraped = 0;
+  let xTokenExpired = false;
 
   for (const participant of pool.participants) {
     const userId = participant.userId;
@@ -208,8 +208,21 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
               lastScrapedAt: now,
             },
           });
-          errors.push(`X token expired for post ${post.id}`);
+          const errStr = `X token expired for post ${post.id} (${post.postLink})`;
+          errors.push(errStr);
+          xTokenExpired = true;
           // Use existing points
+          xPoints += post.points;
+          continue;
+        }
+
+        if (!result.ok && result.error === 'NOT_FOUND') {
+          const errStr = `X post not found: ${post.postLink}`;
+          errors.push(errStr);
+          await prisma.poolPost.update({
+            where: { id: post.id },
+            data: { scrapeError: 'NOT_FOUND: post deleted or unavailable', lastScrapedAt: now },
+          });
           xPoints += post.points;
           continue;
         }
@@ -244,8 +257,13 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
           telegramPoints += pts;
           scraped++;
         } catch (e) {
-          errors.push(`Telegram scrape error for post ${post.id}: ${e}`);
+          const errStr = `Telegram scrape error for post ${post.id}: ${e}`;
+          errors.push(errStr);
           telegramPoints += post.points;
+          await prisma.poolPost.update({
+            where: { id: post.id },
+            data: { scrapeError: errStr, lastScrapedAt: now },
+          });
         }
       }
     }
@@ -267,14 +285,26 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
 
   await saveLeaderboardSnapshot(pool.id);
 
+  // Log errors to AdminLog if any occurred
+  if (errors.length > 0) {
+    await logAdminEvent({
+      action: 'SCRAPE_ERROR',
+      level: xTokenExpired ? 'error' : 'warn',
+      poolId: pool.id,
+      message: `Scrape completed with ${errors.length} error(s). ${scraped} posts updated.${xTokenExpired ? ' TWITTER_BEARER_TOKEN appears expired.' : ''}`,
+      details: { scraped, errorCount: errors.length, errors: errors.slice(0, 20) },
+    });
+  }
+
   return { scraped, errors };
 }
 
 // ── Scrape all active pools ───────────────────────────────────────────────────
 
 export async function scrapeAllActivePools() {
-  console.log(`[${new Date().toISOString()}] Starting scrape cycle...`);
-  const now = new Date();
+  const cycleStart = new Date();
+  console.log(`[${cycleStart.toISOString()}] Starting scrape cycle...`);
+  const now = cycleStart;
 
   // End expired pools
   const expiredPools = await prisma.pool.findMany({
@@ -308,6 +338,10 @@ export async function scrapeAllActivePools() {
     include: { project: true },
   });
 
+  let totalScraped = 0;
+  let totalErrors = 0;
+  const poolsWithErrors: string[] = [];
+
   for (const pool of activePools) {
     console.log(`Scraping pool ${pool.id} (${pool.tokenSymbol})`);
 
@@ -323,9 +357,21 @@ export async function scrapeAllActivePools() {
     }
 
     try {
-      await scrapePoolById(pool.id);
+      const { scraped, errors } = await scrapePoolById(pool.id);
+      totalScraped += scraped;
+      totalErrors += errors.length;
+      if (errors.length > 0) poolsWithErrors.push(pool.id);
     } catch (e) {
       console.error(`Error scraping pool ${pool.id}:`, e);
+      totalErrors++;
+      poolsWithErrors.push(pool.id);
+      await logAdminEvent({
+        action: 'SCRAPE_ERROR',
+        level: 'error',
+        poolId: pool.id,
+        message: `Scrape cycle failed for pool ${pool.id}: ${e instanceof Error ? e.message : String(e)}`,
+        details: { error: String(e) },
+      });
     }
 
     // Detect rank drops and notify outranked participants
@@ -348,5 +394,21 @@ export async function scrapeAllActivePools() {
     }
   }
 
-  console.log(`[${new Date().toISOString()}] Scrape cycle complete.`);
+  const cycleEnd = new Date();
+  const durationMs = cycleEnd.getTime() - cycleStart.getTime();
+  console.log(`[${cycleEnd.toISOString()}] Scrape cycle complete. ${totalScraped} posts updated, ${totalErrors} errors across ${activePools.length} pools.`);
+
+  // Log cycle summary to AdminLog
+  await logAdminEvent({
+    action: 'SCRAPE_CYCLE',
+    level: totalErrors > 0 ? 'warn' : 'info',
+    message: `Scrape cycle: ${activePools.length} pools, ${totalScraped} posts updated, ${totalErrors} error(s) in ${Math.round(durationMs / 1000)}s`,
+    details: {
+      pools: activePools.length,
+      postsScraped: totalScraped,
+      errors: totalErrors,
+      poolsWithErrors,
+      durationMs,
+    },
+  });
 }

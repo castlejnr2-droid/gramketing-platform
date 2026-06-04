@@ -109,6 +109,7 @@ model Pool {
   platformRevenue      PlatformRevenue[]
   referralBoosts       ReferralBoost[]
   poolPosts            PoolPost[]
+  adminLogs            AdminLog[]
 }
 
 model PoolParticipant {
@@ -211,4 +212,15 @@ model BannedMarketer {
   xLink             String?
   bannedAt          DateTime @default(now())
   bannedByWallet    String
+}
+
+model AdminLog {
+  id        String   @id @default(cuid())
+  action    String   // DEPLOY_CONTRACT | DISTRIBUTE_REWARDS | END_POOL | CANCEL_POOL | RESCRAPE | FEE_RECORDED | SCRAPE_ERROR | SCRAPE_CYCLE
+  level     String   // info | warn | error
+  poolId    String?
+  pool      Pool?    @relation(fields: [poolId], references: [id], onDelete: SetNull)
+  message   String
+  details   Json?
+  createdAt DateTime @default(now())
 }

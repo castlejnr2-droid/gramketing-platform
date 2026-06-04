@@ -295,6 +295,65 @@ export async function sendCancelPool(
   });
 }
 
+// ── Platform fee transaction builders ────────────────────────────────────────
+
+/**
+ * Builds the TonConnect transaction parameters for paying the platform access
+ * fee in TON. Sends the exact amount directly to TREASURY_WALLET_ADDRESS.
+ *
+ * The caller should call calculateFeeInTokens() first to get amountNano.
+ */
+export function buildFeeTransaction(params: {
+  treasuryAddress: string;
+  amountNano: bigint; // nanoTON
+}): { to: string; amount: string } {
+  return {
+    to: params.treasuryAddress,
+    amount: params.amountNano.toString(),
+  };
+}
+
+/**
+ * Builds the TonConnect transaction parameters for paying the platform access
+ * fee in a jetton (e.g. mGRAM). Sends from the sender's jetton wallet to the
+ * treasury's jetton wallet via a standard TEP-74 transfer.
+ */
+export async function buildJettonFeeTransaction(params: {
+  jettonMasterAddress: string;
+  senderAddress: string;
+  treasuryAddress: string;
+  amountRaw: bigint; // in nano-tokens (already decimal-adjusted)
+}): Promise<{
+  to: string;    // sender's jetton wallet
+  amount: string; // gas in nanoTON
+  payload: string; // base64 BOC
+}> {
+  const senderJettonWallet = await getJettonWalletAddress(
+    params.jettonMasterAddress,
+    params.senderAddress,
+  );
+
+  const treasuryAddr = Address.parse(params.treasuryAddress);
+  const senderAddr = Address.parse(params.senderAddress);
+
+  const body = beginCell()
+    .storeUint(0x0f8a7ea5, 32)    // transfer opcode (TEP-74)
+    .storeUint(0n, 64)             // queryId
+    .storeCoins(params.amountRaw)  // amount in nano-tokens
+    .storeAddress(treasuryAddr)    // destination = treasury
+    .storeAddress(senderAddr)      // response_destination = sender (excess TON back)
+    .storeBit(false)               // no custom_payload
+    .storeCoins(toNano('0.02'))    // forward_ton_amount (notification gas)
+    .storeBit(false)               // forward_payload = empty slice
+    .endCell();
+
+  return {
+    to: senderJettonWallet.toString({ bounceable: true, urlSafe: true }),
+    amount: toNano('0.12').toString(), // gas budget for jetton transfer
+    payload: body.toBoc().toString('base64'),
+  };
+}
+
 // ── Jetton deposit transaction builder ───────────────────────────────────────
 
 /**

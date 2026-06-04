@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 import { notifyNewPool } from '@/lib/telegram-notify';
 import { deployAndInitPool } from '@/lib/gramketing-pool-contract';
+import { calculateFeeInTokens } from '@/lib/prices';
+import { logAdminEvent } from '@/lib/admin-log';
 
 export async function GET(req: NextRequest) {
   try {
@@ -94,6 +96,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validate fee proof is provided
+    if (!accessFeeTxHash) {
+      return NextResponse.json(
+        { error: 'Access fee transaction hash is required. Please complete payment first.' },
+        { status: 400 }
+      );
+    }
+
+    const feeCurrency: 'TON' | 'MGRAM' = accessFeePaidIn === 'MGRAM' ? 'MGRAM' : 'TON';
+
     // Find or create project
     let project = await prisma.project.findFirst({
       where: {
@@ -130,7 +142,7 @@ export async function POST(req: NextRequest) {
         tier1Threshold: BigInt(tier1Threshold ?? 0),
         tier2Threshold: BigInt(tier2Threshold ?? 0),
         tier3Threshold: BigInt(tier3Threshold ?? 0),
-        accessFeePaidIn: accessFeePaidIn ?? 'TON',
+        accessFeePaidIn: feeCurrency,
         accessFeeTxHash: accessFeeTxHash || null,
         campaignType: campaignType ?? 'both',
         xPostLink: xPostLink || null,
@@ -146,11 +158,44 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Deploy escrow contract on-chain and send CreatePool message
+    // ── Record platform revenue (fee payment) ─────────────────────────────────
     try {
+      const { usdAmount, tokenAmount } = await calculateFeeInTokens(durationDays, feeCurrency);
+      await prisma.platformRevenue.create({
+        data: {
+          poolId: pool.id,
+          currency: feeCurrency,
+          tokenAmount: tokenAmount.toFixed(9),
+          usdValueAtTime: usdAmount,
+          txHash: accessFeeTxHash,
+        },
+      });
+      await logAdminEvent({
+        action: 'FEE_RECORDED',
+        level: 'info',
+        poolId: pool.id,
+        message: `Access fee recorded: ${tokenAmount.toFixed(4)} ${feeCurrency} (~$${usdAmount.toFixed(2)}) for ${durationDays}-day pool`,
+        details: { feeCurrency, tokenAmount, usdAmount, txHash: accessFeeTxHash },
+      });
+    } catch (feeErr) {
+      console.error('Failed to record platform revenue for pool', pool.id, feeErr);
+      await logAdminEvent({
+        action: 'FEE_RECORDED',
+        level: 'error',
+        poolId: pool.id,
+        message: `Failed to record access fee in PlatformRevenue: ${feeErr instanceof Error ? feeErr.message : String(feeErr)}`,
+        details: { feeCurrency, txHash: accessFeeTxHash },
+      });
+    }
+
+    // ── Deploy escrow contract on-chain and send CreatePool message ───────────
+    try {
+      const adminAddress = process.env.ADMIN_WALLET_ADDRESS;
+      if (!adminAddress) throw new Error('ADMIN_WALLET_ADDRESS is not configured');
+
       const { contractAddress: deployedAddress } = await deployAndInitPool({
         ownerAddress: walletAddress,
-        adminAddress: process.env.ADMIN_WALLET_ADDRESS!,
+        adminAddress,
         jettonMasterAddress,
         totalReward: String(totalReward),
         durationDays,
@@ -163,9 +208,25 @@ export async function POST(req: NextRequest) {
       });
 
       pool.contractAddress = deployedAddress;
+
+      await logAdminEvent({
+        action: 'DEPLOY_CONTRACT',
+        level: 'info',
+        poolId: pool.id,
+        message: `Escrow contract deployed: ${deployedAddress}`,
+        details: { contractAddress: deployedAddress },
+      });
     } catch (deployErr) {
+      const errMsg = deployErr instanceof Error ? deployErr.message : String(deployErr);
       console.error('Contract deployment failed (pool created in DB):', deployErr);
-      // Pool is still created in DB; creator can retry deposit later
+      await logAdminEvent({
+        action: 'DEPLOY_CONTRACT',
+        level: 'error',
+        poolId: pool.id,
+        message: `Contract deployment failed — pool exists in DB but has no escrow contract. ${errMsg}`,
+        details: { error: errMsg },
+      });
+      // Pool is still created in DB; creator can retry deposit later via admin action
     }
 
     // Notify opted-in users about the new pool (fire-and-forget)

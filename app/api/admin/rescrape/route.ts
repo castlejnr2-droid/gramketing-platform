@@ -4,6 +4,7 @@ import { getAuthWallet, isAdmin } from '@/lib/auth';
 import { fetchXPostMetrics, scrapePoolById } from '@/lib/pool-scraper';
 import { calculateXPoints, calculateTelegramPoints } from '@/lib/points';
 import { fetchTelegramPostMetrics } from '@/lib/telegram';
+import { logAdminEvent } from '@/lib/admin-log';
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,11 +35,31 @@ export async function POST(req: NextRequest) {
         likes = result.likes;
         reposts = result.reposts;
         points = result.ok ? calculateXPoints(views, likes, reposts) : submission.currentPoints;
+
+        if (!result.ok) {
+          await logAdminEvent({
+            action: 'RESCRAPE',
+            level: 'warn',
+            poolId: submission.poolId,
+            message: `Submission ${submissionId} scrape failed: ${result.error}`,
+            details: { submissionId, error: result.error, postUrl: submission.postUrl },
+          });
+        }
       } else {
-        const metrics = await fetchTelegramPostMetrics(submission.postUrl);
-        views = metrics.views;
-        reactions = metrics.reactions;
-        points = calculateTelegramPoints(views, reactions);
+        try {
+          const metrics = await fetchTelegramPostMetrics(submission.postUrl);
+          views = metrics.views;
+          reactions = metrics.reactions;
+          points = calculateTelegramPoints(views, reactions);
+        } catch (tgErr) {
+          await logAdminEvent({
+            action: 'RESCRAPE',
+            level: 'warn',
+            poolId: submission.poolId,
+            message: `Telegram scrape failed for submission ${submissionId}: ${tgErr instanceof Error ? tgErr.message : String(tgErr)}`,
+            details: { submissionId, postUrl: submission.postUrl },
+          });
+        }
       }
 
       const updated = await prisma.submission.update({
@@ -64,7 +85,43 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Pool not found' }, { status: 404 });
       }
 
-      const { scraped, errors } = await scrapePoolById(poolId);
+      let scraped = 0;
+      let errors: string[] = [];
+
+      try {
+        ({ scraped, errors } = await scrapePoolById(poolId));
+      } catch (scrapeErr) {
+        const errMsg = scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr);
+        await logAdminEvent({
+          action: 'RESCRAPE',
+          level: 'error',
+          poolId,
+          message: `Pool re-scrape failed: ${errMsg}`,
+          details: { error: errMsg },
+        });
+        return NextResponse.json(
+          { error: `Re-scrape failed: ${errMsg}` },
+          { status: 500 }
+        );
+      }
+
+      if (errors.length > 0) {
+        await logAdminEvent({
+          action: 'RESCRAPE',
+          level: 'warn',
+          poolId,
+          message: `Pool re-scrape completed with ${errors.length} error(s). ${scraped} posts updated.`,
+          details: { scraped, errors },
+        });
+      } else {
+        await logAdminEvent({
+          action: 'RESCRAPE',
+          level: 'info',
+          poolId,
+          message: `Pool re-scrape complete: ${scraped} posts updated`,
+          details: { scraped },
+        });
+      }
 
       return NextResponse.json({
         success: true,
