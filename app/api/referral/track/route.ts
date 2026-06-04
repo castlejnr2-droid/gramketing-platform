@@ -4,6 +4,20 @@ import { getAuthWallet } from '@/lib/auth';
 import { REFERRAL_BASE_BONUS } from '@/lib/points';
 import axios from 'axios';
 
+const REF_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+async function generateReferralCode(): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = Array.from(
+      { length: 8 },
+      () => REF_CHARS[Math.floor(Math.random() * REF_CHARS.length)]
+    ).join('');
+    const existing = await prisma.poolParticipant.findUnique({ where: { referralCode: code } });
+    if (!existing) return code;
+  }
+  return Date.now().toString(36).toUpperCase().slice(-8).padStart(8, '0');
+}
+
 async function checkTokenBalance(
   walletAddress: string,
   jettonMasterAddress: string
@@ -90,11 +104,13 @@ export async function POST(req: NextRequest) {
     });
 
     if (!existingParticipant) {
+      const referralCode = await generateReferralCode();
       await prisma.poolParticipant.create({
         data: {
           poolId,
           userId: referredUser.id,
           referredByUserId: referrerParticipant.userId,
+          referralCode,
         },
       });
     }

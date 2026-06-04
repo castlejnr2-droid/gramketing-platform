@@ -33,10 +33,11 @@ model User {
   id                String            @id @default(cuid())
   walletAddress     String            @unique
   username          String?
-  xHandle           String?
-  xAccessToken      String?
-  telegramId        String?
-  telegramHandle    String?
+  xHandle              String?
+  xAccessToken         String?
+  telegramId           String?
+  telegramHandle       String?
+  telegramChannelUrl   String?
   createdAt         DateTime          @default(now())
   participants      PoolParticipant[]
   submissions       Submission[]

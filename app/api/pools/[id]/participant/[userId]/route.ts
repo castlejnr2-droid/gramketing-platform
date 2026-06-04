@@ -67,6 +67,7 @@ export async function GET(
         referralBonusPoints: participant.referralBonusPoints,
         holderBoost: participant.holderBoost,
         referralMultiplier: participant.referralMultiplier,
+        referralCode: participant.referralCode,
         joinedAt: participant.joinedAt,
         rank,
         totalParticipants: allParticipants.length,

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { getParticipantTier } from '@/lib/points';
-import { X, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Copy, CheckCheck } from 'lucide-react';
 
 interface LeaderboardEntry {
   rank: number;
@@ -60,6 +60,7 @@ interface ParticipantDetail {
   referralBonusPoints: number;
   holderBoost: number;
   referralMultiplier: number;
+  referralCode: string;
   joinedAt: string;
   rank: number;
   totalParticipants: number;
@@ -107,6 +108,48 @@ function estimateReward(totalPoints: number, allPoints: number, totalReward: str
   if (isNaN(rewardNum)) return '—';
   const est = rewardNum * share;
   return `${est >= 1000 ? (est / 1000).toFixed(1) + 'K' : est.toFixed(0)} ${symbol}`;
+}
+
+// ── Referral Link Row ──
+function ReferralLinkRow({ poolId, referralCode }: { poolId: string; referralCode: string }) {
+  const [copied, setCopied] = useState(false);
+  const link = `https://gramketing-platform.vercel.app/pools/${poolId}?ref=${referralCode}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+    } catch {
+      const el = document.createElement('input');
+      el.value = link;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="glass-inner px-4 py-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">Referral link</span>
+        <button
+          onClick={handleCopy}
+          className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border transition-all ${
+            copied
+              ? 'bg-green-500/20 border-green-500/30 text-green-400'
+              : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/20'
+          }`}
+        >
+          {copied ? <CheckCheck className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      <p className="text-xs text-white/40 font-mono truncate">{link}</p>
+      <p className="text-[10px] text-white/25">Share this link to earn referral boost</p>
+    </div>
+  );
 }
 
 // ── Detail Modal ──
@@ -335,6 +378,9 @@ function ParticipantModal({
                   </span>
                 </div>
               )}
+
+              {/* Referral Link */}
+              <ReferralLinkRow poolId={poolId} referralCode={p.referralCode} />
 
               {/* Total */}
               <div className="border-t border-white/10 pt-3 flex items-center justify-between">

@@ -106,8 +106,7 @@ export function SubmitPostModal({
                   Submitted!
                 </p>
                 <p className="text-sm text-white/50 text-center">
-                  Your post has been submitted and will be scraped within 30
-                  minutes.
+                  Your post has been verified and accepted. Points will update within 30 minutes.
                 </p>
                 <button className="btn-primary mt-2" onClick={handleClose}>
                   Done
@@ -207,7 +206,7 @@ export function SubmitPostModal({
                 </button>
 
                 <p className="mt-3 text-xs text-white/30 text-center">
-                  Posts are verified and view counts scraped every 30 minutes.
+                  Posts need at least 100 views to qualify. View counts update every 30 minutes.
                 </p>
               </>
             )}
