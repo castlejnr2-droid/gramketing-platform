@@ -439,7 +439,7 @@ export default function AdminPoolsPage() {
                   </tr>
                 ) : (
                   sorted.map((pool) => (
-                    <tr key={pool.id} className="hover:bg-white/[0.02] transition-colors">
+                    <tr key={pool.id} className="hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={(e) => { if ((e.target as HTMLElement).closest('button,a')) return; window.location.href = `/admin/pools/${pool.id}`; }}>
 
                       {/* Project */}
                       <td className="px-4 py-3 max-w-[160px]">
