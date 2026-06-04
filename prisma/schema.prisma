@@ -38,6 +38,9 @@ model User {
   telegramId           String?
   telegramHandle       String?
   telegramChannelUrl   String?
+  telegramChatId       String?
+  linkTelegramCode     String?
+  linkTelegramCodeExpiry DateTime?
   createdAt         DateTime          @default(now())
   participants      PoolParticipant[]
   submissions       Submission[]

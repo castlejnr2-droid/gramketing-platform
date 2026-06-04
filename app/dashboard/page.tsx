@@ -35,6 +35,7 @@ interface AccountInfo {
   username?: string;
   xHandle?: string;
   telegramChannelUrl?: string;
+  telegramChatId?: string;
 }
 
 function TierBadge({ totalPoints }: { totalPoints: number }) {
@@ -86,6 +87,10 @@ export default function DashboardPage() {
   const [savingUsername, setSavingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [tgChannelError, setTgChannelError] = useState<string | null>(null);
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [linkCodeExpiry, setLinkCodeExpiry] = useState<Date | null>(null);
+  const [linkCodeLoading, setLinkCodeLoading] = useState(false);
+  const [linkCodeError, setLinkCodeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!wallet) {
@@ -149,6 +154,29 @@ export default function DashboardPage() {
       setTgChannelError('Network error');
     } finally {
       setSavingTgChannel(false);
+    }
+  };
+
+  const handleGenerateLinkCode = async () => {
+    setLinkCodeError(null);
+    setLinkCodeLoading(true);
+    try {
+      const res = await fetch('/api/auth/link-telegram-init', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setLinkCodeError(d.error ?? 'Failed to generate code');
+      } else {
+        const d = await res.json();
+        setLinkCode(d.code);
+        setLinkCodeExpiry(new Date(d.expiresAt));
+      }
+    } catch {
+      setLinkCodeError('Network error');
+    } finally {
+      setLinkCodeLoading(false);
     }
   };
 
@@ -436,6 +464,94 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Link Telegram Account */}
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">
+                Telegram Account (Notifications)
+              </label>
+
+              {account?.telegramChatId ? (
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+                  <span className="text-green-400 text-lg">✅</span>
+                  <div>
+                    <p className="text-sm font-medium text-green-400">Telegram linked</p>
+                    <p className="text-xs text-white/30 mt-0.5">
+                      Chat ID: {account.telegramChatId.slice(0, 3)}••••{account.telegramChatId.slice(-2)}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {!linkCode ? (
+                    <div>
+                      <button
+                        onClick={handleGenerateLinkCode}
+                        disabled={linkCodeLoading}
+                        className="btn-primary text-sm flex items-center gap-2 disabled:opacity-40"
+                      >
+                        {linkCodeLoading ? (
+                          <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.19 13.676l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.958.883z" />
+                          </svg>
+                        )}
+                        Link Telegram Account
+                      </button>
+                      {linkCodeError && (
+                        <p className="mt-1.5 text-xs text-red-400">{linkCodeError}</p>
+                      )}
+                      <p className="mt-2 text-xs text-white/30">
+                        Link your Telegram account to receive outranked alerts, pool notifications, and reward updates.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-[#0088CC]/5 border border-[#0088CC]/20 space-y-3">
+                      <p className="text-xs font-semibold text-[#0088CC] uppercase tracking-wider">
+                        Open Telegram and complete these steps
+                      </p>
+                      <div className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-[#0088CC]/20 text-[#0088CC] text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                        <p className="text-xs text-white/60">
+                          Open <span className="text-white font-semibold">@GramketingBot</span> on Telegram
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-[#0088CC]/20 text-[#0088CC] text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                        <div>
+                          <p className="text-xs text-white/60 mb-1.5">Send this code:</p>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-lg font-bold tracking-widest text-white bg-white/5 border border-white/10 rounded-lg px-4 py-2">
+                              {linkCode}
+                            </span>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(linkCode)}
+                              className="text-xs text-[#0088CC] hover:text-[#0099DD] transition-colors"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-[#0088CC]/20 text-[#0088CC] text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                        <p className="text-xs text-white/60">Your account will be linked automatically</p>
+                      </div>
+                      <p className="text-xs text-white/30">
+                        Code expires at {linkCodeExpiry?.toLocaleTimeString()}.{' '}
+                        <button
+                          onClick={handleGenerateLinkCode}
+                          className="text-[#0088CC] hover:underline"
+                        >
+                          Generate new code
+                        </button>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Telegram Channel */}

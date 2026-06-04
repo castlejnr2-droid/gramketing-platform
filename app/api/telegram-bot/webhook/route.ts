@@ -73,15 +73,15 @@ export async function POST(req: NextRequest) {
         where: { telegramChatId: chatId },
       });
       if (!prefs) {
-        await sendMessage(chatId, 'Please send /start first.');
+        await sendMessage(chatId, 'Please link your account first by sending your LINK code here.');
         return NextResponse.json({ ok: true });
       }
 
       const toggleMap: Record<string, object> = {
-        toggle_outranked:    { notifyOutranked: !prefs.notifyOutranked },
-        toggle_ending_soon:  { notifyPoolEndingSoon: !prefs.notifyPoolEndingSoon },
-        toggle_rewards:      { notifyRewardsDistributed: !prefs.notifyRewardsDistributed },
-        toggle_new_pools:    { notifyNewPools: !prefs.notifyNewPools },
+        toggle_outranked:   { notifyOutranked: !prefs.notifyOutranked },
+        toggle_ending_soon: { notifyPoolEndingSoon: !prefs.notifyPoolEndingSoon },
+        toggle_rewards:     { notifyRewardsDistributed: !prefs.notifyRewardsDistributed },
+        toggle_new_pools:   { notifyNewPools: !prefs.notifyNewPools },
       };
 
       if (toggleMap[data]) {
@@ -100,23 +100,57 @@ export async function POST(req: NextRequest) {
     if (!message) return NextResponse.json({ ok: true });
 
     const chatId = String(message.chat.id);
-    const fromId = String(message.from?.id ?? chatId);
-    const text: string = message.text ?? '';
+    const text: string = (message.text ?? '').trim();
 
-    if (text === '/start' || text.startsWith('/start ') || (!text.startsWith('/'))) {
-      // Try to link account: look up user by telegramId
-      const user = await prisma.user.findFirst({ where: { telegramId: fromId } });
-      if (user) {
-        await prisma.telegramNotificationPrefs.upsert({
-          where: { userId: user.id },
-          create: { userId: user.id, telegramChatId: chatId },
-          update: { telegramChatId: chatId },
-        });
+    // ── LINK code handler ─────────────────────────────────────────────────
+    if (/^LINK-[A-Z0-9]{6}$/i.test(text)) {
+      const code = text.toUpperCase();
+      const now = new Date();
+
+      const user = await prisma.user.findFirst({
+        where: {
+          linkTelegramCode: code,
+          linkTelegramCodeExpiry: { gt: now },
+        },
+      });
+
+      if (!user) {
+        await sendMessage(
+          chatId,
+          '❌ Invalid or expired code. Please generate a new one from the Gramketing dashboard.'
+        );
+        return NextResponse.json({ ok: true });
       }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          telegramChatId: chatId,
+          linkTelegramCode: null,
+          linkTelegramCodeExpiry: null,
+        },
+      });
+
+      await prisma.telegramNotificationPrefs.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, telegramChatId: chatId },
+        update: { telegramChatId: chatId },
+      });
+
+      await sendMessage(
+        chatId,
+        '✅ Your Telegram account is now linked to Gramketing! Use /notifications to set your preferences.'
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── /start ────────────────────────────────────────────────────────────
+    if (text === '/start' || text.startsWith('/start ')) {
       await sendMessage(chatId, WELCOME_TEXT);
       return NextResponse.json({ ok: true });
     }
 
+    // ── /notifications ────────────────────────────────────────────────────
     if (text === '/notifications') {
       const prefs = await prisma.telegramNotificationPrefs.findFirst({
         where: { telegramChatId: chatId },
@@ -124,7 +158,7 @@ export async function POST(req: NextRequest) {
       if (!prefs) {
         await sendMessage(
           chatId,
-          "⚠️ Your Telegram account isn't linked to a Gramketing account yet. Please connect your Telegram in the Gramketing dashboard first."
+          "⚠️ Your Telegram account isn't linked yet. Get a link code from your Gramketing dashboard and send it here."
         );
         return NextResponse.json({ ok: true });
       }
@@ -132,12 +166,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // ── /status ───────────────────────────────────────────────────────────
     if (text === '/status') {
       const prefs = await prisma.telegramNotificationPrefs.findFirst({
         where: { telegramChatId: chatId },
       });
       if (!prefs) {
-        await sendMessage(chatId, "⚠️ Your Telegram account isn't linked to a Gramketing account yet.");
+        await sendMessage(chatId, "⚠️ Your Telegram account isn't linked yet. Get a link code from your Gramketing dashboard and send it here.");
         return NextResponse.json({ ok: true });
       }
       const participants = await prisma.poolParticipant.findMany({
@@ -156,7 +191,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Unknown command
+    // ── Default ───────────────────────────────────────────────────────────
     await sendMessage(chatId, WELCOME_TEXT);
     return NextResponse.json({ ok: true });
   } catch (err) {

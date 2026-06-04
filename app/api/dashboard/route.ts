@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
         username: user.username,
         xHandle: user.xHandle,
         telegramChannelUrl: user.telegramChannelUrl,
+        telegramChatId: user.telegramChatId,
       },
       activePools,
       endedPools,
