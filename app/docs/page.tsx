@@ -30,9 +30,8 @@ const sections = [
   { id: 'daily-limit', label: 'Daily Submission Limits', group: 'For Contributors & Promoters' },
   { id: 'points-calc', label: 'Points Calculation', group: 'For Contributors & Promoters' },
   { id: 'scoring-system', label: 'Scoring System', group: 'For Contributors & Promoters' },
-  { id: 'holder-boost', label: 'Holder Boost', group: 'For Contributors & Promoters' },
+  { id: 'holder-boost', label: 'Holder Boost (Proportional)', group: 'For Contributors & Promoters' },
   { id: 'referral', label: 'Referral System', group: 'For Contributors & Promoters' },
-  { id: 'referral-tiers', label: 'Referral Tiers', group: 'For Contributors & Promoters' },
   { id: 'points-decrease', label: 'Points Can Decrease', group: 'For Contributors & Promoters' },
   { id: 'create-pool', label: 'Creating a Pool', group: 'For Projects' },
   { id: 'pricing', label: 'Pricing Table', group: 'For Projects' },
@@ -384,18 +383,28 @@ Telegram: https://t.me/yourchannel/456`}</CodeBlock>
                 </Section>
 
                 <Section id="points-calc" title="How Points Are Calculated">
-                  <p>Points depend on view counts and your boost multipliers:</p>
-                  <CodeBlock>{`X Points     = floor(views / 10) × holderBoost
-                 (minimum 100 views to qualify)
+                  <p>Each platform scores your posts differently, then boosts are applied pool-wide:</p>
+                  <CodeBlock>{`── Per-post scoring ──────────────────────────────
+X post score     = (views × 0.8 + likes × 0.1 + reposts × 0.1) / 10
+                   (minimum 100 views to qualify)
 
-Telegram pts = views × 2 × holderBoost
+Telegram score   = (views × 0.8 + reactions × 0.2) × 2
 
-Total Points = (xPoints + telegramPoints)
-               × holderBoost
-               × referralMultiplier
-               + referralBonusPoints`}</CodeBlock>
+── Campaign weighting ────────────────────────────
+X-only pool      : contentScore = xPoints
+Telegram-only    : contentScore = telegramPoints
+Both (50 / 50)   : contentScore = xPoints × 0.5 + telegramPoints × 0.5
+
+── Boosts (recalculated each scrape cycle) ───────
+holderBoost      = 1.0 + (yourBalance / topBalanceInPool)   → 1.0x – 2.0x
+referralBoost    = 1.0 + (yourReferredTotal / topInPool)    → 1.0x – 2.0x
+
+── Final score ───────────────────────────────────
+totalPoints = (contentScore × holderBoost × referralBoost)
+              + referralBonusPoints`}</CodeBlock>
                   <p>
-                    Example: 10,000 views on X with holder boost = 1,000 × 1.5 = 1,500 pts
+                    Example: X-only pool, 10,000 views, 200 likes, 50 reposts →
+                    raw score = (8,000 + 20 + 5) / 10 = 802.5 pts. With holderBoost 1.4x and referralBoost 1.2x → 802.5 × 1.4 × 1.2 ≈ 1,348 pts.
                   </p>
                 </Section>
 
@@ -435,74 +444,79 @@ Total Points = (xPoints + telegramPoints)
                   </div>
                 </Section>
 
-                <Section id="holder-boost" title="Holder Boost (1.5x)">
+                <Section id="holder-boost" title="Holder Boost (Proportional, 1.0x – 2.0x)">
                   <p>
-                    If you hold any amount of the pool&apos;s project token in your
-                    wallet, you receive a{' '}
-                    <strong className="text-[#0088CC]">1.5x multiplier</strong>{' '}
-                    on all your base points.
+                    Every scrape cycle, the platform checks each participant&apos;s balance of the pool&apos;s project token via the TON RPC.
+                    Your holder boost is calculated <strong className="text-white">relative to the highest holder in the pool</strong> — not against a fixed threshold.
                   </p>
+                  <CodeBlock>{`holderBoost = 1.0 + (yourBalance / topBalanceInPool)
+
+Examples (pool top holder = 100,000 tokens):
+  You hold 100,000  →  1.0 + 1.0  =  2.0x  (maximum)
+  You hold  50,000  →  1.0 + 0.5  =  1.5x
+  You hold  10,000  →  1.0 + 0.1  =  1.1x
+  You hold       0  →  1.0 + 0.0  =  1.0x  (no boost)`}</CodeBlock>
                   <p>
-                    This is checked live on each scrape cycle via the TON RPC.
-                    If you sell all your tokens, your boost drops to 1.0x and
-                    your points will decrease on the next cycle.
+                    The boost range is always <strong className="text-yellow-400">1.0x (no tokens) to 2.0x (top holder)</strong>.
+                    As other participants buy or sell tokens, everyone&apos;s boost adjusts proportionally each cycle.
                   </p>
+                  <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-xs text-white/50">
+                    <strong className="text-yellow-400">Tip:</strong> The boost is relative, not absolute. Holding more than others matters as much as the raw amount.
+                  </div>
                 </Section>
 
                 <Section id="referral" title="Referral System">
                   <p>
-                    Every pool participant gets a unique referral link. Share it
-                    to bring new participants to the pool.
+                    Every pool participant gets a unique referral link. Share it to bring new participants to the pool.
                   </p>
                   <p>When a referred friend connects their wallet and holds the pool&apos;s project token:</p>
                   <ul className="list-disc list-inside ml-2 space-y-1">
-                    <li>You earn <strong className="text-[#0088CC]">+500 bonus points</strong> (one-time per referral)</li>
-                    <li>You gain an ongoing <strong className="text-purple-400">referral multiplier</strong> based on their token holdings</li>
+                    <li>You earn <strong className="text-[#0088CC]">+500 bonus points</strong> (one-time, flat, per qualifying referral)</li>
+                    <li>Their token holdings contribute to your ongoing <strong className="text-purple-400">referral boost</strong></li>
                   </ul>
-                  <p>Multiple referrals stack additively. Each additional referral adds its bonus above 1.0.</p>
-                </Section>
 
-                <Section id="referral-tiers" title="Referral Holding Tiers">
-                  <p>The multiplier you gain depends on which tier your referred friend falls into, based on how many tokens they hold:</p>
-                  <div className="space-y-2 mt-3">
-                    {[
-                      { tier: 'Tier 1', mult: '1.2x' },
-                      { tier: 'Tier 2', mult: '1.5x' },
-                      { tier: 'Tier 3', mult: '2.0x' },
-                    ].map((t) => (
-                      <div key={t.tier} className="flex justify-between px-4 py-2 bg-white/[0.03] border border-white/5 rounded-lg">
-                        <span>{t.tier}</span>
-                        <strong className="text-[#0088CC]">{t.mult}</strong>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 px-4 py-3 rounded-lg bg-[#0088CC]/8 border border-[#0088CC]/20 text-sm text-white/60 leading-relaxed">
-                    <strong className="text-[#0088CC]">Note:</strong> Token amounts for each tier are set by the pool creator when creating the pool. These values vary for every pool depending on the token supply and project requirements. Check each pool&apos;s details page to see the exact thresholds.
-                  </div>
-                  <p className="mt-3">
-                    Tiers are re-evaluated on each scrape cycle. If a referred friend&apos;s holdings
-                    change, your multiplier updates accordingly.
+                  <p className="mt-2 font-medium text-white/70">Referral Boost (Proportional, 1.0x – 2.0x)</p>
+                  <p>
+                    Just like the holder boost, your referral boost is calculated <strong className="text-white">pool-wide</strong> — relative to the participant with the highest total referred holdings.
                   </p>
+                  <CodeBlock>{`referredTotal    = sum of token balances of all YOUR token-holding referrals
+referralBoost    = 1.0 + (referredTotal / topReferredTotalInPool)
+
+Examples (pool top referrer's total = 200,000 tokens):
+  You referred users holding 200,000 total  →  2.0x  (maximum)
+  You referred users holding 100,000 total  →  1.5x
+  You referred users holding  20,000 total  →  1.1x
+  No token-holding referrals               →  1.0x  (no boost)`}</CodeBlock>
+                  <p>
+                    The referral boost range is always <strong className="text-purple-400">1.0x to 2.0x</strong> and is recalculated on each scrape cycle as referred users buy or sell tokens.
+                    Only referrals who currently hold &gt; 0 project tokens contribute to your boost.
+                  </p>
+                  <div className="mt-3 p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 text-xs text-white/50">
+                    <strong className="text-purple-400">Note:</strong> The +500 bonus points are only awarded once per referral, and only if the referred user holds the pool&apos;s project token at the time they connect their wallet.
+                  </div>
                 </Section>
 
                 <Section id="points-decrease" title="How Points Can Decrease">
                   <p>
-                    Points are recalculated on every scrape cycle. Your points
-                    can decrease if:
+                    Points are recalculated on every scrape cycle. Your total can decrease if:
                   </p>
                   <ul className="list-disc list-inside ml-2 space-y-1">
                     <li>
-                      You sell the pool&apos;s project token — losing your 1.5x
-                      holder boost
+                      You sell project tokens — your <strong className="text-yellow-400">holder boost</strong> drops proportionally (or to 1.0x if you sell everything)
                     </li>
                     <li>
-                      A referred friend sells tokens — their tier drops,
-                      reducing your referral multiplier
+                      Another participant buys more tokens and becomes the new top holder — everyone else&apos;s holder boost decreases relative to the new top
+                    </li>
+                    <li>
+                      A referred friend sells tokens — their balance no longer contributes to your <strong className="text-purple-400">referral boost</strong>, which recalculates downward
+                    </li>
+                    <li>
+                      A competing referrer gains more referred holdings than you — your referral boost decreases relative to the new pool maximum
                     </li>
                   </ul>
                   <p>
-                    Base view counts from posts are permanent — they can only
-                    go up as posts accumulate more views.
+                    Base post scores (views, likes, reposts, reactions) are cumulative and can only increase as posts accumulate more engagement.
+                    Only the boost multipliers fluctuate between cycles.
                   </p>
                 </Section>
               </div>
@@ -519,6 +533,15 @@ Total Points = (xPoints + telegramPoints)
                     <li>Connect your TON wallet</li>
                     <li>Go to <Link href="/create-pool" className="text-[#0088CC] underline">Create a Pool</Link></li>
                     <li>Enter your project details (name, token symbol, jetton master address, X profile link, and Telegram channel link)</li>
+                    <li>
+                      Choose your <strong className="text-white">Campaign Type</strong>:
+                      <ul className="list-disc list-inside ml-4 mt-1 space-y-1 text-white/50">
+                        <li><strong className="text-white/70">X + Telegram</strong> — both platforms count, 50/50 split</li>
+                        <li><strong className="text-white/70">X Only</strong> — only X posts are scored</li>
+                        <li><strong className="text-white/70">Telegram Only</strong> — only Telegram posts are scored</li>
+                      </ul>
+                    </li>
+                    <li>Optionally link a specific post to promote (e.g. an announcement tweet or Telegram channel post)</li>
                     <li>Configure pool: duration, total reward, reward slots</li>
                     <li>Pay the access fee (TON or $mGRAM) to the platform treasury</li>
                     <li>Deposit your reward tokens to the escrow contract</li>
