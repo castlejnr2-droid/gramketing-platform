@@ -41,13 +41,16 @@ interface LeaderboardEntry {
   rank: number;
   userId: string;
   walletAddress: string;
-  xHandle?: string;
+  username?: string | null;
+  xHandle?: string | null;
+  telegramHandle?: string | null;
   totalPoints: number;
   xPoints: number;
   telegramPoints: number;
   referralBonusPoints: number;
   referralMultiplier: number;
   holderBoost: number;
+  totalParticipants: number;
 }
 
 interface MyStats {

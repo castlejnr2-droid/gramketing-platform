@@ -64,6 +64,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       account: {
         walletAddress: user.walletAddress,
+        username: user.username,
         xHandle: user.xHandle,
         telegramHandle: user.telegramHandle,
       },

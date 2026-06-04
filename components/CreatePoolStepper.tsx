@@ -32,6 +32,7 @@ interface PriceData {
 }
 
 type FeeCurrency = 'TON' | 'MGRAM';
+type CampaignType = 'both' | 'x' | 'telegram';
 
 const DURATIONS = [
   { days: 7, label: '1 Week' },
@@ -74,6 +75,9 @@ export function CreatePoolStepper() {
   const [telegramUrl, setTelegramUrl] = useState('');
 
   // Step 2
+  const [campaignType, setCampaignType] = useState<CampaignType>('both');
+  const [xPostLink, setXPostLink] = useState('');
+  const [telegramPostLink, setTelegramPostLink] = useState('');
   const [durationDays, setDurationDays] = useState(7);
   const [totalReward, setTotalReward] = useState('');
   const [rewardSlots, setRewardSlots] = useState(10);
@@ -117,6 +121,10 @@ export function CreatePoolStepper() {
     if (!totalReward || isNaN(parseFloat(totalReward)) || parseFloat(totalReward) <= 0)
       return 'Enter a valid reward amount';
     if (rewardSlots < 3) return 'Minimum 3 reward slots';
+    if ((campaignType === 'x' || campaignType === 'both') && xPostLink && !xPostLink.startsWith('https://x.com/') && !xPostLink.startsWith('https://twitter.com/'))
+      return 'X post link must be an x.com or twitter.com URL';
+    if ((campaignType === 'telegram' || campaignType === 'both') && telegramPostLink && !telegramPostLink.startsWith('https://t.me/'))
+      return 'Telegram post link must start with https://t.me/';
     return null;
   };
 
@@ -181,6 +189,9 @@ export function CreatePoolStepper() {
           tier3Threshold: parseInt(tier3Threshold) || 0,
           accessFeePaidIn: feeCurrency,
           accessFeeTxHash: paymentTxHash,
+          campaignType,
+          xPostLink: xPostLink || undefined,
+          telegramPostLink: telegramPostLink || undefined,
         }),
       });
 
@@ -412,6 +423,61 @@ export function CreatePoolStepper() {
                 pool proportionally.
               </p>
             </div>
+
+            {/* Campaign Type */}
+            <div>
+              <label className="block text-sm text-white/60 mb-2">Campaign Type *</label>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  { value: 'both', label: 'X + Telegram', desc: '50/50 split' },
+                  { value: 'x', label: 'X Only', desc: '100% X score' },
+                  { value: 'telegram', label: 'Telegram Only', desc: '100% Telegram' },
+                ] as { value: CampaignType; label: string; desc: string }[]).map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setCampaignType(opt.value)}
+                    className={`py-3 px-2 rounded-xl text-sm font-medium border transition-all text-center ${
+                      campaignType === opt.value
+                        ? 'bg-[#0088CC] border-[#0088CC] text-white'
+                        : 'bg-white/[0.03] border-white/10 text-white/60 hover:border-[#0088CC]/40'
+                    }`}
+                  >
+                    <p>{opt.label}</p>
+                    <p className="text-[10px] mt-0.5 opacity-70">{opt.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Post Links */}
+            {(campaignType === 'x' || campaignType === 'both') && (
+              <div>
+                <label className="block text-sm text-white/60 mb-1.5">
+                  X Post to Promote (optional)
+                </label>
+                <input
+                  value={xPostLink}
+                  onChange={(e) => setXPostLink(e.target.value)}
+                  placeholder="https://x.com/yourproject/status/..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#0088CC]/50"
+                />
+                <p className="mt-1 text-xs text-white/30">Marketers will be directed to share this post.</p>
+              </div>
+            )}
+            {(campaignType === 'telegram' || campaignType === 'both') && (
+              <div>
+                <label className="block text-sm text-white/60 mb-1.5">
+                  Telegram Post to Promote (optional)
+                </label>
+                <input
+                  value={telegramPostLink}
+                  onChange={(e) => setTelegramPostLink(e.target.value)}
+                  placeholder="https://t.me/yourproject/123"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#0088CC]/50"
+                />
+                <p className="mt-1 text-xs text-white/30">Marketers will be directed to share this post.</p>
+              </div>
+            )}
 
             {/* Referral Boost Tiers */}
             <div className="pt-2">

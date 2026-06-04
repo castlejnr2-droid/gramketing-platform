@@ -1,65 +1,58 @@
-// Holder boost multiplier when marketer holds the pool's project token
-export const HOLDER_BOOST = 1.5;
-
-// Referral holding tier thresholds (in raw token units — easily configurable)
-export const REFERRAL_TIER_1_THRESHOLD = 1_000n;   // small holding
-export const REFERRAL_TIER_2_THRESHOLD = 10_000n;  // medium holding
-export const REFERRAL_TIER_3_THRESHOLD = 100_000n; // large holding
-
-// Referral multipliers
-export const REFERRAL_TIER_1_MULTIPLIER = 1.2;
-export const REFERRAL_TIER_2_MULTIPLIER = 1.5;
-export const REFERRAL_TIER_3_MULTIPLIER = 2.0;
-
-// Bonus points when a referred friend connects wallet AND holds project token
-export const REFERRAL_BASE_BONUS = 500;
+// ── Per-post scoring ──────────────────────────────────────────────────────
 
 // Minimum views to qualify for X post points
 export const X_MINIMUM_VIEWS = 100;
 
-export function calculateXPoints(views: number, holdsToken: boolean): number {
+// Bonus points when a referred friend holds the project token
+export const REFERRAL_BASE_BONUS = 500;
+
+// X/Twitter: Views 80%, Likes 10%, Reposts 10%
+export function calculateXPoints(views: number, likes: number, reposts: number): number {
   if (views < X_MINIMUM_VIEWS) return 0;
-  const base = Math.floor(views / 10);
-  return holdsToken ? base * HOLDER_BOOST : base;
+  return (views * 0.8 + likes * 0.1 + reposts * 0.1) / 10;
 }
 
-export function calculateTelegramPoints(views: number, holdsToken: boolean): number {
-  const base = views * 2;
-  return holdsToken ? base * HOLDER_BOOST : base;
+// Telegram: Views 80%, Reactions 20%
+export function calculateTelegramPoints(views: number, reactions: number): number {
+  return (views * 0.8 + reactions * 0.2) * 2;
 }
 
-export function getReferralTierMultiplier(holding: bigint): number {
-  if (holding >= REFERRAL_TIER_3_THRESHOLD) return REFERRAL_TIER_3_MULTIPLIER;
-  if (holding >= REFERRAL_TIER_2_THRESHOLD) return REFERRAL_TIER_2_MULTIPLIER;
-  if (holding >= REFERRAL_TIER_1_THRESHOLD) return REFERRAL_TIER_1_MULTIPLIER;
-  return 1.0;
-}
+// ── Total score ───────────────────────────────────────────────────────────
 
-// Multiple referrals stack ADDITIVELY
-export function calculateReferralMultiplier(
-  referralBoosts: Array<{ boostMultiplier: number }>
-): number {
-  if (referralBoosts.length === 0) return 1.0;
-  // Stack additively: each boost adds its bonus above 1.0
-  const additiveBonus = referralBoosts.reduce(
-    (sum, r) => sum + (r.boostMultiplier - 1.0),
-    0
-  );
-  return 1.0 + additiveBonus;
-}
+export type CampaignType = 'both' | 'x' | 'telegram';
 
 export interface PointsInput {
   xPoints: number;
   telegramPoints: number;
-  holderBoost: number;        // 1.0 or 1.5
+  // holderBoost: 1.0–2.0, proportional to top token holder in pool
+  holderBoost: number;
+  // referralMultiplier: 1.0–2.0, proportional to top referrer's total referred holdings
   referralMultiplier: number;
   referralBonusPoints: number;
+  campaignType?: CampaignType; // defaults to 'both'
 }
 
 export function calculateTotalPoints(input: PointsInput): number {
-  const { xPoints, telegramPoints, holderBoost, referralMultiplier, referralBonusPoints } =
-    input;
-  return (xPoints + telegramPoints) * holderBoost * referralMultiplier + referralBonusPoints;
+  const {
+    xPoints,
+    telegramPoints,
+    holderBoost,
+    referralMultiplier,
+    referralBonusPoints,
+    campaignType = 'both',
+  } = input;
+
+  let contentScore: number;
+  if (campaignType === 'x') {
+    contentScore = xPoints;
+  } else if (campaignType === 'telegram') {
+    contentScore = telegramPoints;
+  } else {
+    // Both platforms: X 50%, Telegram 50%
+    contentScore = xPoints * 0.5 + telegramPoints * 0.5;
+  }
+
+  return contentScore * holderBoost * referralMultiplier + referralBonusPoints;
 }
 
 // ── Participant tiers ─────────────────────────────────────────────────────
@@ -71,9 +64,9 @@ export const MARKETER_THRESHOLD = 5000;
 export interface TierInfo {
   tier: ParticipantTier;
   label: string;
-  color: string;       // Tailwind text colour
-  bg: string;          // Tailwind bg colour
-  border: string;      // Tailwind border colour
+  color: string;
+  bg: string;
+  border: string;
   next?: { tier: ParticipantTier; pointsNeeded: number };
 }
 

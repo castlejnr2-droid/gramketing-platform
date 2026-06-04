@@ -2,33 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet, isAdmin } from '@/lib/auth';
 import axios from 'axios';
-import {
-  calculateXPoints,
-  calculateTelegramPoints,
-} from '@/lib/points';
+import { calculateXPoints, calculateTelegramPoints } from '@/lib/points';
 
-async function fetchXPostViews(postUrl: string): Promise<number> {
+async function fetchXPostMetrics(postUrl: string): Promise<{ views: number; likes: number; reposts: number }> {
   const match = postUrl.match(/status\/(\d+)/);
-  if (!match) return 0;
+  if (!match) return { views: 0, likes: 0, reposts: 0 };
   const tweetId = match[1];
   try {
     const res = await axios.get(
       `https://api.twitter.com/2/tweets/${tweetId}?tweet.fields=public_metrics`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
     );
-    return res.data?.data?.public_metrics?.impression_count ?? 0;
+    const m = res.data?.data?.public_metrics ?? {};
+    return {
+      views: m.impression_count ?? 0,
+      likes: m.like_count ?? 0,
+      reposts: m.retweet_count ?? 0,
+    };
   } catch {
-    return 0;
+    return { views: 0, likes: 0, reposts: 0 };
   }
-}
-
-async function fetchTelegramPostViews(postUrl: string): Promise<number> {
-  // TODO: implement Telegram view fetch
-  return 0;
 }
 
 export async function POST(req: NextRequest) {
@@ -58,34 +51,30 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Check if user holds token
-      let holdsToken = false;
-      try {
-        const res = await axios.get(
-          `${process.env.TON_ENDPOINT}/v2/jetton/${submission.pool.jettonMasterAddress}/wallets`,
-          { params: { owner_address: submission.user.walletAddress, limit: 1 } }
-        );
-        const wallets = res.data?.jetton_wallets ?? [];
-        holdsToken = wallets.length > 0 && BigInt(wallets[0].balance ?? '0') > BigInt(0);
-      } catch {
-        // ignore
-      }
-
       let views = 0;
+      let likes = 0;
+      let reposts = 0;
+      let reactions = 0;
       let points = 0;
 
       if (submission.platform === 'X') {
-        views = await fetchXPostViews(submission.postUrl);
-        points = calculateXPoints(views, holdsToken);
+        const metrics = await fetchXPostMetrics(submission.postUrl);
+        views = metrics.views;
+        likes = metrics.likes;
+        reposts = metrics.reposts;
+        points = calculateXPoints(views, likes, reposts);
       } else {
-        views = await fetchTelegramPostViews(submission.postUrl);
-        points = calculateTelegramPoints(views, holdsToken);
+        // Telegram: views only for now
+        points = calculateTelegramPoints(views, reactions);
       }
 
       const updated = await prisma.submission.update({
         where: { id: submissionId },
         data: {
           currentViews: views,
+          likes,
+          reposts,
+          reactions,
           currentPoints: points,
           lastScrapedAt: new Date(),
           status: 'VERIFIED',

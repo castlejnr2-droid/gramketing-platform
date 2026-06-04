@@ -17,6 +17,7 @@ export async function GET(
           select: {
             id: true,
             walletAddress: true,
+            username: true,
             xHandle: true,
             telegramHandle: true,
             createdAt: true,
@@ -32,6 +33,7 @@ export async function GET(
       rank: index + 1,
       userId: p.userId,
       walletAddress: p.user.walletAddress,
+      username: p.user.username,
       xHandle: p.user.xHandle,
       telegramHandle: p.user.telegramHandle,
       joinedAt: p.joinedAt,

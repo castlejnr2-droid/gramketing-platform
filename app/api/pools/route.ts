@@ -67,6 +67,11 @@ export async function POST(req: NextRequest) {
       tier3Threshold,
       accessFeePaidIn,
       accessFeeTxHash,
+      campaignType,
+      xPostLink,
+      telegramPostLink,
+      xConfig,
+      telegramConfig,
     } = body;
 
     if (!projectName || !tokenSymbol || !jettonMasterAddress || !totalReward || !durationDays || !rewardSlots) {
@@ -125,6 +130,11 @@ export async function POST(req: NextRequest) {
         tier3Threshold: BigInt(tier3Threshold ?? 0),
         accessFeePaidIn: accessFeePaidIn ?? 'TON',
         accessFeeTxHash: accessFeeTxHash || null,
+        campaignType: campaignType ?? 'both',
+        xPostLink: xPostLink || null,
+        telegramPostLink: telegramPostLink || null,
+        xConfig: xConfig || null,
+        telegramConfig: telegramConfig || null,
         startDate: now,
         endDate,
         status: 'ACTIVE',

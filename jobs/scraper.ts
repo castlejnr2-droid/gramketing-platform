@@ -5,89 +5,71 @@ import {
   calculateXPoints,
   calculateTelegramPoints,
   calculateTotalPoints,
-  getReferralTierMultiplier,
-  calculateReferralMultiplier,
   REFERRAL_BASE_BONUS,
-  HOLDER_BOOST,
+  CampaignType,
 } from '../lib/points';
 
 const prisma = new PrismaClient();
 
 // ── X / Twitter scraping ──────────────────────────────────────────────────
-async function fetchXPostViews(postUrl: string): Promise<number> {
-  // Extract tweet ID from URL: https://x.com/user/status/123456789
-  const match = postUrl.match(/status\/(\d+)/);
-  if (!match) return 0;
-  const tweetId = match[1];
+interface XMetrics {
+  views: number;
+  likes: number;
+  reposts: number;
+}
 
+async function fetchXPostMetrics(postUrl: string): Promise<XMetrics> {
+  const match = postUrl.match(/status\/(\d+)/);
+  if (!match) return { views: 0, likes: 0, reposts: 0 };
+  const tweetId = match[1];
   try {
     const res = await axios.get(
       `https://api.twitter.com/2/tweets/${tweetId}?tweet.fields=public_metrics`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
     );
-    return res.data?.data?.public_metrics?.impression_count ?? 0;
-  } catch (err) {
-    console.error(`Failed to fetch tweet ${tweetId}:`, err);
-    return 0;
+    const m = res.data?.data?.public_metrics ?? {};
+    return {
+      views: m.impression_count ?? 0,
+      likes: m.like_count ?? 0,
+      reposts: m.retweet_count ?? 0,
+    };
+  } catch {
+    return { views: 0, likes: 0, reposts: 0 };
   }
 }
 
 // ── Telegram scraping ─────────────────────────────────────────────────────
-async function fetchTelegramPostViews(postUrl: string): Promise<number> {
-  // URL format: https://t.me/channelname/123
-  const match = postUrl.match(/t\.me\/([^/]+)\/(\d+)/);
-  if (!match) return 0;
-  const [, chat, msgId] = match;
+interface TelegramMetrics {
+  views: number;
+  reactions: number;
+}
 
+async function fetchTelegramPostMetrics(postUrl: string): Promise<TelegramMetrics> {
+  const match = postUrl.match(/t\.me\/([^/]+)\/(\d+)/);
+  if (!match) return { views: 0, reactions: 0 };
+  const [, chat, msgId] = match;
   try {
-    // Telegram Bot API: getMessages via forwardMessage is not suitable for view counts.
-    // The proper approach is to use the MTProto API (e.g., via gramjs/telethon) to call
-    // messages.getHistory or channels.getMessages for the specific post.
-    // TODO: implement full Telegram channel message view fetching using MTProto API.
-    // For now, attempt a best-effort approach via the Bot API if the bot is an admin:
     const res = await axios.get(
       `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getChatHistory`,
-      {
-        params: {
-          chat_id: `@${chat}`,
-          from_message_id: parseInt(msgId, 10),
-          limit: 1,
-        },
-      }
+      { params: { chat_id: `@${chat}`, from_message_id: parseInt(msgId, 10), limit: 1 } }
     );
     const messages = res.data?.result ?? [];
-    if (messages.length > 0 && messages[0].views !== undefined) {
-      return messages[0].views;
+    if (messages.length > 0) {
+      return {
+        views: messages[0].views ?? 0,
+        reactions: (messages[0].reactions?.results ?? []).reduce(
+          (sum: number, r: { count: number }) => sum + (r.count ?? 0),
+          0
+        ),
+      };
     }
-    return 0;
+    return { views: 0, reactions: 0 };
   } catch {
-    // Graceful degradation: return 0 if Telegram API is unavailable or bot lacks permissions
-    return 0;
+    return { views: 0, reactions: 0 };
   }
 }
 
-// ── Holder balance check ──────────────────────────────────────────────────
-async function checkHoldsToken(
-  walletAddress: string,
-  jettonMasterAddress: string
-): Promise<boolean> {
-  // Query TON RPC to check if walletAddress holds any of jettonMasterAddress
-  try {
-    const res = await axios.get(
-      `${process.env.TON_ENDPOINT}/v2/jetton/${jettonMasterAddress}/wallets`,
-      { params: { owner_address: walletAddress, limit: 1 } }
-    );
-    const wallets = res.data?.jetton_wallets ?? [];
-    return wallets.length > 0 && BigInt(wallets[0].balance ?? '0') > 0n;
-  } catch {
-    return false;
-  }
-}
-
+// ── Token balance check ───────────────────────────────────────────────────
 async function checkTokenBalance(
   walletAddress: string,
   jettonMasterAddress: string
@@ -117,6 +99,7 @@ async function saveLeaderboardSnapshot(poolId: string) {
     rank: i + 1,
     userId: p.userId,
     walletAddress: p.user.walletAddress,
+    username: p.user.username,
     xHandle: p.user.xHandle,
     totalPoints: p.totalPoints,
     xPoints: p.xPoints,
@@ -132,21 +115,16 @@ async function saveLeaderboardSnapshot(poolId: string) {
 // ── Main scrape function ──────────────────────────────────────────────────
 async function scrapeAllActivePools() {
   console.log(`[${new Date().toISOString()}] Starting scrape cycle...`);
-
   const now = new Date();
 
-  // End pools that have expired
+  // End expired pools
   const expiredPools = await prisma.pool.findMany({
     where: { status: 'ACTIVE', endDate: { lte: now } },
   });
-
   for (const pool of expiredPools) {
     console.log(`Pool ${pool.id} expired — marking ENDED`);
     await saveLeaderboardSnapshot(pool.id);
-    await prisma.pool.update({
-      where: { id: pool.id },
-      data: { status: 'ENDED' },
-    });
+    await prisma.pool.update({ where: { id: pool.id }, data: { status: 'ENDED' } });
   }
 
   // Scrape active pools
@@ -160,50 +138,114 @@ async function scrapeAllActivePools() {
 
   for (const pool of activePools) {
     console.log(`Scraping pool ${pool.id} (${pool.tokenSymbol})`);
+    const campaignType = (pool.campaignType as CampaignType) ?? 'both';
 
-    // Group submissions by participant
+    // ── Phase 1: Fetch all participant token balances ──────────────────
+    const balanceMap = new Map<string, bigint>();
+    for (const participant of pool.participants) {
+      const balance = await checkTokenBalance(
+        participant.user.walletAddress,
+        pool.jettonMasterAddress
+      );
+      balanceMap.set(participant.userId, balance);
+    }
+
+    // ── Phase 2: Pool-wide holder boost (1.0x – 2.0x proportional) ────
+    const maxBalance = pool.participants.reduce((max, p) => {
+      const b = balanceMap.get(p.userId) ?? 0n;
+      return b > max ? b : max;
+    }, 0n);
+
+    const holderBoostMap = new Map<string, number>();
+    for (const participant of pool.participants) {
+      const balance = balanceMap.get(participant.userId) ?? 0n;
+      const boost =
+        maxBalance === 0n
+          ? 1.0
+          : 1.0 + Number(balance) / Number(maxBalance);
+      holderBoostMap.set(participant.userId, boost);
+    }
+
+    // ── Phase 3: Update referral holdings & tally referred totals ──────
+    const referredTotalMap = new Map<string, bigint>();
+    for (const participant of pool.participants) {
+      const referralBoosts = await prisma.referralBoost.findMany({
+        where: { referrerId: participant.userId, poolId: pool.id },
+        include: { referred: true },
+      });
+
+      let referredTotal = 0n;
+      for (const boost of referralBoosts) {
+        const holding = await checkTokenBalance(
+          boost.referred.walletAddress,
+          pool.jettonMasterAddress
+        );
+        await prisma.referralBoost.update({
+          where: { id: boost.id },
+          data: { referredHolding: holding, updatedAt: now },
+        });
+        if (holding > 0n) referredTotal += holding;
+      }
+      referredTotalMap.set(participant.userId, referredTotal);
+    }
+
+    // ── Phase 4: Pool-wide referral boost (1.0x – 2.0x proportional) ──
+    const maxReferredTotal = [...referredTotalMap.values()].reduce(
+      (max, v) => (v > max ? v : max),
+      0n
+    );
+
+    const referralBoostMap = new Map<string, number>();
+    for (const participant of pool.participants) {
+      const total = referredTotalMap.get(participant.userId) ?? 0n;
+      const boost =
+        maxReferredTotal === 0n
+          ? 1.0
+          : 1.0 + Number(total) / Number(maxReferredTotal);
+      referralBoostMap.set(participant.userId, boost);
+    }
+
+    // ── Phase 5: Scrape submissions & compute points ───────────────────
     const submissionsByUser = new Map<string, typeof pool.submissions>();
     for (const sub of pool.submissions) {
-      if (!submissionsByUser.has(sub.userId))
-        submissionsByUser.set(sub.userId, []);
+      if (!submissionsByUser.has(sub.userId)) submissionsByUser.set(sub.userId, []);
       submissionsByUser.get(sub.userId)!.push(sub);
     }
 
     for (const participant of pool.participants) {
       const userId = participant.userId;
-      const wallet = participant.user.walletAddress;
+      const holderBoost = holderBoostMap.get(userId) ?? 1.0;
+      const referralMultiplier = referralBoostMap.get(userId) ?? 1.0;
 
-      // Check holder boost
-      const holdsToken = await checkHoldsToken(wallet, pool.jettonMasterAddress);
-      const holderBoost = holdsToken ? HOLDER_BOOST : 1.0;
-
-      // Tally points from submissions
       let xPoints = 0;
       let telegramPoints = 0;
 
       const subs = submissionsByUser.get(userId) ?? [];
       for (const sub of subs) {
         if (sub.platform === 'X') {
-          const views = await fetchXPostViews(sub.postUrl);
-          const pts = calculateXPoints(views, holdsToken);
+          const { views, likes, reposts } = await fetchXPostMetrics(sub.postUrl);
+          const pts = calculateXPoints(views, likes, reposts);
           xPoints += pts;
           await prisma.submission.update({
             where: { id: sub.id },
             data: {
               currentViews: views,
+              likes,
+              reposts,
               currentPoints: pts,
               lastScrapedAt: now,
               status: 'VERIFIED',
             },
           });
         } else {
-          const views = await fetchTelegramPostViews(sub.postUrl);
-          const pts = calculateTelegramPoints(views, holdsToken);
+          const { views, reactions } = await fetchTelegramPostMetrics(sub.postUrl);
+          const pts = calculateTelegramPoints(views, reactions);
           telegramPoints += pts;
           await prisma.submission.update({
             where: { id: sub.id },
             data: {
               currentViews: views,
+              reactions,
               currentPoints: pts,
               lastScrapedAt: now,
               status: 'VERIFIED',
@@ -212,54 +254,18 @@ async function scrapeAllActivePools() {
         }
       }
 
-      // Recalculate referral multipliers
-      const referralBoosts = await prisma.referralBoost.findMany({
-        where: { referrerId: userId, poolId: pool.id },
-      });
-
-      // Update referred wallet holdings
-      for (const boost of referralBoosts) {
-        const refUser = await prisma.user.findUnique({
-          where: { id: boost.referredUserId },
-        });
-        if (!refUser) continue;
-        const holding = await checkTokenBalance(
-          refUser.walletAddress,
-          pool.jettonMasterAddress
-        );
-        const multiplier = getReferralTierMultiplier(holding);
-        await prisma.referralBoost.update({
-          where: { id: boost.id },
-          data: {
-            referredHolding: holding,
-            boostMultiplier: multiplier,
-            updatedAt: now,
-          },
-        });
-      }
-
-      const freshBoosts = await prisma.referralBoost.findMany({
-        where: { referrerId: userId, poolId: pool.id },
-      });
-      const referralMultiplier = calculateReferralMultiplier(freshBoosts);
-
       const totalPoints = calculateTotalPoints({
         xPoints,
         telegramPoints,
         holderBoost,
         referralMultiplier,
         referralBonusPoints: participant.referralBonusPoints,
+        campaignType,
       });
 
       await prisma.poolParticipant.update({
         where: { id: participant.id },
-        data: {
-          xPoints,
-          telegramPoints,
-          holderBoost,
-          referralMultiplier,
-          totalPoints,
-        },
+        data: { xPoints, telegramPoints, holderBoost, referralMultiplier, totalPoints },
       });
     }
 
@@ -273,7 +279,6 @@ async function scrapeAllActivePools() {
 cron.schedule('*/30 * * * *', scrapeAllActivePools);
 console.log('Scraper started — running every 30 minutes');
 
-// Run immediately on start if invoked directly
 if (require.main === module) {
   scrapeAllActivePools().catch(console.error);
 }

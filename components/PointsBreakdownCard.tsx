@@ -12,8 +12,8 @@ interface PointsBreakdownCardProps {
   xPoints: number;
   telegramPoints: number;
   referralBonusPoints: number;
-  holderBoost: number;        // 1.0 or 1.5
-  referralMultiplier: number; // e.g. 1.4
+  holderBoost: number;        // 1.0–2.0 proportional
+  referralMultiplier: number; // 1.0–2.0 proportional
   totalPoints: number;
 }
 
@@ -110,16 +110,11 @@ export function PointsBreakdownCard({
         <div className="glass-inner flex items-center justify-between py-2.5 px-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#0088CC]" />
-            <span className="text-sm text-white/70">X Post Views</span>
+            <span className="text-sm text-white/70">X Posts</span>
           </div>
-          <div className="text-right">
-            <span className="text-sm font-semibold text-white">
-              {xPoints.toLocaleString(undefined, { maximumFractionDigits: 0 })} pts
-            </span>
-            {holderBoost > 1 && (
-              <p className="text-xs text-[#0088CC]">holder boost {holderBoost}x</p>
-            )}
-          </div>
+          <span className="text-sm font-semibold text-white">
+            {xPoints.toLocaleString(undefined, { maximumFractionDigits: 0 })} pts
+          </span>
         </div>
 
         {/* Telegram */}
@@ -128,43 +123,45 @@ export function PointsBreakdownCard({
             <span className="w-2.5 h-2.5 rounded-full bg-[#00BBFF]" />
             <span className="text-sm text-white/70">Telegram Posts</span>
           </div>
-          <div className="text-right">
-            <span className="text-sm font-semibold text-white">
-              {telegramPoints.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}{' '}
-              pts
-            </span>
-            {holderBoost > 1 && (
-              <p className="text-xs text-[#00BBFF]">holder boost {holderBoost}x</p>
-            )}
-          </div>
-        </div>
-
-        {/* Referral Bonus */}
-        <div className="glass-inner flex items-center justify-between py-2.5 px-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#9966FF]" />
-            <span className="text-sm text-white/70">Referral Bonus</span>
-          </div>
           <span className="text-sm font-semibold text-white">
-            +{referralBonusPoints.toLocaleString(undefined, {
-              maximumFractionDigits: 0,
-            })}{' '}
-            pts
+            {telegramPoints.toLocaleString(undefined, { maximumFractionDigits: 0 })} pts
           </span>
         </div>
 
-        {/* Referral Multiplier */}
+        {/* Holder Boost */}
+        <div className="glass-inner flex items-center justify-between py-2.5 px-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+            <span className="text-sm text-white/70">Holder Boost</span>
+          </div>
+          <span className="text-sm font-semibold text-yellow-400">
+            {holderBoost.toFixed(2)}x
+          </span>
+        </div>
+
+        {/* Referral Boost */}
         <div className="glass-inner flex items-center justify-between py-2.5 px-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-purple-400" />
-            <span className="text-sm text-white/70">Referral Multiplier</span>
+            <span className="text-sm text-white/70">Referral Boost</span>
           </div>
           <span className="text-sm font-semibold text-purple-400">
             {referralMultiplier.toFixed(2)}x
           </span>
         </div>
+
+        {/* Referral Bonus */}
+        {referralBonusPoints > 0 && (
+          <div className="glass-inner flex items-center justify-between py-2.5 px-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#9966FF]" />
+              <span className="text-sm text-white/70">Referral Bonus</span>
+            </div>
+            <span className="text-sm font-semibold text-white">
+              +{referralBonusPoints.toLocaleString(undefined, { maximumFractionDigits: 0 })} pts
+            </span>
+          </div>
+        )}
 
         {/* Divider + Total */}
         <div className="border-t border-white/10 pt-3 flex items-center justify-between">

@@ -32,6 +32,7 @@ enum FeeCurrency {
 model User {
   id                String            @id @default(cuid())
   walletAddress     String            @unique
+  username          String?
   xHandle           String?
   xAccessToken      String?
   telegramId        String?
@@ -72,6 +73,11 @@ model Pool {
   tier3Threshold       BigInt   @default(0)
   accessFeePaidIn      FeeCurrency
   accessFeeTxHash      String?
+  campaignType         String                @default("both")
+  xPostLink            String?
+  telegramPostLink     String?
+  xConfig              String?
+  telegramConfig       String?
   startDate            DateTime
   endDate              DateTime
   status               PoolStatus            @default(ACTIVE)
@@ -81,6 +87,7 @@ model Pool {
   leaderboardSnapshots LeaderboardSnapshot[]
   platformRevenue      PlatformRevenue[]
   referralBoosts       ReferralBoost[]
+  poolPosts            PoolPost[]
 }
 
 model PoolParticipant {
@@ -98,6 +105,7 @@ model PoolParticipant {
   referralMultiplier  Float    @default(1.0)
   holderBoost         Float    @default(1.0)
   joinedAt            DateTime @default(now())
+  poolPosts           PoolPost[]
 
   @@unique([poolId, userId])
 }
@@ -113,6 +121,9 @@ model Submission {
   submittedAt   DateTime         @default(now())
   lastScrapedAt DateTime?
   currentViews  Int              @default(0)
+  likes         Int              @default(0)
+  reposts       Int              @default(0)
+  reactions     Int              @default(0)
   currentPoints Float            @default(0)
   status        SubmissionStatus @default(PENDING)
   submittedDate String
@@ -151,6 +162,23 @@ model PlatformRevenue {
   usdValueAtTime Float
   txHash         String?
   createdAt      DateTime    @default(now())
+}
+
+model PoolPost {
+  id            String          @id @default(cuid())
+  poolId        String
+  pool          Pool            @relation(fields: [poolId], references: [id])
+  participantId String
+  participant   PoolParticipant @relation(fields: [participantId], references: [id])
+  platform      Platform
+  postLink      String
+  views         Int             @default(0)
+  likes         Int             @default(0)
+  reposts       Int             @default(0)
+  reactions     Int             @default(0)
+  points        Float           @default(0)
+  submittedAt   DateTime        @default(now())
+  lastScrapedAt DateTime?
 }
 
 model BannedMarketer {
