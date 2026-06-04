@@ -14,6 +14,7 @@ interface PoolCardProps {
   participantCount: number;
   rewardSlots: number;
   status: 'ACTIVE' | 'ENDED' | 'DISTRIBUTED';
+  linkTo?: string; // override destination (e.g. '/miniapp/pools/ID')
 }
 
 function formatCountdown(ms: number): string {
@@ -46,6 +47,7 @@ export function PoolCard({
   participantCount,
   rewardSlots,
   status,
+  linkTo,
 }: PoolCardProps) {
   const router = useRouter();
   const [countdown, setCountdown] = useState('');
@@ -73,7 +75,7 @@ export function PoolCard({
   return (
     <div
       className="pool-card p-6 cursor-pointer group"
-      onClick={() => router.push(`/pools/${id}`)}
+      onClick={() => router.push(linkTo ?? `/pools/${id}`)}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
