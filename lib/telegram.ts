@@ -34,9 +34,10 @@ async function scrapePublicPost(channel: string, messageId: number): Promise<Tel
     const viewsMatch = html.match(/class="tgme_widget_message_views"[^>]*>\s*([\d.,KkMm]+)/);
     const views = viewsMatch ? parseShortNumber(viewsMatch[1]) : 0;
 
-    // Reactions: one span per reaction type
+    // Reactions: <span class="tgme_reaction"><i ...><b>emoji</b></i>COUNT</span>
+    // The count is the text node between </i> and </span> inside each tgme_reaction span.
     let reactions = 0;
-    const reactionRe = /class="tgme_widget_message_reaction_count"[^>]*>\s*([\d.,KkMm]+)/g;
+    const reactionRe = /class="tgme_reaction"[\s\S]*?<\/i>([\d.,KkMm]+)/g;
     let reactionMatch: RegExpExecArray | null;
     while ((reactionMatch = reactionRe.exec(html)) !== null) {
       reactions += parseShortNumber(reactionMatch[1]);
