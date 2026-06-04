@@ -93,10 +93,13 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const [feeTxError, setFeeTxError] = useState<string | null>(null);
   const [paymentTxHash, setPaymentTxHash] = useState('');
 
-  // Step 4
+  // Step 4 — deposit
   const [createdPoolId, setCreatedPoolId] = useState('');
   const [contractAddress, setContractAddress] = useState('');
   const [depositDone, setDepositDone] = useState(false);
+  const [depositTxData, setDepositTxData] = useState<{ to: string; amount: string; payload: string; decimals: number } | null>(null);
+  const [depositTxLoading, setDepositTxLoading] = useState(false);
+  const [depositTxError, setDepositTxError] = useState<string | null>(null);
 
   // Deposit polling state
   const [pollStatus, setPollStatus] = useState<'idle' | 'polling' | 'confirmed' | 'timeout'>('idle');
@@ -144,6 +147,36 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
 
     return () => { cancelled = true; };
   }, [step, durationDays, feeCurrency]);
+
+  // Pre-fetch deposit transaction params as soon as the pool is created.
+  // Triggered by createdPoolId becoming non-empty so the Deposit button is
+  // ready the moment it appears — no latency on click.
+  useEffect(() => {
+    if (!createdPoolId) return;
+    let cancelled = false;
+    setDepositTxData(null);
+    setDepositTxError(null);
+    setDepositTxLoading(true);
+
+    fetch(`/api/deposit-tx?poolId=${createdPoolId}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d.error) {
+          setDepositTxError(d.error);
+        } else {
+          setDepositTxData(d);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDepositTxError('Could not build deposit transaction. Please retry.');
+      })
+      .finally(() => {
+        if (!cancelled) setDepositTxLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [createdPoolId]);
 
   const validate1 = () => {
     if (!projectName.trim()) return 'Project name is required';
@@ -285,35 +318,42 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   };
 
   const handleDepositTokens = async () => {
-    if (!wallet || !createdPoolId) return;
+    if (!wallet || !createdPoolId || !depositTxData) return;
     setLoading(true);
     setError(null);
     setPollStatus('idle');
     try {
-      // Fetch TonConnect transaction params from server (cell-building done server-side)
-      const res = await fetch(`/api/deposit-tx?poolId=${createdPoolId}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error ?? 'Failed to build deposit transaction');
-      }
-      const { to, amount, payload } = await res.json();
-
-      // Send the jetton transfer via the user's TonConnect wallet
+      // depositTxData was pre-fetched when createdPoolId was set.
+      // { to: creatorJettonWallet, amount: gasNanoTON, payload: base64BOC }
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
-        messages: [{ address: to, amount, payload }],
+        messages: [{
+          address: depositTxData.to,
+          amount: depositTxData.amount,
+          payload: depositTxData.payload,
+        }],
       });
 
       // Transaction sent — start polling for on-chain confirmation
       startDepositPolling(createdPoolId);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Deposit failed');
+      setError(e instanceof Error ? e.message : 'Deposit cancelled or failed');
       setPollStatus('idle');
     } finally {
       setLoading(false);
     }
+  };
+
+  const retryDepositTx = () => {
+    if (!createdPoolId) return;
+    setDepositTxData(null);
+    setDepositTxError(null);
+    setDepositTxLoading(true);
+    fetch(`/api/deposit-tx?poolId=${createdPoolId}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => d.error ? setDepositTxError(d.error) : setDepositTxData(d))
+      .catch(() => setDepositTxError('Could not build deposit transaction. Please retry.'))
+      .finally(() => setDepositTxLoading(false));
   };
 
   // Cleanup polling on unmount
@@ -813,15 +853,32 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
 
             {createdPoolId && pollStatus === 'idle' && (
               <>
+                {depositTxError && (
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      {depositTxError}
+                    </div>
+                    <button
+                      onClick={retryDepositTx}
+                      className="shrink-0 flex items-center gap-1 text-white/50 hover:text-white transition-colors"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Retry
+                    </button>
+                  </div>
+                )}
                 <button
                   onClick={handleDepositTokens}
-                  disabled={loading}
-                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40"
+                  disabled={loading || depositTxLoading || !depositTxData || !!depositTxError}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : null}
-                  Deposit {totalReward} {tokenSymbol}
+                  {(loading || depositTxLoading) && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {depositTxLoading
+                    ? 'Preparing transaction…'
+                    : depositTxError
+                    ? 'Transaction unavailable'
+                    : `Deposit ${parseFloat(totalReward).toLocaleString()} ${tokenSymbol}`}
                 </button>
                 <p className="text-xs text-white/30 text-center">
                   You&apos;ll need to approve a jetton transfer in your TON wallet.
