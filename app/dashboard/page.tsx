@@ -34,6 +34,8 @@ interface AccountInfo {
   walletAddress: string;
   username?: string;
   xHandle?: string;
+  xAccountId?: string | null;
+  xUnlinkedAt?: string | null;
   telegramChannelUrl?: string;
   telegramChatId?: string;
   telegramUnlinkedAt?: string | null;
@@ -94,6 +96,8 @@ export default function DashboardPage() {
   const [linkCodeError, setLinkCodeError] = useState<string | null>(null);
   const [unlinkingTg, setUnlinkingTg] = useState(false);
   const [unlinkTgError, setUnlinkTgError] = useState<string | null>(null);
+  const [unlinkingX, setUnlinkingX] = useState(false);
+  const [unlinkXError, setUnlinkXError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!wallet) {
@@ -180,6 +184,24 @@ export default function DashboardPage() {
       setLinkCodeError('Network error');
     } finally {
       setLinkCodeLoading(false);
+    }
+  };
+
+  const handleUnlinkX = async () => {
+    setUnlinkXError(null);
+    setUnlinkingX(true);
+    try {
+      const res = await fetch('/api/auth/unlink-x', { method: 'POST', credentials: 'include' });
+      const d = await res.json();
+      if (!res.ok) {
+        setUnlinkXError(d.error ?? 'Failed to unlink');
+      } else {
+        setAccount((prev) => prev ? { ...prev, xAccountId: null, xHandle: undefined, xUnlinkedAt: new Date().toISOString() } : prev);
+      }
+    } catch {
+      setUnlinkXError('Network error');
+    } finally {
+      setUnlinkingX(false);
     }
   };
 
@@ -476,19 +498,68 @@ export default function DashboardPage() {
               <label className="block text-sm font-medium text-white/70 mb-2">
                 X (Twitter) Account
               </label>
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/10">
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg className="w-4 h-4 text-white/50" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                  </svg>
-                </div>
+              {account?.xAccountId ? (
                 <div>
-                  <p className="text-sm font-medium text-white/60">X account verification coming soon</p>
-                  <p className="text-xs text-white/30 mt-1">
-                    OAuth verification is required to submit X posts and earn X points. This feature is under development.
-                  </p>
+                  <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+                    <div className="flex items-center gap-3">
+                      <svg className="w-5 h-5 text-green-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-green-400">X account linked</p>
+                        {account.xHandle && (
+                          <p className="text-xs text-white/40 mt-0.5">@{account.xHandle}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleUnlinkX}
+                      disabled={unlinkingX}
+                      className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-40"
+                    >
+                      {unlinkingX ? 'Unlinking…' : 'Unlink'}
+                    </button>
+                  </div>
+                  {unlinkXError && <p className="mt-1.5 text-xs text-red-400">{unlinkXError}</p>}
                 </div>
-              </div>
+              ) : (
+                <div>
+                  {(() => {
+                    const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+                    const unlinkedAt = account?.xUnlinkedAt ? new Date(account.xUnlinkedAt) : null;
+                    const nextAllowed = unlinkedAt ? new Date(unlinkedAt.getTime() + COOLDOWN_MS) : null;
+                    if (nextAllowed && nextAllowed > new Date()) {
+                      return (
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
+                          <span className="text-yellow-400 text-base mt-0.5">⏳</span>
+                          <div>
+                            <p className="text-sm font-medium text-yellow-400">Unlink cooldown active</p>
+                            <p className="text-xs text-white/40 mt-0.5">
+                              You can link a new X account on{' '}
+                              <span className="text-white/70">{nextAllowed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="flex items-start gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/10">
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <svg className="w-4 h-4 text-white/50" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white/60">X account verification coming soon</p>
+                          <p className="text-xs text-white/30 mt-1">
+                            OAuth verification is required to submit X posts and earn X points. This feature is under development.
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
             {/* Link Telegram Account */}

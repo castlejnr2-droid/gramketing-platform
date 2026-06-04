@@ -66,6 +66,8 @@ export async function GET(req: NextRequest) {
         walletAddress: user.walletAddress,
         username: user.username,
         xHandle: user.xHandle,
+        xAccountId: user.xAccountId,
+        xUnlinkedAt: user.xUnlinkedAt,
         telegramChannelUrl: user.telegramChannelUrl,
         telegramChatId: user.telegramChatId,
         telegramUnlinkedAt: user.telegramUnlinkedAt,

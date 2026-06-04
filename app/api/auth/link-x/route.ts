@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 
+const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 // GET: Redirect to Twitter OAuth 2.0 PKCE authorization URL
 // TODO: Implement full Twitter OAuth 2.0 PKCE flow
 // Steps:
@@ -46,8 +48,52 @@ export async function GET(req: NextRequest) {
   return NextResponse.redirect(url);
 }
 
-// POST: Update X handle manually (simplified approach)
-// Also handles OAuth callback exchange
+/**
+ * Internal helper — called at the point where OAuth has been verified and we
+ * have a confirmed xAccountId (Twitter numeric user ID) + xHandle + xAccessToken.
+ *
+ * Enforces:
+ *  1. 7-day re-link cooldown (xUnlinkedAt)
+ *  2. Uniqueness — rejects if xAccountId already belongs to another wallet
+ */
+export async function linkXAccount(
+  walletAddress: string,
+  xAccountId: string,
+  xHandle: string,
+  xAccessToken: string
+): Promise<{ error: string; status: number } | { success: true; xHandle: string }> {
+  const user = await prisma.user.findUnique({ where: { walletAddress } });
+  if (!user) return { error: 'User not found', status: 404 };
+
+  // Cooldown check
+  if (user.xUnlinkedAt) {
+    const nextAllowed = new Date(user.xUnlinkedAt.getTime() + COOLDOWN_MS);
+    if (nextAllowed > new Date()) {
+      return {
+        error: `You can only link a new X account once every 7 days. Try again on ${nextAllowed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.`,
+        status: 429,
+      };
+    }
+  }
+
+  // Uniqueness check — is this Twitter account already owned by another wallet?
+  const existing = await prisma.user.findUnique({ where: { xAccountId } });
+  if (existing && existing.id !== user.id) {
+    return {
+      error: 'This X account is already linked to another wallet. It must be unlinked from that account first.',
+      status: 409,
+    };
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { xAccountId, xHandle: xHandle.replace('@', ''), xAccessToken },
+  });
+
+  return { success: true, xHandle: updated.xHandle! };
+}
+
+// POST: handles OAuth callback exchange (when implemented) and manual handle linking
 export async function POST(req: NextRequest) {
   try {
     const walletAddress = await getAuthWallet(req);
@@ -57,21 +103,28 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Simple handle update (manual linking)
-    if (body.xHandle) {
-      const user = await prisma.user.update({
-        where: { walletAddress },
-        data: { xHandle: body.xHandle.replace('@', '') },
-      });
-      return NextResponse.json({ success: true, xHandle: user.xHandle });
+    // OAuth code exchange — full linking with uniqueness + cooldown enforced
+    // body: { xAccountId, xHandle, xAccessToken } (set by the callback route after token exchange)
+    if (body.xAccountId) {
+      const result = await linkXAccount(
+        walletAddress,
+        body.xAccountId,
+        body.xHandle ?? '',
+        body.xAccessToken ?? ''
+      );
+      if ('error' in result) {
+        return NextResponse.json({ error: result.error }, { status: result.status });
+      }
+      return NextResponse.json(result);
     }
 
     // TODO: OAuth code exchange
-    // If body.code is present, exchange for access token:
+    // If body.code is present, exchange for access token then call linkXAccount:
     // POST https://api.twitter.com/2/oauth2/token
     // body: grant_type=authorization_code&code=CODE&redirect_uri=REDIRECT_URI
     //       &code_verifier=CODE_VERIFIER&client_id=CLIENT_ID
-    // Save xAccessToken to user record
+    // Extract xAccountId + xHandle from the /2/users/me response, then:
+    //   await linkXAccount(walletAddress, xAccountId, xHandle, accessToken)
     if (body.code) {
       return NextResponse.json(
         { error: 'OAuth code exchange not yet implemented' },
@@ -79,7 +132,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ error: 'Missing xHandle or code' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing xAccountId or code' }, { status: 400 });
   } catch (err) {
     console.error('Link X error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
