@@ -73,10 +73,11 @@ export function Footer() {
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-widest text-white/30">Resources</p>
             {[
-              { label: 'Docs',    href: '/docs' },
-              { label: 'Roadmap', href: '/roadmap' },
-              { label: 'API',     href: '/docs#api' },
-              { label: 'Support', href: 'https://t.me/Gramketing' },
+              { label: 'Docs',       href: '/docs' },
+              { label: 'Roadmap',    href: '/roadmap' },
+              { label: 'Whitepaper', href: '/whitepaper' },
+              { label: 'API',        href: '/docs#api' },
+              { label: 'Support',    href: 'https://t.me/Gramketing' },
             ].map(l => (
               <Link key={l.label} href={l.href}
                 className="block text-sm text-white/50 transition-colors hover:text-[#00d4ff]">
