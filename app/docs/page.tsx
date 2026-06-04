@@ -29,6 +29,7 @@ const sections = [
   { id: 'submit-posts', label: 'Submitting Posts', group: 'For Contributors & Promoters' },
   { id: 'daily-limit', label: 'Daily Submission Limits', group: 'For Contributors & Promoters' },
   { id: 'points-calc', label: 'Points Calculation', group: 'For Contributors & Promoters' },
+  { id: 'scoring-system', label: 'Scoring System', group: 'For Contributors & Promoters' },
   { id: 'holder-boost', label: 'Holder Boost', group: 'For Contributors & Promoters' },
   { id: 'referral', label: 'Referral System', group: 'For Contributors & Promoters' },
   { id: 'referral-tiers', label: 'Referral Tiers', group: 'For Contributors & Promoters' },
@@ -56,6 +57,84 @@ function Section({
       <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
       <div className="text-white/60 text-sm leading-relaxed space-y-3">
         {children}
+      </div>
+    </div>
+  );
+}
+
+interface ScoringMetric {
+  name: string;
+  platformPct: number;
+  combinedPct: number;
+}
+
+function ScoringTable({
+  platform,
+  emoji,
+  color,
+  metrics,
+  totalCombined,
+}: {
+  platform: string;
+  emoji: string;
+  color: 'blue' | 'green';
+  metrics: ScoringMetric[];
+  totalCombined: number;
+}) {
+  const accent = color === 'blue' ? '#0088CC' : '#22c55e';
+  const barBg = color === 'blue' ? 'rgba(0,136,204,0.15)' : 'rgba(34,197,94,0.15)';
+  const barFill = color === 'blue' ? '#0088CC' : '#22c55e';
+  const summaryBg = color === 'blue' ? 'rgba(0,136,204,0.08)' : 'rgba(34,197,94,0.08)';
+  const summaryBorder = color === 'blue' ? 'rgba(0,136,204,0.25)' : 'rgba(34,197,94,0.25)';
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-lg">{emoji}</span>
+        <span className="text-sm font-bold tracking-wider" style={{ color: accent }}>
+          {platform.toUpperCase()}
+        </span>
+      </div>
+
+      {/* Header */}
+      <div className="grid grid-cols-[1fr_2fr_72px_80px] gap-2 px-3 pb-1.5 text-xs font-medium text-white/30 uppercase tracking-wider">
+        <span>Metric</span>
+        <span></span>
+        <span className="text-right">Platform</span>
+        <span className="text-right">Combined</span>
+      </div>
+
+      {/* Metric rows */}
+      <div className="space-y-1.5">
+        {metrics.map((m) => (
+          <div
+            key={m.name}
+            className="grid grid-cols-[1fr_2fr_72px_80px] gap-2 items-center px-3 py-2.5 rounded-lg border border-white/8 bg-white/[0.03]"
+          >
+            <span className="text-sm text-white/70">{m.name}</span>
+            <div className="h-2 rounded-full overflow-hidden" style={{ background: barBg }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${m.platformPct}%`, background: barFill }}
+              />
+            </div>
+            <span className="text-right text-sm text-white/50">{m.platformPct}%</span>
+            <span className="text-right text-sm font-bold" style={{ color: accent }}>
+              {m.combinedPct}%
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Summary row */}
+      <div
+        className="mt-2 flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold"
+        style={{ background: summaryBg, border: `1px solid ${summaryBorder}` }}
+      >
+        <span style={{ color: accent }}>
+          {platform} total
+        </span>
+        <span style={{ color: accent }}>{totalCombined}% of final score</span>
       </div>
     </div>
   );
@@ -318,6 +397,42 @@ Total Points = (xPoints + telegramPoints)
                   <p>
                     Example: 10,000 views on X with holder boost = 1,000 × 1.5 = 1,500 pts
                   </p>
+                </Section>
+
+                <Section id="scoring-system" title="Scoring System">
+                  <p className="mb-5">
+                    Points are weighted differently per platform. When both platforms are active in a pool,
+                    each contributes 50% to your final score. The table below shows how each metric
+                    is weighted within its platform, and the equivalent combined weight.
+                  </p>
+
+                  <ScoringTable
+                    platform="X / Twitter"
+                    emoji="🐦"
+                    color="blue"
+                    metrics={[
+                      { name: 'Views', platformPct: 80, combinedPct: 40 },
+                      { name: 'Likes', platformPct: 10, combinedPct: 5 },
+                      { name: 'Reposts', platformPct: 10, combinedPct: 5 },
+                    ]}
+                    totalCombined={50}
+                  />
+
+                  <ScoringTable
+                    platform="Telegram"
+                    emoji="✈️"
+                    color="green"
+                    metrics={[
+                      { name: 'Views', platformPct: 80, combinedPct: 40 },
+                      { name: 'Reactions', platformPct: 20, combinedPct: 10 },
+                    ]}
+                    totalCombined={50}
+                  />
+
+                  <div className="mt-2 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/8 text-xs text-white/40 leading-relaxed">
+                    Single platform campaigns use only that platform&apos;s weights at 100%.
+                    Combined weights apply only when both are selected.
+                  </div>
                 </Section>
 
                 <Section id="holder-boost" title="Holder Boost (1.5x)">
