@@ -560,24 +560,9 @@ export default function DashboardPage() {
                 Telegram Channel
               </label>
 
-              {/* Setup steps */}
-              <div className="mb-3 p-4 rounded-xl bg-[#0088CC]/5 border border-[#0088CC]/15 space-y-2.5">
-                <p className="text-xs font-semibold text-[#0088CC] uppercase tracking-wider mb-1">How to connect</p>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-[#0088CC]/20 text-[#0088CC] text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                  <p className="text-xs text-white/60">
-                    Add <span className="text-white font-semibold">@GramketingBot</span> as a member to your Telegram channel (not admin — a regular member is enough)
-                  </p>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-[#0088CC]/20 text-[#0088CC] text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                  <p className="text-xs text-white/60">Enter your channel URL below</p>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-[#0088CC]/20 text-[#0088CC] text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                  <p className="text-xs text-white/60">Click Save</p>
-                </div>
-              </div>
+              <p className="mb-3 text-xs text-white/50">
+                Your channel must be public. Enter your channel URL below.
+              </p>
 
               <div className="flex gap-3">
                 <input
@@ -605,9 +590,8 @@ export default function DashboardPage() {
                 <p className="mt-1.5 text-xs text-green-400">✓ Channel: {account.telegramChannelUrl}</p>
               )}
 
-              {/* Privacy note */}
               <p className="mt-3 text-xs text-white/30 leading-relaxed">
-                The bot only reads post views and reactions. It cannot post, delete, or manage your channel.
+                Only public channels are supported. Views and reactions are read from the public post page.
               </p>
             </div>
 
