@@ -61,7 +61,25 @@ export async function POST(req: NextRequest) {
     const pool = await prisma.pool.findUnique({ where: { id: poolId } });
     if (!pool) return NextResponse.json({ error: 'Pool not found' }, { status: 404 });
     if (pool.status !== 'ACTIVE') {
-      return NextResponse.json({ error: 'Pool is not active' }, { status: 400 });
+      return NextResponse.json(
+        { error: `This pool has ${pool.status === 'ENDED' ? 'ended' : 'already distributed rewards'} — no more submissions accepted.` },
+        { status: 400 }
+      );
+    }
+
+    // ── Campaign type gate ─────────────────────────────────────────────────────
+    const campaignType = pool.campaignType ?? 'both';
+    if (campaignType === 'x' && platform === 'TELEGRAM') {
+      return NextResponse.json(
+        { error: 'This pool only accepts X (Twitter) posts.' },
+        { status: 400 }
+      );
+    }
+    if (campaignType === 'telegram' && platform === 'X') {
+      return NextResponse.json(
+        { error: 'This pool only accepts Telegram posts.' },
+        { status: 400 }
+      );
     }
 
     const user = await prisma.user.findUniqueOrThrow({ where: { walletAddress } });
@@ -108,11 +126,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Daily submission limit
+    // Daily submission limit (2 total per day across both platforms)
     const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    todayStart.setUTCHours(0, 0, 0, 0);
     const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    todayEnd.setUTCHours(23, 59, 59, 999);
 
     const todayCount = await prisma.poolPost.count({
       where: {
@@ -122,7 +140,7 @@ export async function POST(req: NextRequest) {
     });
     if (todayCount >= MAX_DAILY_SUBMISSIONS) {
       return NextResponse.json(
-        { error: `Daily submission limit reached (${MAX_DAILY_SUBMISSIONS}/day). Come back tomorrow!` },
+        { error: `Daily submission limit reached (${MAX_DAILY_SUBMISSIONS}/day). Come back tomorrow at midnight UTC!` },
         { status: 429 }
       );
     }
@@ -155,7 +173,7 @@ export async function POST(req: NextRequest) {
     if (fetchedViews !== null && fetchedViews < MIN_VIEWS) {
       return NextResponse.json(
         {
-          error: `This post doesn't qualify yet. It needs at least ${MIN_VIEWS} views to be submitted. (Current: ${fetchedViews.toLocaleString()})`,
+          error: `This post doesn't qualify yet — it needs at least ${MIN_VIEWS} views. Current count: ${fetchedViews.toLocaleString()}. Try again once it grows!`,
         },
         { status: 422 }
       );

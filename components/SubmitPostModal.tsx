@@ -9,6 +9,7 @@ interface SubmitPostModalProps {
   onClose: () => void;
   dailySubmissionsUsed: number; // number of submissions today
   maxDailySubmissions?: number;
+  campaignType?: 'both' | 'x' | 'telegram'; // restricts available platforms
 }
 
 type Platform = 'X' | 'TELEGRAM';
@@ -31,8 +32,17 @@ export function SubmitPostModal({
   onClose,
   dailySubmissionsUsed,
   maxDailySubmissions = 2,
+  campaignType = 'both',
 }: SubmitPostModalProps) {
-  const [platform, setPlatform] = useState<Platform>('X');
+  const defaultPlatform: Platform = campaignType === 'telegram' ? 'TELEGRAM' : 'X';
+  const [platform, setPlatform] = useState<Platform>(defaultPlatform);
+
+  // When campaignType changes (or modal opens fresh), snap to the forced platform
+  const availablePlatforms: Platform[] = campaignType === 'x'
+    ? ['X']
+    : campaignType === 'telegram'
+    ? ['TELEGRAM']
+    : ['X', 'TELEGRAM'];
   const [url, setUrl] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -135,26 +145,28 @@ export function SubmitPostModal({
                   </div>
                 )}
 
-                {/* Platform selector */}
-                <div className="flex mb-5 rounded-xl overflow-hidden border border-white/10">
-                  {(['X', 'TELEGRAM'] as Platform[]).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => {
-                        setPlatform(p);
-                        setUrlError(null);
-                        setUrl('');
-                      }}
-                      className={`flex-1 py-2.5 text-sm font-medium transition-all duration-200 ${
-                        platform === p
-                          ? 'bg-[#0088CC] text-white'
-                          : 'bg-transparent text-white/50 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      {p === 'X' ? '𝕏  X (Twitter)' : ' Telegram'}
-                    </button>
-                  ))}
-                </div>
+                {/* Platform selector — hidden when only one platform is available */}
+                {availablePlatforms.length > 1 && (
+                  <div className="flex mb-5 rounded-xl overflow-hidden border border-white/10">
+                    {availablePlatforms.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => {
+                          setPlatform(p);
+                          setUrlError(null);
+                          setUrl('');
+                        }}
+                        className={`flex-1 py-2.5 text-sm font-medium transition-all duration-200 ${
+                          platform === p
+                            ? 'bg-[#0088CC] text-white'
+                            : 'bg-transparent text-white/50 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        {p === 'X' ? '𝕏  X (Twitter)' : ' Telegram'}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* URL input */}
                 <div className="mb-4">
@@ -167,8 +179,14 @@ export function SubmitPostModal({
                     type="url"
                     value={url}
                     onChange={(e) => {
-                      setUrl(e.target.value);
+                      const val = e.target.value;
+                      setUrl(val);
                       setUrlError(null);
+                      // Auto-detect platform from URL (only when both are allowed)
+                      if (availablePlatforms.length > 1) {
+                        if (X_REGEX.test(val)) setPlatform('X');
+                        else if (TG_REGEX.test(val)) setPlatform('TELEGRAM');
+                      }
                     }}
                     placeholder={
                       platform === 'X'

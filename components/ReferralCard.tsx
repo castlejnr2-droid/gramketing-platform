@@ -8,6 +8,7 @@ interface ReferralCardProps {
   referralCode: string;
   successfulReferrals: number;
   bonusPointsEarned: number;
+  basePath?: string; // e.g. '/miniapp' for the miniapp, '' for the main site
 }
 
 export function ReferralCard({
@@ -15,6 +16,7 @@ export function ReferralCard({
   referralCode,
   successfulReferrals,
   bonusPointsEarned,
+  basePath = '',
 }: ReferralCardProps) {
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState('');
@@ -23,7 +25,7 @@ export function ReferralCard({
     setOrigin(window.location.origin);
   }, []);
 
-  const referralLink = `${origin || 'https://gramketing.io'}/pools/${poolId}?ref=${referralCode}`;
+  const referralLink = `${origin || 'https://gramketing.io'}${basePath}/pools/${poolId}?ref=${referralCode}`;
 
   const handleCopy = async () => {
     try {

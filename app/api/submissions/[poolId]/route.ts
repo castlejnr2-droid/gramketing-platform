@@ -45,6 +45,7 @@ export async function GET(
       points: p.points,
       submittedAt: p.submittedAt.toISOString(),
       lastScrapedAt: p.lastScrapedAt?.toISOString() ?? null,
+      scrapeError: p.scrapeError ?? null,
     }));
 
     // Participant stats for the auth user
@@ -54,6 +55,15 @@ export async function GET(
     });
 
     if (authParticipant) {
+      const referralBoosts = await prisma.referralBoost.findMany({
+        where: { referrerId: authUser.id, poolId },
+        include: {
+          referred: {
+            select: { walletAddress: true, username: true },
+          },
+        },
+      });
+
       myStats = {
         totalPoints: authParticipant.totalPoints,
         xPoints: authParticipant.xPoints,
@@ -62,9 +72,12 @@ export async function GET(
         referralMultiplier: authParticipant.referralMultiplier,
         holderBoost: authParticipant.holderBoost,
         referralCode: authParticipant.referralCode,
-        successfulReferrals: await prisma.referralBoost.count({
-          where: { referrerId: authUser.id, poolId },
-        }),
+        successfulReferrals: referralBoosts.length,
+        referrals: referralBoosts.map((rb) => ({
+          walletAddress: rb.referred.walletAddress,
+          username: rb.referred.username ?? null,
+          holdingAmount: rb.referredHolding.toString(),
+        })),
       };
     }
 

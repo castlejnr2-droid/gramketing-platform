@@ -52,12 +52,14 @@ interface MyStats {
   totalPoints: number; xPoints: number; telegramPoints: number;
   referralBonusPoints: number; referralMultiplier: number; holderBoost: number;
   referralCode: string; successfulReferrals: number;
+  referrals: { walletAddress: string; username: string | null; holdingAmount: string }[];
 }
 
 interface Submission {
   id: string; platform: 'X' | 'TELEGRAM'; postUrl: string;
   views: number; likes: number; reposts: number; reactions: number;
   points: number; submittedAt: string; lastScrapedAt?: string | null;
+  scrapeError?: string | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -610,6 +612,12 @@ export default function MiniAppPoolDetailPage() {
                           )}
                         </div>
 
+                        {sub.scrapeError && (
+                          <p className="text-[10px] text-red-400 mt-1.5 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                            {sub.scrapeError}
+                          </p>
+                        )}
                         <p className="text-[10px] text-white/25 mt-1.5">
                           {sub.lastScrapedAt
                             ? `Updated ${new Date(sub.lastScrapedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -629,7 +637,10 @@ export default function MiniAppPoolDetailPage() {
           {!wallet ? (
             <div className="glass-card p-10 text-center">
               <Wallet className="w-8 h-8 text-white/20 mx-auto mb-3" />
-              <p className="text-white/50 text-sm">Connect your wallet to see your stats.</p>
+              <p className="text-white/50 text-sm mb-4">Connect your wallet to see your stats.</p>
+              <button onClick={() => tonConnectUI.openModal()} className="btn-primary">
+                Connect Wallet
+              </button>
             </div>
           ) : !myStats ? (
             <div className="glass-card p-10 text-center">
@@ -649,11 +660,75 @@ export default function MiniAppPoolDetailPage() {
                 referralMultiplier={myStats.referralMultiplier}
                 totalPoints={myStats.totalPoints}
               />
+
+              {/* Per-post breakdown */}
+              {submissions.length > 0 && (
+                <div className="glass-card p-4">
+                  <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">
+                    My Posts
+                  </p>
+                  <div className="space-y-2.5">
+                    {submissions.map((sub) => (
+                      <div key={sub.id} className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                              sub.platform === 'X'
+                                ? 'bg-sky-400/15 text-sky-400'
+                                : 'bg-[#0088CC]/15 text-[#0088CC]'
+                            }`}>
+                              {sub.platform}
+                            </span>
+                            <a
+                              href={sub.postUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-white/50 hover:text-white truncate"
+                            >
+                              {sub.postUrl.replace('https://', '')}
+                            </a>
+                          </div>
+                          <span className="text-sm font-bold text-[#0088CC] flex-shrink-0">
+                            {sub.points.toFixed(0)} pts
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[10px] text-white/40">
+                          <span>{sub.views.toLocaleString()} views</span>
+                          {sub.platform === 'X' ? (
+                            <>
+                              <span>{sub.likes.toLocaleString()} likes</span>
+                              <span>{sub.reposts.toLocaleString()} reposts</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>{sub.reactions.toLocaleString()} reactions</span>
+                              <span />
+                            </>
+                          )}
+                        </div>
+                        {sub.scrapeError && (
+                          <p className="text-[10px] text-red-400 mt-1.5 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                            {sub.scrapeError}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-white/25 mt-1">
+                          {sub.lastScrapedAt
+                            ? `Updated ${new Date(sub.lastScrapedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                            : 'Pending first scrape (~30 min)'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <ReferralCard
                 poolId={pool.id}
                 referralCode={myStats.referralCode}
-                successfulReferrals={0}
+                successfulReferrals={myStats.successfulReferrals}
                 bonusPointsEarned={myStats.referralBonusPoints}
+                basePath="/miniapp"
               />
             </div>
           )}
@@ -787,6 +862,7 @@ export default function MiniAppPoolDetailPage() {
         open={submitOpen}
         onClose={() => { setSubmitOpen(false); fetchMyStats(); }}
         dailySubmissionsUsed={todaySubmissions}
+        campaignType={pool.campaignType as 'both' | 'x' | 'telegram'}
       />
     </div>
   );
