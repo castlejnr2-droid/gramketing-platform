@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Link from 'next/link';
-import { CheckCircle, Settings, Wallet, BookOpen, Map, ChevronRight } from 'lucide-react';
+import { CheckCircle, Settings, Wallet, BookOpen, Map, ChevronRight, FileText } from 'lucide-react';
 
 interface AccountInfo {
   walletAddress: string;
@@ -365,6 +365,14 @@ export default function MiniAppSettingsPage() {
               <div className="flex items-center gap-2">
                 <Map className="w-4 h-4 text-[#0088CC]" />
                 <span className="text-sm">Roadmap</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/30" />
+            </Link>
+            <Link href="/miniapp/whitepaper"
+              className="flex items-center justify-between gap-3 py-2 hover:text-white transition-colors text-white/60">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#0088CC]" />
+                <span className="text-sm">Whitepaper</span>
               </div>
               <ChevronRight className="w-4 h-4 text-white/30" />
             </Link>

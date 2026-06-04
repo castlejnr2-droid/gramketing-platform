@@ -37,6 +37,7 @@ const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/docs', label: 'Docs' },
   { href: '/roadmap', label: 'Roadmap' },
+  { href: '/whitepaper', label: 'Whitepaper' },
 ];
 
 export function Navbar() {

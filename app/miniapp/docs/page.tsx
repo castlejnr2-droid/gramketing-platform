@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Download } from 'lucide-react';
 import { ScoringExample } from '@/components/ScoringExample';
+import Link from 'next/link';
 
 function TelegramIcon({ className }: { className?: string }) {
   return (
@@ -386,6 +387,21 @@ Range: 1.0x (no referrals) to 2.0x (top referrer)`}</CodeBlock>
             <p>Typical distribution time: within 24–48 hours of pool ending.</p>
           </AccordionItem>
         </div>
+      </div>
+
+      {/* Whitepaper */}
+      <div className="glass-card p-5 mb-3 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-white mb-0.5">Whitepaper</p>
+          <p className="text-xs text-white/40">Full technical specification — architecture, economics, smart contracts.</p>
+        </div>
+        <Link
+          href="/miniapp/whitepaper"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0088CC]/15 border border-[#0088CC]/30 text-[#0088CC] text-xs font-semibold flex-shrink-0 hover:bg-[#0088CC]/25 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+          View
+        </Link>
       </div>
 
       {/* Community links */}
