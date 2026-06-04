@@ -6,7 +6,7 @@ import { TonConnectButton } from '@tonconnect/ui-react';
 import {
   Shield, RefreshCw, XCircle, Coins, Users, Loader2,
   AlertCircle, CheckCircle, LayoutList, Ban, TrendingUp,
-  StopCircle, ExternalLink, FileText, Clock, Zap,
+  StopCircle, ExternalLink, FileText, Clock, Zap, WifiOff,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -136,6 +136,12 @@ export default function AdminPage() {
   const [actionStates, setActionStates] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback]         = useState<{ msg: string; ok: boolean } | null>(null);
 
+  // X token status
+  const [tokenStatus, setTokenStatus] = useState<{
+    xToken: { configured: boolean; valid: boolean; error: string | null };
+    expiredPostCount: number;
+  } | null>(null);
+
   // Cancel modal
   const [cancelModal, setCancelModal]   = useState<{ poolId: string; tokenSymbol: string } | null>(null);
   const [cancelPreview, setCancelPrev]  = useState<ProRataPreview | null>(null);
@@ -157,6 +163,12 @@ export default function AdminPage() {
       setSummary(sumData);
       setBannedList(banData.banned ?? []);
       setLastRefreshed(new Date());
+
+      // Fetch X token status in background
+      fetch('/api/admin/token-status', { credentials: 'include' })
+        .then((r) => r.json())
+        .then(setTokenStatus)
+        .catch(() => {});
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -327,6 +339,28 @@ export default function AdminPage() {
             {feedback.ok ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
             {feedback.msg}
             <button onClick={() => setFeedback(null)} className="ml-auto opacity-50 hover:opacity-100">✕</button>
+          </div>
+        )}
+
+        {/* X Token Warning */}
+        {tokenStatus && (!tokenStatus.xToken.valid || !tokenStatus.xToken.configured || tokenStatus.expiredPostCount > 0) && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+            <WifiOff className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-400">X (Twitter) Token Issue Detected</p>
+              <p className="text-xs text-white/50 mt-1">
+                {!tokenStatus.xToken.configured
+                  ? 'TWITTER_BEARER_TOKEN is not configured in environment variables.'
+                  : tokenStatus.xToken.error
+                  ? tokenStatus.xToken.error
+                  : `${tokenStatus.expiredPostCount} post(s) flagged with TOKEN_EXPIRED scrape errors.`}
+              </p>
+              <p className="text-xs text-white/40 mt-1">
+                X post metrics will not update until the bearer token is refreshed. Update{' '}
+                <code className="bg-white/5 px-1 rounded text-amber-300">TWITTER_BEARER_TOKEN</code>{' '}
+                in your environment and redeploy.
+              </p>
+            </div>
           </div>
         )}
 

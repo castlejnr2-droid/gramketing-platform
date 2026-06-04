@@ -40,6 +40,10 @@ export async function GET(req: NextRequest) {
       const rank =
         sortedParticipants.findIndex((sp) => sp.userId === user.id) + 1;
 
+      const successfulReferrals = await prisma.referralBoost.count({
+        where: { referrerId: user.id, poolId: p.pool.id },
+      });
+
       const poolData = {
         poolId: p.pool.id,
         poolStatus: p.pool.status,
@@ -52,6 +56,7 @@ export async function GET(req: NextRequest) {
         totalPoints: p.totalPoints,
         referralCode: p.referralCode,
         referralBonusPoints: p.referralBonusPoints,
+        successfulReferrals,
       };
 
       if (p.pool.status === 'ACTIVE') {

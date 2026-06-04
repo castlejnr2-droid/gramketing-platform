@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   ExternalLink,
   Plus,
+  BarChart2,
 } from 'lucide-react';
 
 interface PoolData {
@@ -61,7 +62,7 @@ interface MyStats {
   referralMultiplier: number;
   holderBoost: number;
   referralCode: string;
-  successfulReferrals: number;
+  successfulReferrals: number; // returned by /api/submissions/[poolId]
 }
 
 interface Submission {
@@ -339,6 +340,17 @@ export default function PoolDetailPage() {
                   <ExternalLink className="w-3 h-3" />
                 </a>
               )}
+              <button
+                onClick={() => {
+                  const leaderboardTab = document.querySelector('[data-radix-collection-item][value="leaderboard"]') as HTMLButtonElement | null;
+                  leaderboardTab?.click();
+                  window.scrollTo({ top: 400, behavior: 'smooth' });
+                }}
+                className="btn-secondary flex items-center gap-2 text-xs"
+              >
+                <BarChart2 className="w-3 h-3" />
+                Leaderboard
+              </button>
             </div>
           </div>
         </div>
@@ -485,7 +497,7 @@ export default function PoolDetailPage() {
                 <ReferralCard
                   poolId={pool.id}
                   referralCode={myStats.referralCode}
-                  successfulReferrals={0}
+                  successfulReferrals={myStats.successfulReferrals}
                   bonusPointsEarned={myStats.referralBonusPoints}
                 />
               </div>

@@ -35,9 +35,9 @@ export async function GET(
     });
     const rank = allParticipants.findIndex((p) => p.userId === userId) + 1;
 
-    // Public submissions for this participant (no auth required)
-    const submissions = await prisma.submission.findMany({
-      where: { poolId, userId },
+    // Use PoolPost records (live scrape data) for accurate per-post metrics
+    const poolPosts = await prisma.poolPost.findMany({
+      where: { participantId: participant.id },
       orderBy: { submittedAt: 'desc' },
     });
 
@@ -72,18 +72,20 @@ export async function GET(
         rank,
         totalParticipants: allParticipants.length,
       },
-      submissions: submissions.map((s) => ({
-        id: s.id,
-        platform: s.platform,
-        postUrl: s.postUrl,
-        currentViews: s.currentViews,
-        likes: s.likes,
-        reposts: s.reposts,
-        reactions: s.reactions,
-        currentPoints: s.currentPoints,
-        status: s.status,
-        submittedAt: s.submittedAt,
-        lastScrapedAt: s.lastScrapedAt,
+      // Map PoolPost fields to the shape Leaderboard modal expects
+      submissions: poolPosts.map((p) => ({
+        id: p.id,
+        platform: p.platform,
+        postUrl: p.postLink,
+        currentViews: p.views,
+        likes: p.likes,
+        reposts: p.reposts,
+        reactions: p.reactions,
+        currentPoints: p.points,
+        status: 'VERIFIED',
+        submittedAt: p.submittedAt,
+        lastScrapedAt: p.lastScrapedAt,
+        scrapeError: p.scrapeError ?? null,
       })),
       referralBoosts: referralBoosts.map((b) => ({
         referredWallet: b.referred.walletAddress,

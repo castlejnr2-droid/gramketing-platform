@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Copy, CheckCheck, Users, Zap } from 'lucide-react';
 import { REFERRAL_BASE_BONUS } from '@/lib/points';
 
@@ -17,8 +17,13 @@ export function ReferralCard({
   bonusPointsEarned,
 }: ReferralCardProps) {
   const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState('');
 
-  const referralLink = `https://gramketing.io/pools/${poolId}?ref=${referralCode}`;
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const referralLink = `${origin || 'https://gramketing.io'}/pools/${poolId}?ref=${referralCode}`;
 
   const handleCopy = async () => {
     try {

@@ -18,6 +18,16 @@ interface MyPool {
   totalPoints: number;
   referralCode: string;
   referralBonusPoints: number;
+  successfulReferrals: number;
+}
+
+interface LeaderboardTop3 {
+  rank: number;
+  walletAddress: string;
+  username?: string | null;
+  xHandle?: string | null;
+  totalPoints: number;
+  submissionCount: number;
 }
 
 interface OwnedPool {
@@ -28,6 +38,8 @@ interface OwnedPool {
   status: string;
   endDate: string;
   participantCount: number;
+  submissionCount: number;
+  top3: LeaderboardTop3[];
 }
 
 interface AccountInfo {
@@ -63,24 +75,52 @@ export default function DashboardPage() {
     if (!wallet) return;
     fetch(`/api/pools?ownerAddress=${encodeURIComponent(wallet.account.address)}&limit=50`)
       .then((r) => r.json())
-      .then((d) => {
-        setOwnedEndedPools((d.pools ?? []).map((p: {
-          id: string;
-          project: { name: string };
-          tokenSymbol: string;
-          totalReward: string;
-          status: string;
-          endDate: string;
-          _count: { participants: number };
-        }) => ({
-          id: p.id,
-          projectName: p.project.name,
-          tokenSymbol: p.tokenSymbol,
-          totalReward: p.totalReward,
-          status: p.status,
-          endDate: p.endDate,
-          participantCount: p._count.participants,
-        })));
+      .then(async (d) => {
+        const pools = d.pools ?? [];
+        // Enrich each pool with leaderboard top 3 + submission count
+        const enriched = await Promise.all(
+          pools.map(async (p: {
+            id: string;
+            project: { name: string };
+            tokenSymbol: string;
+            totalReward: string;
+            status: string;
+            endDate: string;
+            _count: { participants: number; poolPosts?: number };
+          }) => {
+            let top3: LeaderboardTop3[] = [];
+            let submissionCount = 0;
+            try {
+              const lbRes = await fetch(`/api/pools/${p.id}/leaderboard`);
+              const lbData = await lbRes.json();
+              const entries = lbData.leaderboard ?? [];
+              top3 = entries.slice(0, 3).map((e: {
+                rank: number; walletAddress: string; username?: string | null;
+                xHandle?: string | null; totalPoints: number; submissionCount?: number;
+              }) => ({
+                rank: e.rank,
+                walletAddress: e.walletAddress,
+                username: e.username,
+                xHandle: e.xHandle,
+                totalPoints: e.totalPoints,
+                submissionCount: e.submissionCount ?? 0,
+              }));
+              submissionCount = entries.reduce((s: number, e: { submissionCount?: number }) => s + (e.submissionCount ?? 0), 0);
+            } catch { /* ignore */ }
+            return {
+              id: p.id,
+              projectName: p.project.name,
+              tokenSymbol: p.tokenSymbol,
+              totalReward: p.totalReward,
+              status: p.status,
+              endDate: p.endDate,
+              participantCount: p._count.participants,
+              submissionCount,
+              top3,
+            };
+          })
+        );
+        setOwnedEndedPools(enriched);
       })
       .catch(() => {});
   }, [wallet]);
@@ -285,37 +325,79 @@ export default function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
-              {ownedEndedPools.map((p) => (
-                <div key={p.id} className="glass-card p-5">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-white">{p.projectName}</h3>
-                        <span className="text-xs text-[#0088CC] bg-[#0088CC]/10 px-2 py-0.5 rounded font-mono">
-                          ${p.tokenSymbol}
-                        </span>
-                        {p.status === 'ACTIVE' ? (
-                          <span className="live-badge flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                            LIVE
+            <div className="space-y-4">
+              {ownedEndedPools.map((p) => {
+                const msLeft = new Date(p.endDate).getTime() - Date.now();
+                const dLeft = Math.max(0, Math.floor(msLeft / 86_400_000));
+                const hLeft = Math.max(0, Math.floor((msLeft % 86_400_000) / 3_600_000));
+                const timeLabel = msLeft <= 0 ? 'Ended' : dLeft > 0 ? `${dLeft}d ${hLeft}h left` : `${hLeft}h left`;
+
+                return (
+                  <div key={p.id} className="glass-card p-5 space-y-4">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between flex-wrap gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <h3 className="font-semibold text-white">{p.projectName}</h3>
+                          <span className="text-xs text-[#0088CC] bg-[#0088CC]/10 px-2 py-0.5 rounded font-mono">
+                            ${p.tokenSymbol}
                           </span>
-                        ) : (
-                          <span className="ended-badge">{p.status}</span>
-                        )}
+                          {p.status === 'ACTIVE' ? (
+                            <span className="live-badge flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                              LIVE
+                            </span>
+                          ) : (
+                            <span className="ended-badge">{p.status}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-white/40 flex-wrap">
+                          <span>Reward: <span className="text-white/70">{p.totalReward} {p.tokenSymbol}</span></span>
+                          <span>{p.participantCount} participants</span>
+                          <span>{p.submissionCount} submissions</span>
+                          <span className={msLeft > 0 ? 'text-[#0088CC]' : ''}>{timeLabel}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-white/40">
-                        <span>Reward: <span className="text-white/70">{p.totalReward} {p.tokenSymbol}</span></span>
-                        <span>{p.participantCount} participants</span>
-                        <span>Ends: {new Date(p.endDate).toLocaleDateString()}</span>
-                      </div>
+                      <Link href={`/pools/${p.id}`} className="btn-secondary text-sm flex items-center gap-2 flex-shrink-0">
+                        View Pool <ChevronRight className="w-4 h-4" />
+                      </Link>
                     </div>
-                    <Link href={`/pools/${p.id}`} className="btn-secondary text-sm flex items-center gap-2">
-                      View <ChevronRight className="w-4 h-4" />
-                    </Link>
+
+                    {/* Top 3 leaderboard */}
+                    {p.top3.length > 0 && (
+                      <div className="border-t border-white/5 pt-4">
+                        <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-3">
+                          Top Marketers
+                        </p>
+                        <div className="space-y-2">
+                          {p.top3.map((entry) => {
+                            const medal = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : '🥉';
+                            const name = entry.username
+                              ? entry.username
+                              : entry.xHandle
+                              ? `@${entry.xHandle}`
+                              : `${entry.walletAddress.slice(0, 6)}…${entry.walletAddress.slice(-4)}`;
+                            return (
+                              <div key={entry.walletAddress} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                  <span>{medal}</span>
+                                  <span className="text-white/70">{name}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-white/40">
+                                  <span>{entry.submissionCount} posts</span>
+                                  <span className="font-semibold text-[#0088CC]">
+                                    {entry.totalPoints.toLocaleString(undefined, { maximumFractionDigits: 0 })} pts
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -387,7 +469,7 @@ export default function DashboardPage() {
                     <ReferralCard
                       poolId={p.poolId}
                       referralCode={p.referralCode}
-                      successfulReferrals={0}
+                      successfulReferrals={p.successfulReferrals}
                       bonusPointsEarned={p.referralBonusPoints}
                     />
                   </div>

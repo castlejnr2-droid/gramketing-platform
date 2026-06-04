@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Trophy, Clock } from 'lucide-react';
+import { Users, Trophy, Clock, BarChart2 } from 'lucide-react';
 
 interface PoolCardProps {
   id: string;
@@ -163,6 +163,18 @@ export function PoolCard({
           <span className="text-[#0088CC] font-semibold">{countdown}</span>
         </div>
       )}
+
+      {/* View Leaderboard button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          router.push(linkTo ?? `/pools/${id}`);
+        }}
+        className="mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-white/10 text-white/50 hover:text-white hover:border-[#0088CC]/40 text-xs font-medium transition-all"
+      >
+        <BarChart2 className="w-3.5 h-3.5" />
+        View Leaderboard
+      </button>
     </div>
   );
 }

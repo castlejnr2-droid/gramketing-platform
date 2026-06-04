@@ -200,6 +200,7 @@ model PoolPost {
   points        Float           @default(0)
   submittedAt   DateTime        @default(now())
   lastScrapedAt DateTime?
+  scrapeError   String?
 }
 
 model BannedMarketer {

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { getParticipantTier } from '@/lib/points';
-import { X, ChevronDown, ChevronUp, Copy, CheckCheck } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Copy, CheckCheck, AlertCircle } from 'lucide-react';
 
 interface LeaderboardEntry {
   rank: number;
@@ -39,6 +39,7 @@ interface Submission {
   currentPoints: number;
   status: string;
   submittedAt: string;
+  scrapeError?: string | null;
 }
 
 interface ReferralBoostEntry {
@@ -113,7 +114,9 @@ function estimateReward(totalPoints: number, allPoints: number, totalReward: str
 // ── Referral Link Row ──
 function ReferralLinkRow({ poolId, referralCode }: { poolId: string; referralCode: string }) {
   const [copied, setCopied] = useState(false);
-  const link = `https://gramketing-platform.vercel.app/pools/${poolId}?ref=${referralCode}`;
+  const [origin, setOrigin] = useState('');
+  useEffect(() => { setOrigin(window.location.origin); }, []);
+  const link = `${origin || 'https://gramketing.io'}/pools/${poolId}?ref=${referralCode}`;
 
   const handleCopy = async () => {
     try {
@@ -248,15 +251,23 @@ function ParticipantModal({
                   {data.submissions.filter((s) => s.platform === 'X').length > 0 && (
                     <div className="space-y-1 mt-2">
                       {data.submissions.filter((s) => s.platform === 'X').map((s) => (
-                        <div key={s.id} className="text-xs text-white/40 flex justify-between">
-                          <span className="truncate max-w-[60%]">
-                            <a href={s.postUrl} target="_blank" rel="noopener noreferrer" className="hover:text-[#0088CC] transition-colors">
-                              {s.postUrl.replace('https://x.com/', '')}
-                            </a>
-                          </span>
-                          <span className="text-white/50 shrink-0 ml-2">
-                            {s.currentViews.toLocaleString()}v · {s.likes}♥ · {s.reposts}↺ → {s.currentPoints.toFixed(0)}pts
-                          </span>
+                        <div key={s.id} className="text-xs text-white/40 space-y-0.5">
+                          <div className="flex justify-between">
+                            <span className="truncate max-w-[60%]">
+                              <a href={s.postUrl} target="_blank" rel="noopener noreferrer" className="hover:text-[#0088CC] transition-colors">
+                                {s.postUrl.replace('https://x.com/', '')}
+                              </a>
+                            </span>
+                            <span className="text-white/50 shrink-0 ml-2">
+                              {s.currentViews.toLocaleString()}v · {s.likes}♥ · {s.reposts}↺ → {s.currentPoints.toFixed(0)}pts
+                            </span>
+                          </div>
+                          {s.scrapeError && (
+                            <div className="flex items-center gap-1 text-amber-400/80 text-[10px]">
+                              <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                              {s.scrapeError.startsWith('TOKEN_EXPIRED') ? 'X token expired — last known metrics shown' : s.scrapeError}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

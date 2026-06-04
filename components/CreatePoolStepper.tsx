@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronRight,
@@ -8,6 +8,7 @@ import {
   Loader2,
   AlertCircle,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 
@@ -94,6 +95,11 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const [createdPoolId, setCreatedPoolId] = useState('');
   const [contractAddress, setContractAddress] = useState('');
   const [depositDone, setDepositDone] = useState(false);
+
+  // Deposit polling state
+  const [pollStatus, setPollStatus] = useState<'idle' | 'polling' | 'confirmed' | 'timeout'>('idle');
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollStartRef = useRef<number>(0);
 
   useEffect(() => {
     if (step === 2) {
@@ -210,10 +216,50 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
     }
   };
 
+  const stopPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
+
+  const startDepositPolling = (poolId: string) => {
+    setPollStatus('polling');
+    pollStartRef.current = Date.now();
+
+    const check = async () => {
+      // Timeout after 5 minutes
+      if (Date.now() - pollStartRef.current > 5 * 60 * 1000) {
+        stopPolling();
+        setPollStatus('timeout');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/pools/${poolId}/deposit-status`);
+        const data = await res.json();
+        if (data.deposited) {
+          stopPolling();
+          setPollStatus('confirmed');
+          setDepositDone(true);
+          setStep(4);
+        }
+      } catch {
+        // ignore transient fetch errors, keep polling
+      }
+    };
+
+    // First check after 5s, then every 10s
+    const id = setInterval(check, 10_000);
+    pollIntervalRef.current = id;
+    setTimeout(check, 5_000);
+  };
+
   const handleDepositTokens = async () => {
     if (!wallet || !createdPoolId) return;
     setLoading(true);
     setError(null);
+    setPollStatus('idle');
     try {
       // Fetch TonConnect transaction params from server (cell-building done server-side)
       const res = await fetch(`/api/deposit-tx?poolId=${createdPoolId}`, {
@@ -231,14 +277,20 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
         messages: [{ address: to, amount, payload }],
       });
 
-      setDepositDone(true);
-      setStep(4);
+      // Transaction sent — start polling for on-chain confirmation
+      startDepositPolling(createdPoolId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Deposit failed');
+      setPollStatus('idle');
     } finally {
       setLoading(false);
     }
   };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => stopPolling();
+  }, []);
 
   const currentFees = priceData?.fees[durationDays];
   const usdFees = USD_FEE_TABLE[durationDays];
@@ -688,7 +740,41 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                 Click <span className="text-white/70 font-medium">Create Pool</span> below first to deploy the escrow contract.
               </p>
             )}
-            {createdPoolId && (
+
+            {/* Polling status banner */}
+            {pollStatus === 'polling' && (
+              <div className="p-4 rounded-xl bg-[#0088CC]/10 border border-[#0088CC]/20 flex items-center gap-3">
+                <Loader2 className="w-4 h-4 text-[#0088CC] animate-spin flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-[#0088CC]">Waiting for on-chain confirmation…</p>
+                  <p className="text-xs text-white/40 mt-0.5">Checking every 10 seconds. This may take 1–2 minutes.</p>
+                </div>
+              </div>
+            )}
+
+            {pollStatus === 'timeout' && (
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-red-400">Confirmation timed out</p>
+                    <p className="text-xs text-white/40 mt-0.5">
+                      The deposit was not detected after 5 minutes. Your transaction may still confirm — check TONScan,
+                      or retry below.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => startDepositPolling(createdPoolId)}
+                  className="flex items-center gap-2 text-sm text-white/60 hover:text-white border border-white/10 px-4 py-2 rounded-xl transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Retry confirmation check
+                </button>
+              </div>
+            )}
+
+            {createdPoolId && pollStatus === 'idle' && (
               <>
                 <button
                   onClick={handleDepositTokens}
