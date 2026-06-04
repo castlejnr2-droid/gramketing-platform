@@ -215,6 +215,34 @@ export async function sendDistributeRewards(
   });
 }
 
+// ── End pool ──────────────────────────────────────────────────────────────────
+
+/**
+ * Sends the "endPool" string message to the pool contract from the admin wallet.
+ * Transitions the pool status from ACTIVE to ENDED on-chain.
+ */
+export async function sendEndPool(contractAddressStr: string): Promise<void> {
+  const { keyPair, contract: walletContract } = await getAdminWallet();
+  const contractAddress = Address.parse(contractAddressStr);
+
+  const seqno = await walletContract.getSeqno();
+  await walletContract.sendTransfer({
+    secretKey: keyPair.secretKey,
+    seqno,
+    messages: [
+      internal({
+        to: contractAddress,
+        value: toNano('0.05'),
+        body: beginCell()
+          .storeUint(0, 32)  // text comment opcode
+          .storeStringTail('endPool')
+          .endCell(),
+      }),
+    ],
+    sendMode: SendMode.PAY_GAS_SEPARATELY,
+  });
+}
+
 // ── Cancellation ─────────────────────────────────────────────────────────────
 
 /**

@@ -39,6 +39,13 @@ interface ProRataPreview {
   accessFeeRefunded: boolean;
 }
 
+interface WinnerPreview {
+  rank: number;
+  walletAddress: string;
+  totalPoints: number;
+  proRataAmount: string;
+}
+
 interface BannedRow {
   id: string;
   walletAddress: string;
@@ -103,6 +110,7 @@ export default function AdminPage() {
   const [actionStates, setActionStates] = useState<Record<string, boolean>>({});
   const [cancelModal, setCancelModal] = useState<{ poolId: string; tokenSymbol: string; totalReward: string } | null>(null);
   const [cancelPreview, setCancelPreview] = useState<ProRataPreview | null>(null);
+  const [cancelWinners, setCancelWinners] = useState<WinnerPreview[]>([]);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [banWallet, setBanWallet] = useState('');
   const [banReason, setBanReason] = useState('');
@@ -170,13 +178,36 @@ export default function AdminPage() {
       'Distribution triggered!'
     );
 
+  const handleEndPool = async (poolId: string) => {
+    setActionStates((s) => ({ ...s, [`end-${poolId}`]: true }));
+    setFeedback(null);
+    try {
+      const res = await fetch('/api/admin/end-pool', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ poolId }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? 'Failed');
+      setFeedback({ msg: 'Pool ended.', ok: true });
+      setPools((prev) => prev.map((p) => p.id === poolId ? { ...p, status: 'ENDED' } : p));
+    } catch (e: unknown) {
+      setFeedback({ msg: e instanceof Error ? e.message : 'Error', ok: false });
+    } finally {
+      setActionStates((s) => ({ ...s, [`end-${poolId}`]: false }));
+    }
+  };
+
   const openCancelModal = async (pool: PoolRow) => {
     setCancelModal({ poolId: pool.id, tokenSymbol: pool.tokenSymbol, totalReward: pool.totalReward });
     setCancelPreview(null);
+    setCancelWinners([]);
     try {
       const res = await fetch(`/api/admin/cancel-pool?poolId=${pool.id}`, { credentials: 'include' });
       const d = await res.json();
       setCancelPreview(d.preview ?? null);
+      setCancelWinners(d.winners ?? []);
     } catch {}
   };
 
@@ -194,7 +225,7 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(d.error ?? 'Failed');
       setFeedback({ msg: 'Pool cancelled with pro-rata split.', ok: true });
       setCancelModal(null);
-      setPools((prev) => prev.map((p) => p.id === cancelModal.poolId ? { ...p, status: 'ENDED' } : p));
+      setPools((prev) => prev.map((p) => p.id === cancelModal.poolId ? { ...p, status: 'DISTRIBUTED' } : p));
     } catch (e: unknown) {
       setFeedback({ msg: e instanceof Error ? e.message : 'Cancel failed', ok: false });
     } finally {
@@ -413,9 +444,17 @@ export default function AdminPage() {
                         {new Date(pool.endDate).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {(pool.status === 'ACTIVE' ||
-                            pool.status === 'ENDED') && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {pool.status === 'ACTIVE' && (
+                            <ActionButton
+                              label="End"
+                              icon={<XCircle className="w-3 h-3" />}
+                              onClick={() => handleEndPool(pool.id)}
+                              loading={actionStates[`end-${pool.id}`]}
+                              variant="secondary"
+                            />
+                          )}
+                          {pool.status === 'ENDED' && (
                             <ActionButton
                               label="Distribute"
                               icon={<Coins className="w-3 h-3" />}
@@ -424,7 +463,7 @@ export default function AdminPage() {
                               variant="primary"
                             />
                           )}
-                          {pool.status === 'ACTIVE' && (
+                          {(pool.status === 'ACTIVE' || pool.status === 'ENDED') && (
                             <ActionButton
                               label="Cancel"
                               icon={<XCircle className="w-3 h-3" />}
@@ -590,38 +629,91 @@ export default function AdminPage() {
             </p>
 
             {cancelPreview ? (
-              <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="glass-inner p-3">
-                    <p className="text-white/40 text-xs mb-0.5">Days Elapsed</p>
-                    <p className="text-white font-semibold">{cancelPreview.daysElapsed} / {cancelPreview.totalDays}</p>
+              <div className="space-y-4 text-sm max-h-[60vh] overflow-y-auto pr-1">
+                {/* Progress bar */}
+                <div>
+                  <div className="flex justify-between text-xs text-white/40 mb-1.5">
+                    <span>Day {cancelPreview.daysElapsed} of {cancelPreview.totalDays}</span>
+                    <span>{Math.round(cancelPreview.daysElapsed / cancelPreview.totalDays * 100)}% elapsed</span>
                   </div>
-                  <div className="glass-inner p-3">
-                    <p className="text-white/40 text-xs mb-0.5">Days Remaining</p>
-                    <p className="text-white font-semibold">{cancelPreview.daysRemaining}</p>
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#0088CC] rounded-full"
+                      style={{ width: `${Math.round(cancelPreview.daysElapsed / cancelPreview.totalDays * 100)}%` }}
+                    />
                   </div>
                 </div>
-                <div className="bg-[#0088CC]/5 rounded-xl p-4 border border-[#0088CC]/15 space-y-2.5">
-                  <div className="flex justify-between">
+
+                {/* Token split */}
+                <div className="rounded-xl border border-white/10 overflow-hidden">
+                  <div className="flex justify-between px-4 py-3 bg-[#0088CC]/5 border-b border-white/10">
                     <span className="text-white/60">Participants receive</span>
-                    <span className="text-[#0088CC] font-semibold">{cancelPreview.participantTokens} {cancelModal.tokenSymbol}</span>
+                    <span className="text-[#0088CC] font-semibold">
+                      {cancelPreview.participantTokens} {cancelModal.tokenSymbol}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between px-4 py-3 border-b border-white/10">
                     <span className="text-white/60">Project refund</span>
-                    <span className="text-white font-semibold">{cancelPreview.refundTokens} {cancelModal.tokenSymbol}</span>
+                    <span className="text-white font-semibold">
+                      {cancelPreview.refundTokens} {cancelModal.tokenSymbol}
+                    </span>
                   </div>
-                  <div className="flex justify-between border-t border-white/10 pt-2">
+                  <div className="flex justify-between px-4 py-3">
                     <span className="text-white/60">Access fee</span>
                     <span className="text-red-400 text-xs font-semibold">Non-refundable</span>
                   </div>
                 </div>
-                <p className="text-xs text-white/30">
-                  Daily rate: {cancelPreview.dailyRate} {cancelModal.tokenSymbol}/day.
-                  Participants share proportionally by points among top reward slots.
+
+                {/* Winner breakdown */}
+                {cancelWinners.length > 0 ? (
+                  <div>
+                    <p className="text-xs text-white/40 mb-2 uppercase tracking-wider font-medium">
+                      Winner breakdown
+                    </p>
+                    <div className="rounded-xl border border-white/10 overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-white/10 bg-white/[0.02]">
+                            <th className="px-3 py-2 text-left text-white/30 font-medium">#</th>
+                            <th className="px-3 py-2 text-left text-white/30 font-medium">Wallet</th>
+                            <th className="px-3 py-2 text-right text-white/30 font-medium">Points</th>
+                            <th className="px-3 py-2 text-right text-white/30 font-medium">Receives</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {cancelWinners.map((w) => (
+                            <tr key={w.walletAddress} className="hover:bg-white/[0.02]">
+                              <td className="px-3 py-2 text-white/40">{w.rank}</td>
+                              <td className="px-3 py-2 font-mono text-white/60">
+                                {w.walletAddress.slice(0, 6)}...{w.walletAddress.slice(-4)}
+                              </td>
+                              <td className="px-3 py-2 text-right text-white/60">
+                                {w.totalPoints.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 text-right text-[#0088CC] font-semibold">
+                                {w.proRataAmount} {cancelModal.tokenSymbol}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/30 text-center py-2">
+                    No eligible participants yet. Full amount refunded to project owner.
+                  </p>
+                )}
+
+                <p className="text-xs text-white/25">
+                  Daily rate: {cancelPreview.dailyRate} {cancelModal.tokenSymbol}/day
                 </p>
               </div>
             ) : (
-              <div className="py-4 text-center text-white/30 text-sm">Loading preview...</div>
+              <div className="py-6 text-center text-white/30 text-sm flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading preview...
+              </div>
             )}
 
             <div className="flex gap-3 pt-2">

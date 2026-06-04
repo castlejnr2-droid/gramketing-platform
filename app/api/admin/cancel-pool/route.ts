@@ -20,7 +20,24 @@ export async function GET(req: NextRequest) {
     if (!pool) return NextResponse.json({ error: 'Pool not found' }, { status: 404 });
 
     const preview = calculateProRata(pool);
-    return NextResponse.json({ preview });
+    const allWinners = await calculateDistribution(poolId);
+    const topWinners = allWinners.slice(0, pool.rewardSlots);
+
+    // Compute each winner's pro-rata token amount for the preview
+    const participantBasisPoints = Math.round(
+      (preview.daysElapsed / preview.totalDays) * 10000,
+    );
+    const winnersPreview = topWinners.map((w, i) => ({
+      rank: i + 1,
+      walletAddress: w.walletAddress,
+      totalPoints: w.totalPoints,
+      proRataAmount: (
+        (parseFloat(pool.totalReward) * w.shareBasisPoints * participantBasisPoints) /
+        100_000_000
+      ).toFixed(2),
+    }));
+
+    return NextResponse.json({ preview, winners: winnersPreview });
   } catch (err) {
     console.error('GET /api/admin/cancel-pool error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
