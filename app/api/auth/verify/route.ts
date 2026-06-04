@@ -5,7 +5,7 @@ import { verifyTonWalletSignature } from '@/lib/tonConnect';
 
 export async function POST(req: NextRequest) {
   try {
-    const { walletAddress, signature, message } = await req.json();
+    const { walletAddress, signature, message, telegramUserId } = await req.json();
 
     if (!walletAddress || !signature || !message) {
       return NextResponse.json(
@@ -26,6 +26,15 @@ export async function POST(req: NextRequest) {
       update: {},
       create: { walletAddress },
     });
+
+    // If a Telegram user ID was supplied (miniapp context) and not yet saved, persist it.
+    // Only update if the field is currently empty to avoid overwriting a verified link.
+    if (telegramUserId && !user.telegramChatId) {
+      await prisma.user.update({
+        where: { walletAddress },
+        data: { telegramChatId: String(telegramUserId) },
+      });
+    }
 
     // Sign JWT
     const token = await signJwt({ walletAddress });

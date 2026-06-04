@@ -17,6 +17,13 @@ function AuthListener() {
       const walletAddress = wallet.account.address;
       const message = `gramketing-auth:${walletAddress}:${Date.now()}`;
 
+      // In the Telegram Mini App, read the Telegram user ID so we can link
+      // the TON wallet address to their Telegram account in the DB.
+      const telegramUserId =
+        typeof window !== 'undefined'
+          ? window.Telegram?.WebApp?.initDataUnsafe?.user?.id
+          : undefined;
+
       try {
         await fetch('/api/auth/verify', {
           method: 'POST',
@@ -26,6 +33,7 @@ function AuthListener() {
             walletAddress,
             signature: walletAddress, // stub until TonProof is implemented
             message,
+            ...(telegramUserId ? { telegramUserId: String(telegramUserId) } : {}),
           }),
         });
       } catch {

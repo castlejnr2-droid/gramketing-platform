@@ -166,6 +166,11 @@ export default function MiniAppPoolDetailPage() {
   const poolId = params.id as string;
   const refCode = searchParams.get('ref');
 
+  // linkedWalletAddress: set when MiniAppShell confirms the Telegram account
+  // is linked to a wallet (JWT already issued by the server). This lets the user
+  // join, submit, and view stats without manually reconnecting TonConnect.
+  const [linkedWalletAddress, setLinkedWalletAddress] = useState<string | null>(null);
+
   const [pool, setPool] = useState<PoolData | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [myStats, setMyStats] = useState<MyStats | null>(null);
@@ -178,6 +183,12 @@ export default function MiniAppPoolDetailPage() {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [todaySubmissions, setTodaySubmissions] = useState(0);
   const [countdown, setCountdown] = useState('');
+
+  // isAuthed: true when TonConnect wallet is connected OR when a Telegram-linked
+  // JWT session was confirmed. Either path gives the user a valid JWT cookie.
+  const isAuthed = !!wallet || !!linkedWalletAddress;
+  // Effective wallet address for leaderboard lookup
+  const effectiveAddress = wallet?.account?.address ?? linkedWalletAddress ?? null;
 
   // ── Fetchers ──────────────────────────────────────────────────────────────
 
@@ -201,9 +212,11 @@ export default function MiniAppPoolDetailPage() {
   }, [poolId]);
 
   const fetchMyStats = useCallback(async () => {
-    if (!wallet) return;
+    // No wallet gate here — if a JWT cookie exists (from TonConnect or Telegram link),
+    // the API will return data. 401 means no session; we stay at initial unauthenticated state.
     try {
       const res = await fetch(`/api/submissions/${poolId}`, { credentials: 'include' });
+      if (!res.ok) return; // 401 = no session; stay unauthenticated
       const data = await res.json();
       setSubmissions(data.submissions ?? []);
       setMyStats(data.myStats ?? null);
@@ -213,7 +226,7 @@ export default function MiniAppPoolDetailPage() {
         (data.submissions ?? []).filter((s: Submission) => s.submittedAt.startsWith(today)).length
       );
     } catch { /* silent */ }
-  }, [poolId, wallet]);
+  }, [poolId]);
 
   // ── Effects ───────────────────────────────────────────────────────────────
 
@@ -221,11 +234,24 @@ export default function MiniAppPoolDetailPage() {
     Promise.all([fetchPool(), fetchLeaderboard()]).finally(() => setLoading(false));
   }, [fetchPool, fetchLeaderboard]);
 
-  useEffect(() => { fetchMyStats(); }, [fetchMyStats]);
+  // Re-fetch stats when TonConnect wallet connects/disconnects
+  useEffect(() => { fetchMyStats(); }, [fetchMyStats, wallet]);
+
+  // Listen for the JWT issued via Telegram link (MiniAppShell fires this event
+  // after /api/auth/telegram-miniapp returns linked:true and sets the cookie).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent<{ walletAddress: string }>).detail?.walletAddress;
+      if (addr) setLinkedWalletAddress(addr);
+      fetchMyStats();
+    };
+    window.addEventListener('gramketing:session-ready', handler);
+    return () => window.removeEventListener('gramketing:session-ready', handler);
+  }, [fetchMyStats]);
 
   // Track referral
   useEffect(() => {
-    if (wallet && refCode) {
+    if (isAuthed && refCode) {
       fetch('/api/referral/track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -233,7 +259,7 @@ export default function MiniAppPoolDetailPage() {
         body: JSON.stringify({ referralCode: refCode, poolId }),
       }).catch(() => {});
     }
-  }, [wallet, refCode, poolId]);
+  }, [isAuthed, refCode, poolId]);
 
   // Live countdown — ticks every second
   useEffect(() => {
@@ -247,7 +273,7 @@ export default function MiniAppPoolDetailPage() {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const handleJoin = async () => {
-    if (!wallet) return;
+    if (!isAuthed) return;
     setJoiningPool(true);
     setJoinError(null);
     try {
@@ -268,8 +294,8 @@ export default function MiniAppPoolDetailPage() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
-  const myRank = wallet
-    ? leaderboard.find((e) => e.walletAddress === wallet.account?.address)?.rank ?? null
+  const myRank = effectiveAddress
+    ? leaderboard.find((e) => e.walletAddress === effectiveAddress)?.rank ?? null
     : null;
   const totalLbPoints = leaderboard.reduce((s, e) => s + e.totalPoints, 0);
   const myEstReward = myStats
@@ -383,13 +409,22 @@ export default function MiniAppPoolDetailPage() {
               <AlertCircle className="w-3 h-3 flex-shrink-0" />{joinError}
             </p>
           )}
-          {!wallet ? (
-            <button
-              onClick={() => tonConnectUI.openModal()}
-              className="w-full btn-primary flex items-center justify-center gap-2"
-            >
-              <Wallet className="w-4 h-4" /> Connect Wallet to Join
-            </button>
+          {!isAuthed ? (
+            <div className="space-y-2">
+              <div className="p-3 rounded-xl bg-[#0088CC]/8 border border-[#0088CC]/20 text-xs text-white/70 leading-relaxed">
+                <p className="font-semibold text-white mb-1 flex items-center gap-1.5">
+                  <Wallet className="w-3.5 h-3.5 text-[#0088CC]" />
+                  TON Wallet Required
+                </p>
+                Rewards are paid on-chain directly to your wallet. Connect your TON wallet to join and earn — Telegram has a built-in TON wallet you can use.
+              </div>
+              <button
+                onClick={() => tonConnectUI.openModal()}
+                className="w-full btn-primary flex items-center justify-center gap-2"
+              >
+                <Wallet className="w-4 h-4" /> Connect TON Wallet to Join
+              </button>
+            </div>
           ) : !joined ? (
             <button
               onClick={handleJoin}
@@ -486,10 +521,13 @@ export default function MiniAppPoolDetailPage() {
 
         {/* ── Submit Tab ── */}
         <Tabs.Content value="submit">
-          {!wallet ? (
+          {!isAuthed ? (
             <div className="glass-card p-10 text-center">
               <Wallet className="w-8 h-8 text-white/20 mx-auto mb-3" />
-              <p className="text-white/50 text-sm mb-4">Connect your wallet to submit posts.</p>
+              <p className="text-white font-semibold mb-1">Connect your TON wallet</p>
+              <p className="text-white/50 text-sm mb-4">
+                Rewards are paid on-chain. Connect your TON wallet to join and earn.
+              </p>
               <button onClick={() => tonConnectUI.openModal()} className="btn-primary">
                 Connect Wallet
               </button>
@@ -634,10 +672,13 @@ export default function MiniAppPoolDetailPage() {
 
         {/* ── My Stats Tab ── */}
         <Tabs.Content value="my-stats">
-          {!wallet ? (
+          {!isAuthed ? (
             <div className="glass-card p-10 text-center">
               <Wallet className="w-8 h-8 text-white/20 mx-auto mb-3" />
-              <p className="text-white/50 text-sm mb-4">Connect your wallet to see your stats.</p>
+              <p className="text-white font-semibold mb-1">Connect your TON wallet</p>
+              <p className="text-white/50 text-sm mb-4">
+                Rewards are paid on-chain. Connect your TON wallet to join and earn.
+              </p>
               <button onClick={() => tonConnectUI.openModal()} className="btn-primary">
                 Connect Wallet
               </button>

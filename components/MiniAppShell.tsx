@@ -36,7 +36,9 @@ export function MiniAppShell({ children }: { children: React.ReactNode }) {
     tg.ready();
     tg.expand();
 
-    // Auto-link if the Telegram user has already done the LINK-XXXXXX flow
+    // Auto-link if the Telegram user has already done the LINK-XXXXXX flow.
+    // If linked, the server issues a JWT cookie so the user has a session
+    // without needing to manually reconnect TonConnect.
     const tgUser = tg.initDataUnsafe?.user;
     if (tgUser?.id) {
       fetch('/api/auth/telegram-miniapp', {
@@ -44,7 +46,20 @@ export function MiniAppShell({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ telegramUserId: String(tgUser.id) }),
-      }).catch(() => {});
+      })
+        .then((r) => r.json())
+        .then((data: { linked: boolean; walletAddress?: string }) => {
+          if (data.linked && data.walletAddress) {
+            // JWT cookie was set by the server. Notify the rest of the miniapp
+            // so pages can fetch authenticated data without waiting for TonConnect.
+            window.dispatchEvent(
+              new CustomEvent('gramketing:session-ready', {
+                detail: { walletAddress: data.walletAddress },
+              })
+            );
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
