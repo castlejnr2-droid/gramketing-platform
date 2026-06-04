@@ -38,7 +38,10 @@ model User {
   telegramId           String?
   telegramHandle       String?
   telegramChannelUrl   String?
-  telegramChatId       String?
+  telegramChatId       String?         @unique
+  telegramUnlinkedAt   DateTime?
+  xAccountId           String?         @unique
+  xUnlinkedAt          DateTime?
   linkTelegramCode     String?
   linkTelegramCodeExpiry DateTime?
   createdAt         DateTime          @default(now())

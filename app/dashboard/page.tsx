@@ -36,6 +36,7 @@ interface AccountInfo {
   xHandle?: string;
   telegramChannelUrl?: string;
   telegramChatId?: string;
+  telegramUnlinkedAt?: string | null;
 }
 
 function TierBadge({ totalPoints }: { totalPoints: number }) {
@@ -91,6 +92,8 @@ export default function DashboardPage() {
   const [linkCodeExpiry, setLinkCodeExpiry] = useState<Date | null>(null);
   const [linkCodeLoading, setLinkCodeLoading] = useState(false);
   const [linkCodeError, setLinkCodeError] = useState<string | null>(null);
+  const [unlinkingTg, setUnlinkingTg] = useState(false);
+  const [unlinkTgError, setUnlinkTgError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!wallet) {
@@ -177,6 +180,28 @@ export default function DashboardPage() {
       setLinkCodeError('Network error');
     } finally {
       setLinkCodeLoading(false);
+    }
+  };
+
+  const handleUnlinkTelegram = async () => {
+    setUnlinkTgError(null);
+    setUnlinkingTg(true);
+    try {
+      const res = await fetch('/api/auth/unlink-telegram', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setUnlinkTgError(d.error ?? 'Failed to unlink');
+      } else {
+        setAccount((prev) => prev ? { ...prev, telegramChatId: undefined, telegramUnlinkedAt: new Date().toISOString() } : prev);
+        setLinkCode(null);
+      }
+    } catch {
+      setUnlinkTgError('Network error');
+    } finally {
+      setUnlinkingTg(false);
     }
   };
 
@@ -473,23 +498,61 @@ export default function DashboardPage() {
               </label>
 
               {account?.telegramChatId ? (
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
-                  <span className="text-green-400 text-lg">✅</span>
-                  <div>
-                    <p className="text-sm font-medium text-green-400">Telegram linked</p>
-                    <p className="text-xs text-white/30 mt-0.5">
-                      Chat ID: {account.telegramChatId.slice(0, 3)}••••{account.telegramChatId.slice(-2)}
-                    </p>
+                <div>
+                  <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+                    <div className="flex items-center gap-3">
+                      <span className="text-green-400 text-lg">✅</span>
+                      <div>
+                        <p className="text-sm font-medium text-green-400">Telegram linked</p>
+                        <p className="text-xs text-white/30 mt-0.5">
+                          Chat ID: {account.telegramChatId.slice(0, 3)}••••{account.telegramChatId.slice(-2)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleUnlinkTelegram}
+                      disabled={unlinkingTg}
+                      className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-40"
+                    >
+                      {unlinkingTg ? 'Unlinking…' : 'Unlink'}
+                    </button>
                   </div>
+                  {unlinkTgError && <p className="mt-1.5 text-xs text-red-400">{unlinkTgError}</p>}
                 </div>
               ) : (
                 <div>
                   {!linkCode ? (
                     <div>
+                      {/* Show cooldown notice if recently unlinked */}
+                      {(() => {
+                        const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+                        const unlinkedAt = account?.telegramUnlinkedAt ? new Date(account.telegramUnlinkedAt) : null;
+                        const nextAllowed = unlinkedAt ? new Date(unlinkedAt.getTime() + COOLDOWN_MS) : null;
+                        if (nextAllowed && nextAllowed > new Date()) {
+                          return (
+                            <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
+                              <span className="text-yellow-400 text-base mt-0.5">⏳</span>
+                              <div>
+                                <p className="text-sm font-medium text-yellow-400">Unlink cooldown active</p>
+                                <p className="text-xs text-white/40 mt-0.5">
+                                  You can link a new Telegram account on{' '}
+                                  <span className="text-white/70">{nextAllowed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>.
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                       <button
                         onClick={handleGenerateLinkCode}
-                        disabled={linkCodeLoading}
-                        className="btn-primary text-sm flex items-center gap-2 disabled:opacity-40"
+                        disabled={linkCodeLoading || (() => {
+                          const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+                          const unlinkedAt = account?.telegramUnlinkedAt ? new Date(account.telegramUnlinkedAt) : null;
+                          const nextAllowed = unlinkedAt ? new Date(unlinkedAt.getTime() + COOLDOWN_MS) : null;
+                          return !!(nextAllowed && nextAllowed > new Date());
+                        })()}
+                        className="btn-primary text-sm flex items-center gap-2 disabled:opacity-40 mt-3"
                       >
                         {linkCodeLoading ? (
                           <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -122,6 +122,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true });
       }
 
+      // Check if this Telegram account is already linked to a different wallet
+      const existing = await prisma.user.findUnique({ where: { telegramChatId: chatId } });
+      if (existing && existing.id !== user.id) {
+        await sendMessage(
+          chatId,
+          '❌ This Telegram account is already linked to another wallet. It must be unlinked from that account first.'
+        );
+        return NextResponse.json({ ok: true });
+      }
+
       await prisma.user.update({
         where: { id: user.id },
         data: {
