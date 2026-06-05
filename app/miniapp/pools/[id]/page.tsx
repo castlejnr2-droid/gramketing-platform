@@ -816,6 +816,7 @@ export default function MiniAppPoolDetailPage() {
                     <div key={t.label} className={`flex items-center justify-between px-3 py-2 rounded-lg border ${t.color}`}>
                       <span className="text-xs font-semibold">{t.label} ({t.mult})</span>
                       <span className="text-xs">
+                        {/* mGRAM always has 9 decimals — divide stored nano value accordingly */}
                         {(BigInt(t.val!) / 1_000_000_000n).toLocaleString()}+ tokens
                       </span>
                     </div>

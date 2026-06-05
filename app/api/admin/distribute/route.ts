@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthWallet, isAdmin } from '@/lib/auth';
 import { calculateDistribution } from '@/lib/distribution';
 import { notifyRewardsDistributed } from '@/lib/telegram-notify';
-import { fetchOnChainPoolInfo, sendDistributeRewards } from '@/lib/gramketing-pool-contract';
+import { fetchOnChainPoolInfo, sendDistributeRewards, getJettonDecimals } from '@/lib/gramketing-pool-contract';
 import { logAdminEvent } from '@/lib/admin-log';
 
 export async function POST(req: NextRequest) {
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
 
     if (onChainInfo.depositedAmount === 0n) {
       const msg =
-        `Contract depositedAmount is 0 — deposit tsTON to ${pool.contractAddress} first. ` +
+        `Contract depositedAmount is 0 — deposit ${pool.tokenSymbol} to ${pool.contractAddress} first. ` +
         `Every winner would receive 0 tokens if distribution runs now.`;
       await logAdminEvent({
         action: 'DISTRIBUTE_REWARDS', level: 'error', poolId, message: msg,
@@ -129,13 +129,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: msg }, { status: 400 });
     }
 
+    // Fetch decimals dynamically so the log reflects the correct token scale
+    const tokenDecimals = await getJettonDecimals(pool.jettonMasterAddress);
+    const tokenDivisor = Math.pow(10, tokenDecimals);
+
     // Log what the contract will actually compute per winner
     console.log(`[distribute] Contract will compute amounts from depositedAmount=${onChainInfo.depositedAmount}:`);
     for (const w of winners) {
       const contractAmount = (onChainInfo.depositedAmount * BigInt(w.shareBasisPoints)) / 10000n;
       console.log(
         `[distribute]   wallet=${w.walletAddress}  bps=${w.shareBasisPoints}` +
-        `  => ${contractAmount} nano (${Number(contractAmount) / 1e9} tsTON)`,
+        `  => ${contractAmount} nano (${Number(contractAmount) / tokenDivisor} ${pool.tokenSymbol})`,
       );
     }
 

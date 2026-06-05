@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthWallet } from '@/lib/auth';
 import { calculateFeeInTokens } from '@/lib/prices';
-import { buildFeeTransaction, buildJettonFeeTransaction } from '@/lib/gramketing-pool-contract';
+import { buildFeeTransaction, buildJettonFeeTransaction, getJettonDecimals } from '@/lib/gramketing-pool-contract';
 import { toNano } from '@ton/core';
 
 export async function GET(req: NextRequest) {
@@ -70,9 +70,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // mGRAM has 9 decimals (standard TEP-64)
-    const MGRAM_DECIMALS = 9;
-    const amountRaw = BigInt(Math.round(tokenAmount * Math.pow(10, MGRAM_DECIMALS)));
+    const mgramDecimals = await getJettonDecimals(mgramMasterAddress);
+    const amountRaw = BigInt(Math.round(tokenAmount * Math.pow(10, mgramDecimals)));
 
     const tx = await buildJettonFeeTransaction({
       jettonMasterAddress: mgramMasterAddress,

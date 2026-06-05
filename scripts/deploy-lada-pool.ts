@@ -5,7 +5,7 @@
  *
  * Pool parameters:
  *   Jetton master:  EQBjNisz_m-sdA9TcosQMmugdhl6hDjGcCMgQFa85p_8jx7p  (LADA mainnet)
- *   Total reward:   100 LADA  (100_000_000 nano — 6 decimals)
+ *   Total reward:   100 LADA  (100_000_000_000 nano — 9 decimals)
  *   Duration:       7 days
  *   Reward slots:   5
  *   Nonce:          1780699848943  (timestamp — ensures unique contract address)
@@ -18,8 +18,8 @@
  *   10%  UQBRYI_UJhv-HIf9mpKB5lWFt8s-Fif-jAuTCL3Cyv-lIGWr  →  10 LADA  (1000 bps)
  *   Total basis points: 10000 (100%) ✓
  *
- * ⚠️  DECIMAL NOTE: LADA total supply = 10^15 nano → 6 decimals inferred.
- *     100 LADA = 100_000_000 nano (100 * 10^6).
+ * ⚠️  DECIMAL NOTE: LADA has 9 decimals (confirmed on-chain).
+ *     100 LADA = 100_000_000_000 nano (100 * 10^9).
  *
  * Run:
  *   npx ts-node --project scripts/tsconfig.json scripts/deploy-lada-pool.ts
@@ -51,7 +51,7 @@ const pbkdf2Async = promisify(pbkdf2);
 // ── Pool configuration ────────────────────────────────────────────────────────
 
 const JETTON_MASTER     = 'EQBjNisz_m-sdA9TcosQMmugdhl6hDjGcCMgQFa85p_8jx7p'; // LADA mainnet
-const TOTAL_REWARD_NANO = 100_000_000n; // 100 LADA at 6 decimals
+const TOTAL_REWARD_NANO = 100_000_000_000n; // 100 LADA at 9 decimals
 const DURATION_DAYS     = 7;
 const REWARD_SLOTS      = 5;
 const NONCE             = 1780699848943n; // timestamp salt — guarantees unique contract address

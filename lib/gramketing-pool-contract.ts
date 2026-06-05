@@ -3,8 +3,9 @@
  * All functions require ADMIN_MNEMONIC to be set in the environment.
  */
 
-import { Address, beginCell, toNano, Dictionary, internal, SendMode } from '@ton/core';
+import { Address, beginCell, toNano, Dictionary, internal, SendMode, Cell } from '@ton/core';
 import { TupleItemSlice } from '@ton/core';
+import { createHash } from 'crypto';
 import {
   GramketingPool,
   storeCreatePool,
@@ -35,27 +36,100 @@ export async function getJettonWalletAddress(
   return result.stack.readAddress();
 }
 
+// Pre-computed SHA-256 key for the "decimals" attribute in TEP-64 on-chain metadata.
+// Dictionary keys are SHA-256 hashes of the UTF-8 attribute name.
+const DECIMALS_DICT_KEY = BigInt(
+  '0x' + createHash('sha256').update('decimals', 'utf8').digest('hex'),
+);
+
 /**
  * Fetches the jetton decimals from the jetton master's `get_jetton_data` getter.
- * Falls back to 9 decimals if the call fails or the field is missing.
+ * Parses TEP-64 on-chain metadata (HashmapE 256 ^SnakeData) or fetches off-chain
+ * JSON metadata. Falls back to 9 if the jetton master doesn't expose decimals.
  */
 export async function getJettonDecimals(jettonMasterAddress: string): Promise<number> {
   try {
     const client = getTonClient();
     const master = Address.parse(jettonMasterAddress);
 
-    // get_jetton_data returns: (total_supply, mintable, admin, content, wallet_code)
-    // content is a cell that contains metadata (TEP-64). We try to parse decimals from it.
-    // Many jettons store metadata as an on-chain snake-encoded dict or off-chain URL.
-    // Fallback to 9 if parsing fails — covers the majority of TON jettons.
+    // get_jetton_data returns: (total_supply, mintable, admin_address, content, wallet_code)
     const result = await client.runMethod(master, 'get_jetton_data', []);
-    // Skip total_supply, mintable, admin_address, content, wallet_code
-    // Try to read content cell and look for "decimals" key (0x8b...) — this is complex;
-    // fall through to default.
-    void result;
-    return 9;
+    result.stack.readBigNumber(); // total_supply
+    result.stack.readNumber();    // mintable
+    result.stack.readAddress();   // admin_address
+    const contentCell = result.stack.readCell();
+
+    const slice = contentCell.beginParse();
+    if (slice.remainingBits < 8) return 9;
+    const prefix = slice.loadUint(8);
+
+    if (prefix === 0x00) {
+      // On-chain metadata: HashmapE 256 ^SnakeData
+      if (slice.remainingBits === 0 && slice.remainingRefs === 0) return 9;
+      const dict = Dictionary.load(
+        Dictionary.Keys.BigUint(256),
+        Dictionary.Values.Cell(),
+        slice,
+      );
+      const cell = dict.get(DECIMALS_DICT_KEY);
+      if (cell) {
+        const str = readSnakeString(cell).trim();
+        const n = parseInt(str, 10);
+        if (!isNaN(n) && n >= 0 && n <= 18) return n;
+      }
+    } else if (prefix === 0x01) {
+      // Off-chain URL metadata — fetch JSON and read `decimals` field
+      const url = normalizeMetadataUrl(slice.loadStringTail().trim());
+      if (url) {
+        const n = await fetchOffChainDecimals(url);
+        if (n !== null) return n;
+      }
+    }
   } catch {
-    return 9;
+    // Fall through to default
+  }
+  return 9;
+}
+
+/**
+ * Reads a snake-encoded UTF-8 string from a TEP-64 metadata value cell.
+ * Skips the 0x00 snake-format prefix byte if present in the first cell.
+ */
+function readSnakeString(cell: Cell): string {
+  let result = '';
+  let current: Cell | null = cell;
+  let isFirst = true;
+  while (current) {
+    const s = current.beginParse();
+    const bytes = Math.floor(s.remainingBits / 8);
+    if (bytes > 0) {
+      const buf = s.loadBuffer(bytes);
+      // Some implementations include a 0x00 snake-format prefix byte in the first cell
+      const start = isFirst && buf[0] === 0x00 ? 1 : 0;
+      result += buf.slice(start).toString('utf8');
+    }
+    isFirst = false;
+    current = s.remainingRefs > 0 ? s.loadRef() : null;
+  }
+  return result;
+}
+
+function normalizeMetadataUrl(url: string): string {
+  // Convert IPFS URIs to an HTTP gateway URL
+  if (url.startsWith('ipfs://')) return 'https://ipfs.io/ipfs/' + url.slice(7);
+  return url;
+}
+
+async function fetchOffChainDecimals(url: string): Promise<number | null> {
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) return null;
+    const json = await resp.json() as Record<string, unknown>;
+    const n = parseInt(String(json?.decimals ?? ''), 10);
+    if (!isNaN(n) && n >= 0 && n <= 18) return n;
+    return null;
+  } catch {
+    return null;
   }
 }
 
