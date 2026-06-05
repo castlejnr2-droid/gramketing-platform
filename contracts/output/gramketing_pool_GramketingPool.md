@@ -1,9 +1,9 @@
 # Tact compilation report
 Contract: GramketingPool
-BoC Size: 1783 bytes
+BoC Size: 2052 bytes
 
 ## Structures (Structs and Messages)
-Total structures: 23
+Total structures: 25
 
 ### DataSize
 TL-B: `_ cells:int257 bits:int257 refs:int257 = DataSize`
@@ -68,6 +68,14 @@ Signature: `DistributeRewards{winners:dict<address, int>}`
 ### CancelPool
 TL-B: `cancel_pool#a5dc73ae winners:dict<address, int> = CancelPool`
 Signature: `CancelPool{winners:dict<address, int>}`
+
+### SetJettonWallet
+TL-B: `set_jetton_wallet#6eecb8b7 newJettonWalletAddress:address = SetJettonWallet`
+Signature: `SetJettonWallet{newJettonWalletAddress:address}`
+
+### AdminRescue
+TL-B: `admin_rescue#ac681978 queryId:uint64 amount:coins destination:address = AdminRescue`
+Signature: `AdminRescue{queryId:uint64,amount:coins,destination:address}`
 
 ### JettonTransfer
 TL-B: `jetton_transfer#0f8a7ea5 queryId:uint64 amount:coins destination:address responseDestination:address customPayload:Maybe ^cell forwardTonAmount:coins forwardPayload:remainder<slice> = JettonTransfer`
@@ -142,10 +150,12 @@ No arguments
 * 138: Not a basechain address
 * 5961: Pool already initialized
 * 9050: Already distributed
+* 11957: Only admin can rescue tokens
 * 19935: Pool not ended yet
 * 29498: Only owner can create pool
 * 33515: Minimum 3 reward slots required
 * 34390: Only admin can cancel pool
+* 42780: Only admin can set jetton wallet
 * 43187: Only admin can distribute rewards
 * 52626: Only admin can end pool
 * 53782: Pool not active

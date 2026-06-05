@@ -10,7 +10,7 @@
  *    The GramketingPool contract sends JettonTransfer (TEP-74) messages.
  *    You must deposit a TON-backed JETTON into the escrow — not native TON.
  *    Suggested mainnet jetton for testing:
- *      tsTON (Tonstakers): EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XQMavfLqIx
+ *      tsTON (Tonstakers): EQC98_qAmNEptUtPc7W6xdHh_ZHrBUFpw5Ft_IzNU20QAJav
  *    Update JETTON_MASTER_ADDRESS below to the jetton you actually hold.
  *
  * 2. ADMIN_MNEMONIC must be set in .env before you can deploy a contract or
@@ -38,7 +38,7 @@ const TOKEN_SYMBOL = 'TON';
 // ⚠️  The contract distributes JETTONS, not native TON.
 // For a 2-TON equivalent test, use a TON-backed jetton you hold on mainnet.
 // tsTON (Tonstakers Liquid Staking) on mainnet:
-const JETTON_MASTER_ADDRESS = 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XQMavfLqIx';
+const JETTON_MASTER_ADDRESS = 'EQC98_qAmNEptUtPc7W6xdHh_ZHrBUFpw5Ft_IzNU20QAJav';
 
 // Total reward: 2 TON expressed in nano-tokens (9 decimals for tsTON/jTON)
 const TOTAL_REWARD_NANO = '2000000000'; // 2.000000000 tsTON

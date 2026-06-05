@@ -681,6 +681,26 @@ _ %poolInfo() method_id(106583) {
             return ();
         }
         
+        ;; Receive SetJettonWallet message
+        if (op == 1861007543) {
+            var $msg'newJettonWalletAddress = in_msg~load_msg_addr();
+            throw_unless(42780, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
+            $self'jettonWalletAddress = $msg'newJettonWalletAddress;
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            return ();
+        }
+        
+        ;; Receive AdminRescue message
+        if (op == 2892503416) {
+            var $msg'queryId = in_msg~load_uint(64);
+            var $msg'amount = in_msg~load_varuint16();
+            var $msg'destination = in_msg~load_msg_addr();
+            throw_unless(11957, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
+            $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload($msg'queryId, $msg'amount, $msg'destination, $self'admin, null(), 10000000, $global_emptySlice()), begin_cell())));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            return ();
+        }
+        
         ;; Receive Deploy message
         if (op == 0x946a98b6) {
             var $deploy'queryId = in_msg~load_uint(64);

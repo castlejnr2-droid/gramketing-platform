@@ -23,6 +23,18 @@ message CancelPool {
     winners: map<Address, Int>; // address -> shareBasisPoints (sum ≤ 10000)
 }
 
+// Admin can correct the jetton wallet address (e.g. after redeployment or wrong placeholder)
+message SetJettonWallet {
+    newJettonWalletAddress: Address;
+}
+
+// Admin emergency rescue: transfer any amount from contract's jetton wallet to any address
+message AdminRescue {
+    queryId: Int as uint64;
+    amount: Int as coins;
+    destination: Address;
+}
+
 // TEP-74 standard jetton transfer opcode: 0x0f8a7ea5
 message(0x0f8a7ea5) JettonTransfer {
     queryId: Int as uint64;
@@ -259,6 +271,33 @@ contract GramketingPool with Deployable {
                 }.toCell()
             });
         }
+    }
+
+    // Admin can update the jetton wallet address (e.g. to correct a placeholder set at init)
+    receive(msg: SetJettonWallet) {
+        require(sender() == self.admin, "Only admin can set jetton wallet");
+        self.jettonWalletAddress = msg.newJettonWalletAddress;
+    }
+
+    // Emergency rescue: admin can move jettons out of the contract to any address.
+    // Use this if tokens land in the contract's jetton wallet but depositedAmount = 0,
+    // or if distribution needs to be manually completed after a partial failure.
+    receive(msg: AdminRescue) {
+        require(sender() == self.admin, "Only admin can rescue tokens");
+        send(SendParameters{
+            to: self.jettonWalletAddress,
+            value: ton("0.05"),
+            mode: SendIgnoreErrors,
+            body: JettonTransfer{
+                queryId: msg.queryId,
+                amount: msg.amount,
+                destination: msg.destination,
+                responseDestination: self.admin,
+                customPayload: null,
+                forwardTonAmount: ton("0.01"),
+                forwardPayload: emptySlice()
+            }.toCell()
+        });
     }
 
     get fun poolInfo(): PoolInfo {

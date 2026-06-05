@@ -917,6 +917,130 @@ PROGRAM{
         $GramketingPool$_contract_store INLINECALLDICT
         RETALT
       }>
+      OVER
+      1861007543 PUSHINT
+      EQUAL
+      IFJMP:<{
+        NIP
+        s6 POP
+        s0 s5 XCHG
+        LDMSGADDR
+        DROP
+        42780 PUSHINT
+        __tact_context_get_sender INLINECALLDICT
+        s8 PUSH
+        SDEQ
+        THROWANYIFNOT
+        s7 s9 XCHG
+        s6 s8 XCHG
+        s0 s7 XCHG
+        s4 s6 XCHG
+        s3 s5 XCHG
+        s4 s3 s0 XCHG3
+        s1 s2 XCHG
+        $GramketingPool$_contract_store INLINECALLDICT
+        RETALT
+      }>
+      OVER
+      2892503416 PUSHINT
+      EQUAL
+      IFJMP:<{
+        NIP
+        64 LDU
+        LDVARUINT16
+        LDMSGADDR
+        DROP
+        11957 PUSHINT
+        __tact_context_get_sender INLINECALLDICT
+        s11 PUSH
+        SDEQ
+        THROWANYIFNOT
+        50000000 PUSHINT
+        2 PUSHINT
+        PUSHNULL
+        10000000 PUSHINT
+            b{} PUSHSLICE
+        s5 s7 XCHG
+        5 3 REVERSE
+        s14 PUSH
+        3 -ROLL
+        $JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload INLINECALLDICT
+        NEWC
+        $JettonTransfer$_store_cell INLINECALLDICT
+        s8 PUSH
+        s3 s3 XCHG2
+        $SendParameters$_constructor_to_value_mode_body INLINECALLDICT
+            NEWC
+            b{01} STSLICECONST  // store tag = $0 and ihr_disabled = true
+            1 STI               // store `bounce`
+            b{000} STSLICECONST // store bounced = false and src = addr_none
+            STSLICE             // store `to`
+            SWAP
+            STGRAMS             // store `value`
+            105 PUSHINT         // 1 + 4 + 4 + 64 + 32
+            STZEROES            // store currency_collection, ihr_fee, fwd_fee, created_lt and created_at
+            // → Stack state
+            // s0: Builder
+            // s1: `data`
+            // s2: `code`
+            // s3: `body`
+            // s4: `mode`
+            // Group 2: Placing the Builder after code and data, then checking those for nullability
+            s2 XCHG0
+            DUP2
+            ISNULL
+            SWAP
+            ISNULL
+            AND
+            // → Stack state
+            // s0: -1 (true) if `data` and `code` are both null, 0 (false) otherwise
+            // s1: `code`
+            // s2: `data`
+            // s3: Builder
+            // s4: `body`
+            // s5: `mode`
+            // Group 3: Left branch of the IFELSE, executed if s0 is -1 (true)
+            <{
+                DROP2 // drop `data` and `code`, since either of those is null
+                b{0} STSLICECONST
+            }> PUSHCONT
+            // Group 3: Right branch of the IFELSE, executed if s0 is 0 (false)
+            <{
+                // _ split_depth:(Maybe (## 5))
+                //   special:(Maybe TickTock)
+                //   code:(Maybe ^Cell)
+                //   data:(Maybe ^Cell)
+                //   library:(Maybe ^Cell)
+                // = StateInit;
+                ROT                // place message Builder on top
+                b{10} STSLICECONST // store Maybe = true, Either = false
+                // Start composing inlined StateInit
+                b{00} STSLICECONST // store split_depth and special first
+                STDICT             // store code
+                STDICT             // store data
+                b{0} STSLICECONST  // store library
+            }> PUSHCONT
+            // Group 3: IFELSE that does the branching shown above
+            IFELSE
+            // → Stack state
+            // s0: Builder
+            // s1: null or StateInit
+            // s2: `body`
+            // s3: `mode`
+            // Group 4: Finalizing the message
+            STDICT // store `body` as ref with an extra Maybe bit, since `body` might be null
+            ENDC
+            // → Stack state
+            // s0: Cell
+            // s1: `mode`
+            // Group 5: Sending the message, with `mode` on top
+            SWAP
+            SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
+        s7 s9 XCHG
+        2 7 BLKSWAP
+        $GramketingPool$_contract_store INLINECALLDICT
+        RETALT
+      }>
       SWAP
       2490013878 PUSHINT
       EQUAL

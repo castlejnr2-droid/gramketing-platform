@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "outDir": "../.scripts-out"
+  },
+  "include": ["./**/*.ts", "../lib/**/*.ts", "../contracts/**/*.ts", "../prisma/**/*.ts"]
+}
