@@ -174,7 +174,7 @@ contract GramketingPool with Deployable {
             // Send jetton to winner via jetton wallet
             send(SendParameters{
                 to: self.jettonWalletAddress,
-                value: ton("0.05"),
+                value: ton("0.15"),
                 mode: SendIgnoreErrors,
                 body: JettonTransfer{
                     queryId: 0,
@@ -183,7 +183,8 @@ contract GramketingPool with Deployable {
                     responseDestination: self.owner,
                     customPayload: null,
                     forwardTonAmount: ton("0.01"),
-                    forwardPayload: emptySlice()
+                    // Either discriminant bit (0 = inline) required by TEP-74 before payload
+                    forwardPayload: beginCell().storeBit(false).endCell().asSlice()
                 }.toCell()
             });
         }
@@ -193,7 +194,7 @@ contract GramketingPool with Deployable {
         if (dust > 0) {
             send(SendParameters{
                 to: self.jettonWalletAddress,
-                value: ton("0.05"),
+                value: ton("0.15"),
                 mode: SendIgnoreErrors,
                 body: JettonTransfer{
                     queryId: 1,
@@ -202,7 +203,8 @@ contract GramketingPool with Deployable {
                     responseDestination: self.owner,
                     customPayload: null,
                     forwardTonAmount: ton("0.01"),
-                    forwardPayload: emptySlice()
+                    // Either discriminant bit (0 = inline) required by TEP-74 before payload
+                    forwardPayload: beginCell().storeBit(false).endCell().asSlice()
                 }.toCell()
             });
         }
@@ -238,7 +240,7 @@ contract GramketingPool with Deployable {
                 totalDistributed = totalDistributed + amount;
                 send(SendParameters{
                     to: self.jettonWalletAddress,
-                    value: ton("0.05"),
+                    value: ton("0.15"),
                     mode: SendIgnoreErrors,
                     body: JettonTransfer{
                         queryId: 0,
@@ -247,7 +249,8 @@ contract GramketingPool with Deployable {
                         responseDestination: self.owner,
                         customPayload: null,
                         forwardTonAmount: ton("0.01"),
-                        forwardPayload: emptySlice()
+                        // Either discriminant bit (0 = inline) required by TEP-74 before payload
+                        forwardPayload: beginCell().storeBit(false).endCell().asSlice()
                     }.toCell()
                 });
             }
@@ -258,7 +261,7 @@ contract GramketingPool with Deployable {
         if (refund > 0) {
             send(SendParameters{
                 to: self.jettonWalletAddress,
-                value: ton("0.05"),
+                value: ton("0.15"),
                 mode: SendIgnoreErrors,
                 body: JettonTransfer{
                     queryId: 1,
@@ -267,7 +270,8 @@ contract GramketingPool with Deployable {
                     responseDestination: self.owner,
                     customPayload: null,
                     forwardTonAmount: ton("0.01"),
-                    forwardPayload: emptySlice()
+                    // Either discriminant bit (0 = inline) required by TEP-74 before payload
+                    forwardPayload: beginCell().storeBit(false).endCell().asSlice()
                 }.toCell()
             });
         }
@@ -286,8 +290,8 @@ contract GramketingPool with Deployable {
         require(sender() == self.admin, "Only admin can rescue tokens");
         send(SendParameters{
             to: self.jettonWalletAddress,
-            value: ton("0.05"),
-            mode: SendIgnoreErrors,
+            value: ton("0.3"),
+            mode: SendRemainingBalance,
             body: JettonTransfer{
                 queryId: msg.queryId,
                 amount: msg.amount,
@@ -295,7 +299,8 @@ contract GramketingPool with Deployable {
                 responseDestination: self.admin,
                 customPayload: null,
                 forwardTonAmount: ton("0.01"),
-                forwardPayload: emptySlice()
+                // Either discriminant bit (0 = inline) required by TEP-74 before payload
+                forwardPayload: beginCell().storeBit(false).endCell().asSlice()
             }.toCell()
         });
     }

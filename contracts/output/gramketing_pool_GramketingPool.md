@@ -1,6 +1,6 @@
 # Tact compilation report
 Contract: GramketingPool
-BoC Size: 2052 bytes
+BoC Size: 2078 bytes
 
 ## Structures (Structs and Messages)
 Total structures: 25

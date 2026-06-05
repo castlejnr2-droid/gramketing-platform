@@ -237,8 +237,8 @@ export async function sendDistributeRewards(
     );
   }
 
-  // Budget: 0.07 TON per winner (jetton transfer gas) + 0.1 TON base
-  const gasAmount = toNano('0.1') + BigInt(winners.length) * toNano('0.07');
+  // Budget: 0.22 TON per winner (0.15 jetton send value + 0.07 contract execution) + 0.1 TON base
+  const gasAmount = toNano('0.1') + BigInt(winners.length) * toNano('0.22');
 
   const body = beginCell()
     .store(storeDistributeRewards({ $$type: 'DistributeRewards', winners: winnersDict }))
@@ -307,8 +307,8 @@ export async function sendCancelPool(
     }
   }
 
-  // Budget: 0.07 TON per winner (jetton transfer gas) + 0.1 TON base + 0.07 for owner refund
-  const gasAmount = toNano('0.1') + BigInt(winners.length + 1) * toNano('0.07');
+  // Budget: 0.22 TON per winner (0.15 jetton send value + 0.07 contract execution) + 0.1 TON base + 0.22 for owner refund send
+  const gasAmount = toNano('0.1') + BigInt(winners.length + 1) * toNano('0.22');
 
   const body = beginCell()
     .store(storeCancelPool({ $$type: 'CancelPool', winners: winnersDict }))
@@ -430,13 +430,13 @@ export async function buildDepositTransaction(params: {
     .storeAddress(poolContractAddr) // destination = pool contract
     .storeAddress(creatorAddr)      // response_destination = creator (excess TON back)
     .storeBit(false)                // no custom_payload
-    .storeCoins(toNano('0.05'))     // forward_ton_amount (for notification gas)
+    .storeCoins(toNano('0.15'))     // forward_ton_amount (for notification gas — must be enough for contract execution)
     .storeBit(false)                // forward_payload = empty slice (inline)
     .endCell();
 
   return {
     to: creatorJettonWallet.toString({ bounceable: true, urlSafe: true }),
-    amount: toNano('0.15').toString(), // gas budget for the transfer
+    amount: toNano('0.35').toString(), // gas budget: 0.15 forwardTonAmount + ~0.01 jetton wallet gas + buffer
     payload: body.toBoc().toString('base64'),
   };
 }

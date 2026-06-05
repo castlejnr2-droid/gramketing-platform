@@ -23,6 +23,7 @@ PROGRAM{
   DECLPROC $GramketingPool$_contract_load
   DECLPROC $GramketingPool$_contract_store
   DECLPROC $global_emit
+  DECLPROC $Cell$_fun_asSlice
   DECLPROC $GramketingPool$_fun_requirePlatformToken
   DECLPROC $PoolInfo$_constructor_owner_admin_jettonWalletAddress_totalReward_depositedAmount_durationDays_rewardSlots_startTime_endTime_status
   DECLPROC $GramketingPool$_fun_poolInfo
@@ -252,6 +253,9 @@ PROGRAM{
         ENDC
     0 PUSHINT
         SENDRAWMSG
+  }>
+  $Cell$_fun_asSlice PROCINLINE:<{
+        CTOS
   }>
   $GramketingPool$_fun_requirePlatformToken PROCREF:<{
   }>
@@ -495,12 +499,16 @@ PROGRAM{
           ADD
           s0 s2 XCHG
           INC
-          50000000 PUSHINT
+          150000000 PUSHINT
           2 PUSHINT
           0 PUSHINT
           PUSHNULL
           10000000 PUSHINT
-              b{} PUSHSLICE
+          FALSE
+              NEWC
+              1 STI
+              ENDC
+          $Cell$_fun_asSlice INLINECALLDICT
           s7 PUSH
           s4 s5 XCHG
           s4 s10 XCHG
@@ -594,12 +602,16 @@ PROGRAM{
         DUP
         0 GTINT
         IF:<{
-          50000000 PUSHINT
+          150000000 PUSHINT
           2 PUSHINT
           1 PUSHINT
           PUSHNULL
           10000000 PUSHINT
-              b{} PUSHSLICE
+          FALSE
+              NEWC
+              1 STI
+              ENDC
+          $Cell$_fun_asSlice INLINECALLDICT
           s3 s4 XCHG
           s3 s6 XCHG
           16 s() PUSH
@@ -725,12 +737,16 @@ PROGRAM{
           IF:<{
             s2 s2 XCPU
             ADD
-            50000000 PUSHINT
+            150000000 PUSHINT
             2 PUSHINT
             0 PUSHINT
             PUSHNULL
             10000000 PUSHINT
-                b{} PUSHSLICE
+            FALSE
+                NEWC
+                1 STI
+                ENDC
+            $Cell$_fun_asSlice INLINECALLDICT
             s7 PUSH
             s4 s5 XCHG
             s4 s9 XCHG
@@ -826,12 +842,16 @@ PROGRAM{
         DUP
         0 GTINT
         IF:<{
-          50000000 PUSHINT
+          150000000 PUSHINT
           2 PUSHINT
           1 PUSHINT
           PUSHNULL
           10000000 PUSHINT
-              b{} PUSHSLICE
+          FALSE
+              NEWC
+              1 STI
+              ENDC
+          $Cell$_fun_asSlice INLINECALLDICT
           s14 PUSH
           s4 s5 XCHG
           s4 s7 XCHG
@@ -955,11 +975,15 @@ PROGRAM{
         s11 PUSH
         SDEQ
         THROWANYIFNOT
-        50000000 PUSHINT
-        2 PUSHINT
+        300000000 PUSHINT
+        7 PUSHPOW2
         PUSHNULL
         10000000 PUSHINT
-            b{} PUSHSLICE
+        FALSE
+            NEWC
+            1 STI
+            ENDC
+        $Cell$_fun_asSlice INLINECALLDICT
         s5 s7 XCHG
         5 3 REVERSE
         s14 PUSH

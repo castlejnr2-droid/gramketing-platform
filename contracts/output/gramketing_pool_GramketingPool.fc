@@ -77,6 +77,9 @@ _ $Context$_get_value((int, slice, int, slice) v) inline;
 ;; $global_emit
 () $global_emit(cell $body) impure inline;
 
+;; $Cell$_fun_asSlice
+slice $Cell$_fun_asSlice(cell $self) impure inline;
+
 ;; $GramketingPool$_fun_requirePlatformToken
 ((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_requirePlatformToken((slice, slice, slice, int, int, int, int, int, int, int) $self) impure inline_ref;
 
@@ -153,10 +156,6 @@ slice __tact_context_get_sender() inline {
 
 builder $global_beginCell() impure asm """
     NEWC
-""";
-
-slice $global_emptySlice() impure asm """
-    b{} PUSHSLICE
 """;
 
 int $global_myBalance() impure asm """
@@ -282,6 +281,19 @@ builder $Builder$_fun_storeRef(cell $cell, builder $self) impure asm """
 int $global_now() impure asm """
     NOW
 """;
+
+builder $Builder$_fun_storeBit(int $value, builder $self) impure asm """
+    1 STI
+""";
+
+slice $Cell$_fun_beginParse(cell $self) impure asm """
+    CTOS
+""";
+
+slice $Cell$_fun_asSlice(cell $self) impure inline {
+    var ($self) = $self;
+    return $Cell$_fun_beginParse($self);
+}
 
 ((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_notify((slice, slice, slice, int, int, int, int, int, int, int) $self, cell $body) impure inline {
     var (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
@@ -645,12 +657,12 @@ _ %poolInfo() method_id(106583) {
                 int $amount = (($self'depositedAmount * $shareBasisPoints) / 10000);
                 $totalDistributed = ($totalDistributed + $amount);
                 $winnerCount = ($winnerCount + 1);
-                $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(0, $amount, $addr, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
+                $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 150000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(0, $amount, $addr, $self'owner, null(), 10000000, $Cell$_fun_asSlice($Builder$_fun_endCell($Builder$_fun_storeBit(false, $global_beginCell())))), begin_cell())));
                 ($addr, $shareBasisPoints, $fresh$flag_1) = __tact_dict_next_slice_int($msg'winners, 267, $addr, 257);
             }
             int $dust = ($self'depositedAmount - $totalDistributed);
             if (($dust > 0)) {
-                $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(1, $dust, $self'owner, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
+                $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 150000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(1, $dust, $self'owner, $self'owner, null(), 10000000, $Cell$_fun_asSlice($Builder$_fun_endCell($Builder$_fun_storeBit(false, $global_beginCell())))), begin_cell())));
             }
             $global_emit($RewardsDistributed$_store_cell($RewardsDistributed$_constructor_totalDistributed_winnerCount($totalDistributed, $winnerCount), begin_cell()));
             $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
@@ -669,13 +681,13 @@ _ %poolInfo() method_id(106583) {
                 int $amount = (($self'depositedAmount * $shareBasisPoints) / 10000);
                 if (($amount > 0)) {
                     $totalDistributed = ($totalDistributed + $amount);
-                    $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(0, $amount, $addr, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
+                    $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 150000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(0, $amount, $addr, $self'owner, null(), 10000000, $Cell$_fun_asSlice($Builder$_fun_endCell($Builder$_fun_storeBit(false, $global_beginCell())))), begin_cell())));
                 }
                 ($addr, $shareBasisPoints, $fresh$flag_2) = __tact_dict_next_slice_int($msg'winners, 267, $addr, 257);
             }
             int $refund = ($self'depositedAmount - $totalDistributed);
             if (($refund > 0)) {
-                $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(1, $refund, $self'owner, $self'owner, null(), 10000000, $global_emptySlice()), begin_cell())));
+                $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 150000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(1, $refund, $self'owner, $self'owner, null(), 10000000, $Cell$_fun_asSlice($Builder$_fun_endCell($Builder$_fun_storeBit(false, $global_beginCell())))), begin_cell())));
             }
             $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
@@ -696,7 +708,7 @@ _ %poolInfo() method_id(106583) {
             var $msg'amount = in_msg~load_varuint16();
             var $msg'destination = in_msg~load_msg_addr();
             throw_unless(11957, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
-            $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 50000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload($msg'queryId, $msg'amount, $msg'destination, $self'admin, null(), 10000000, $global_emptySlice()), begin_cell())));
+            $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 300000000, 128, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload($msg'queryId, $msg'amount, $msg'destination, $self'admin, null(), 10000000, $Cell$_fun_asSlice($Builder$_fun_endCell($Builder$_fun_storeBit(false, $global_beginCell())))), begin_cell())));
             $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
         }
