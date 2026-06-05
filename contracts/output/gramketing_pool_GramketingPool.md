@@ -1,6 +1,6 @@
 # Tact compilation report
 Contract: GramketingPool
-BoC Size: 2078 bytes
+BoC Size: 2127 bytes
 
 ## Structures (Structs and Messages)
 Total structures: 25
@@ -102,8 +102,8 @@ TL-B: `_ owner:address admin:address jettonWalletAddress:address totalReward:coi
 Signature: `PoolInfo{owner:address,admin:address,jettonWalletAddress:address,totalReward:coins,depositedAmount:coins,durationDays:uint8,rewardSlots:uint8,startTime:uint64,endTime:uint64,status:uint8}`
 
 ### GramketingPool$Data
-TL-B: `_ owner:address admin:address jettonWalletAddress:address totalReward:coins durationDays:uint8 rewardSlots:uint8 startTime:uint64 endTime:uint64 status:uint8 depositedAmount:coins = GramketingPool`
-Signature: `GramketingPool{owner:address,admin:address,jettonWalletAddress:address,totalReward:coins,durationDays:uint8,rewardSlots:uint8,startTime:uint64,endTime:uint64,status:uint8,depositedAmount:coins}`
+TL-B: `_ owner:address admin:address nonce:uint64 jettonWalletAddress:address totalReward:coins durationDays:uint8 rewardSlots:uint8 startTime:uint64 endTime:uint64 status:uint8 depositedAmount:coins = GramketingPool`
+Signature: `GramketingPool{owner:address,admin:address,nonce:uint64,jettonWalletAddress:address,totalReward:coins,durationDays:uint8,rewardSlots:uint8,startTime:uint64,endTime:uint64,status:uint8,depositedAmount:coins}`
 
 ## Get methods
 Total get methods: 1

@@ -73,6 +73,7 @@ export async function deployAndInitPool(params: {
   totalReward: string;  // display amount (stored in DB) — informational in contract
   durationDays: number;
   rewardSlots: number;
+  nonce: bigint;        // unique salt — use Date.now() or a DB pool ID hash
 }): Promise<{ contractAddress: string; poolJettonWalletAddress: string }> {
   const { keyPair, contract: walletContract, client } = await getAdminWallet();
 
@@ -80,7 +81,7 @@ export async function deployAndInitPool(params: {
   const admin = Address.parse(params.adminAddress);
 
   // ── Step 1: Compute deterministic contract address ──────────────────────────
-  const poolContractInit = await GramketingPool.init(owner, admin);
+  const poolContractInit = await GramketingPool.init(owner, admin, params.nonce);
   const contractAddr = new GramketingPool(
     // contractAddress() from @ton/core computes the address from stateInit
     (await import('@ton/core')).contractAddress(0, poolContractInit),

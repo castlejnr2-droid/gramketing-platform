@@ -89,6 +89,7 @@ struct PoolInfo {
 contract GramketingPool with Deployable {
     owner: Address;          // project owner
     admin: Address;          // platform admin wallet
+    nonce: Int as uint64;    // unique salt so each pool gets a distinct contract address
     jettonWalletAddress: Address;
     totalReward: Int as coins;
     durationDays: Int as uint8;
@@ -98,9 +99,10 @@ contract GramketingPool with Deployable {
     status: Int as uint8;    // 0=ACTIVE, 1=ENDED, 2=DISTRIBUTED
     depositedAmount: Int as coins;
 
-    init(owner: Address, admin: Address) {
+    init(owner: Address, admin: Address, nonce: Int) {
         self.owner = owner;
         self.admin = admin;
+        self.nonce = nonce;
         self.jettonWalletAddress = newAddress(0, 0);
         self.totalReward = 0;
         self.durationDays = 0;

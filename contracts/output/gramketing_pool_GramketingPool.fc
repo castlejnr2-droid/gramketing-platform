@@ -51,10 +51,10 @@ builder $RewardsDistributed$_store(builder build_0, (int, int) v) inline;
 cell $RewardsDistributed$_store_cell((int, int) v, builder b) inline;
 
 ;; $GramketingPool$_store
-builder $GramketingPool$_store(builder build_0, (slice, slice, slice, int, int, int, int, int, int, int) v) inline;
+builder $GramketingPool$_store(builder build_0, (slice, slice, int, slice, int, int, int, int, int, int, int) v) inline;
 
 ;; $GramketingPool$_load
-(slice, ((slice, slice, slice, int, int, int, int, int, int, int))) $GramketingPool$_load(slice sc_0) inline;
+(slice, ((slice, slice, int, slice, int, int, int, int, int, int, int))) $GramketingPool$_load(slice sc_0) inline;
 
 ;; $Context$_get_value
 _ $Context$_get_value((int, slice, int, slice) v) inline;
@@ -63,16 +63,16 @@ _ $Context$_get_value((int, slice, int, slice) v) inline;
 (slice, slice, slice, int, int, int, int, int, int, int) $PoolInfo$_to_external(((slice, slice, slice, int, int, int, int, int, int, int)) v) inline;
 
 ;; $GramketingPool$init$_load
-(slice, ((slice, slice))) $GramketingPool$init$_load(slice sc_0) inline;
+(slice, ((slice, slice, int))) $GramketingPool$init$_load(slice sc_0) inline;
 
 ;; $GramketingPool$_contract_init
-(slice, slice, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_init(slice $owner, slice $admin) impure inline;
+(slice, slice, int, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_init(slice $owner, slice $admin, int $nonce) impure inline;
 
 ;; $GramketingPool$_contract_load
-(slice, slice, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_load() impure inline;
+(slice, slice, int, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_load() impure inline;
 
 ;; $GramketingPool$_contract_store
-() $GramketingPool$_contract_store((slice, slice, slice, int, int, int, int, int, int, int) v) impure inline;
+() $GramketingPool$_contract_store((slice, slice, int, slice, int, int, int, int, int, int, int) v) impure inline;
 
 ;; $global_emit
 () $global_emit(cell $body) impure inline;
@@ -81,19 +81,19 @@ _ $Context$_get_value((int, slice, int, slice) v) inline;
 slice $Cell$_fun_asSlice(cell $self) impure inline;
 
 ;; $GramketingPool$_fun_requirePlatformToken
-((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_requirePlatformToken((slice, slice, slice, int, int, int, int, int, int, int) $self) impure inline_ref;
+((slice, slice, int, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_requirePlatformToken((slice, slice, int, slice, int, int, int, int, int, int, int) $self) impure inline_ref;
 
 ;; $PoolInfo$_constructor_owner_admin_jettonWalletAddress_totalReward_depositedAmount_durationDays_rewardSlots_startTime_endTime_status
 ((slice, slice, slice, int, int, int, int, int, int, int)) $PoolInfo$_constructor_owner_admin_jettonWalletAddress_totalReward_depositedAmount_durationDays_rewardSlots_startTime_endTime_status(slice $owner, slice $admin, slice $jettonWalletAddress, int $totalReward, int $depositedAmount, int $durationDays, int $rewardSlots, int $startTime, int $endTime, int $status) inline;
 
 ;; $GramketingPool$_fun_poolInfo
-((slice, slice, slice, int, int, int, int, int, int, int), (slice, slice, slice, int, int, int, int, int, int, int)) $GramketingPool$_fun_poolInfo((slice, slice, slice, int, int, int, int, int, int, int) $self) impure inline_ref;
+((slice, slice, int, slice, int, int, int, int, int, int, int), (slice, slice, slice, int, int, int, int, int, int, int)) $GramketingPool$_fun_poolInfo((slice, slice, int, slice, int, int, int, int, int, int, int) $self) impure inline_ref;
 
 ;; $MessageParameters$_constructor_bounce_to_value_mode_body
 ((int, cell, int, slice, int)) $MessageParameters$_constructor_bounce_to_value_mode_body(int $bounce, slice $to, int $value, int $mode, cell $body) inline;
 
 ;; $GramketingPool$_fun_notify
-((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_notify((slice, slice, slice, int, int, int, int, int, int, int) $self, cell $body) impure inline;
+((slice, slice, int, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_notify((slice, slice, int, slice, int, int, int, int, int, int, int) $self, cell $body) impure inline;
 
 ;; $PoolCreated$_constructor_jettonWalletAddress_totalReward_durationDays_rewardSlots_startTime_endTime
 ((slice, int, int, int, int, int)) $PoolCreated$_constructor_jettonWalletAddress_totalReward_durationDays_rewardSlots_startTime_endTime(slice $jettonWalletAddress, int $totalReward, int $durationDays, int $rewardSlots, int $startTime, int $endTime) inline;
@@ -295,8 +295,8 @@ slice $Cell$_fun_asSlice(cell $self) impure inline {
     return $Cell$_fun_beginParse($self);
 }
 
-((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_notify((slice, slice, slice, int, int, int, int, int, int, int) $self, cell $body) impure inline {
-    var (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
+((slice, slice, int, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_notify((slice, slice, int, slice, int, int, int, int, int, int, int) $self, cell $body) impure inline {
+    var (($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
     slice $to = __tact_context_get_sender();
     int $bounce = false;
     if (false) {
@@ -305,11 +305,11 @@ slice $Cell$_fun_asSlice(cell $self) impure inline {
         if (($balanceBeforeMessage < 0)) {
             $global_nativeReserve(0, 0);
             $global_message($MessageParameters$_constructor_bounce_to_value_mode_body($bounce, $to, 0, 130, $body));
-            return (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), ());
+            return (($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), ());
         }
     }
     $global_message($MessageParameters$_constructor_bounce_to_value_mode_body($bounce, $to, 0, 66, $body));
-    return (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), ());
+    return (($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), ());
 }
 
 ;; gramketing_pool_GramketingPool.constants.fc
@@ -480,19 +480,20 @@ cell $RewardsDistributed$_store_cell((int, int) v, builder b) inline {
 
 ;;
 ;; Type: GramketingPool
-;; TLB: _ owner:address admin:address jettonWalletAddress:address totalReward:coins durationDays:uint8 rewardSlots:uint8 startTime:uint64 endTime:uint64 status:uint8 depositedAmount:coins = GramketingPool
+;; TLB: _ owner:address admin:address nonce:uint64 jettonWalletAddress:address totalReward:coins durationDays:uint8 rewardSlots:uint8 startTime:uint64 endTime:uint64 status:uint8 depositedAmount:coins = GramketingPool
 ;;
 
-builder $GramketingPool$_store(builder build_0, (slice, slice, slice, int, int, int, int, int, int, int) v) inline {
-    var (v'owner, v'admin, v'jettonWalletAddress, v'totalReward, v'durationDays, v'rewardSlots, v'startTime, v'endTime, v'status, v'depositedAmount) = v;
+builder $GramketingPool$_store(builder build_0, (slice, slice, int, slice, int, int, int, int, int, int, int) v) inline {
+    var (v'owner, v'admin, v'nonce, v'jettonWalletAddress, v'totalReward, v'durationDays, v'rewardSlots, v'startTime, v'endTime, v'status, v'depositedAmount) = v;
     build_0 = build_0.store_slice(v'owner);
     build_0 = build_0.store_slice(v'admin);
+    build_0 = build_0.store_uint(v'nonce, 64);
     build_0 = build_0.store_slice(v'jettonWalletAddress);
     build_0 = build_0.store_varuint16(v'totalReward);
     build_0 = build_0.store_uint(v'durationDays, 8);
     build_0 = build_0.store_uint(v'rewardSlots, 8);
-    build_0 = build_0.store_uint(v'startTime, 64);
     var build_1 = begin_cell();
+    build_1 = build_1.store_uint(v'startTime, 64);
     build_1 = build_1.store_uint(v'endTime, 64);
     build_1 = build_1.store_uint(v'status, 8);
     build_1 = build_1.store_varuint16(v'depositedAmount);
@@ -500,41 +501,43 @@ builder $GramketingPool$_store(builder build_0, (slice, slice, slice, int, int, 
     return build_0;
 }
 
-(slice, ((slice, slice, slice, int, int, int, int, int, int, int))) $GramketingPool$_load(slice sc_0) inline {
+(slice, ((slice, slice, int, slice, int, int, int, int, int, int, int))) $GramketingPool$_load(slice sc_0) inline {
     var v'owner = sc_0~load_msg_addr();
     var v'admin = sc_0~load_msg_addr();
+    var v'nonce = sc_0~load_uint(64);
     var v'jettonWalletAddress = sc_0~load_msg_addr();
     var v'totalReward = sc_0~load_varuint16();
     var v'durationDays = sc_0~load_uint(8);
     var v'rewardSlots = sc_0~load_uint(8);
-    var v'startTime = sc_0~load_uint(64);
     slice sc_1 = sc_0~load_ref().begin_parse();
+    var v'startTime = sc_1~load_uint(64);
     var v'endTime = sc_1~load_uint(64);
     var v'status = sc_1~load_uint(8);
     var v'depositedAmount = sc_1~load_varuint16();
-    return (sc_0, (v'owner, v'admin, v'jettonWalletAddress, v'totalReward, v'durationDays, v'rewardSlots, v'startTime, v'endTime, v'status, v'depositedAmount));
+    return (sc_0, (v'owner, v'admin, v'nonce, v'jettonWalletAddress, v'totalReward, v'durationDays, v'rewardSlots, v'startTime, v'endTime, v'status, v'depositedAmount));
 }
 
-(slice, ((slice, slice))) $GramketingPool$init$_load(slice sc_0) inline {
+(slice, ((slice, slice, int))) $GramketingPool$init$_load(slice sc_0) inline {
     var v'owner = sc_0~load_msg_addr();
     var v'admin = sc_0~load_msg_addr();
-    return (sc_0, (v'owner, v'admin));
+    var v'nonce = sc_0~load_int(257);
+    return (sc_0, (v'owner, v'admin, v'nonce));
 }
 
-(slice, slice, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_load() impure inline {
+(slice, slice, int, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_load() impure inline {
     slice $sc = get_data().begin_parse();
     int $loaded = $sc~load_int(1);
     if ($loaded) {
         return $sc~$GramketingPool$_load();
     }
     else {
-        (slice $owner, slice $admin) = $sc~$GramketingPool$init$_load();
+        (slice $owner, slice $admin, int $nonce) = $sc~$GramketingPool$init$_load();
         $sc.end_parse();
-        return $GramketingPool$_contract_init($owner, $admin);
+        return $GramketingPool$_contract_init($owner, $admin, $nonce);
     }
 }
 
-() $GramketingPool$_contract_store((slice, slice, slice, int, int, int, int, int, int, int) v) impure inline {
+() $GramketingPool$_contract_store((slice, slice, int, slice, int, int, int, int, int, int, int) v) impure inline {
     builder b = begin_cell();
     b = b.store_int(true, 1);
     b = $GramketingPool$_store(b, v);
@@ -545,10 +548,11 @@ builder $GramketingPool$_store(builder build_0, (slice, slice, slice, int, int, 
 ;; Contract GramketingPool functions
 ;;
 
-(slice, slice, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_init(slice $owner, slice $admin) impure inline {
-    var (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = (null(), null(), null(), null(), null(), null(), null(), null(), null(), null());
+(slice, slice, int, slice, int, int, int, int, int, int, int) $GramketingPool$_contract_init(slice $owner, slice $admin, int $nonce) impure inline {
+    var (($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = (null(), null(), null(), null(), null(), null(), null(), null(), null(), null(), null());
     $self'owner = $owner;
     $self'admin = $admin;
+    $self'nonce = $nonce;
     $self'jettonWalletAddress = __gen_slice_address_61ab4641fa30d9310391025086eec65d200d79268e1b7cd402565e01ba64be3c();
     $self'totalReward = 0;
     $self'durationDays = 0;
@@ -557,18 +561,18 @@ builder $GramketingPool$_store(builder build_0, (slice, slice, slice, int, int, 
     $self'endTime = 0;
     $self'status = 0;
     $self'depositedAmount = 0;
-    return ($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount);
+    return ($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount);
 }
 
-((slice, slice, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_requirePlatformToken((slice, slice, slice, int, int, int, int, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
-    return (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), ());
+((slice, slice, int, slice, int, int, int, int, int, int, int), ()) $GramketingPool$_fun_requirePlatformToken((slice, slice, int, slice, int, int, int, int, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
+    return (($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), ());
 }
 
-((slice, slice, slice, int, int, int, int, int, int, int), (slice, slice, slice, int, int, int, int, int, int, int)) $GramketingPool$_fun_poolInfo((slice, slice, slice, int, int, int, int, int, int, int) $self) impure inline_ref {
-    var (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
+((slice, slice, int, slice, int, int, int, int, int, int, int), (slice, slice, slice, int, int, int, int, int, int, int)) $GramketingPool$_fun_poolInfo((slice, slice, int, slice, int, int, int, int, int, int, int) $self) impure inline_ref {
+    var (($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)) = $self;
     var $fresh$ret_0 = $PoolInfo$_constructor_owner_admin_jettonWalletAddress_totalReward_depositedAmount_durationDays_rewardSlots_startTime_endTime_status($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'depositedAmount, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status);
-    return (($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), $fresh$ret_0);
+    return (($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount), $fresh$ret_0);
 }
 
 ;;
@@ -601,7 +605,7 @@ _ %poolInfo() method_id(106583) {
     __tact_context_sender = msg_sender_addr;
     
     ;; Load contract data
-    var ($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount) = $GramketingPool$_contract_load();
+    var ($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount) = $GramketingPool$_contract_load();
     
     ;; Handle bounced messages
     if (msg_bounced) { return (); }
@@ -619,7 +623,7 @@ _ %poolInfo() method_id(106583) {
             throw_unless(5961, ($self'status == 0));
             throw_unless(55690, ( (( (( (($msg'durationDays == 7)) ? (true) : (($msg'durationDays == 14)) )) ? (true) : (($msg'durationDays == 21)) )) ? (true) : (($msg'durationDays == 28)) ));
             throw_unless(33515, ($msg'rewardSlots >= 3));
-            ($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)~$GramketingPool$_fun_requirePlatformToken();
+            ($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)~$GramketingPool$_fun_requirePlatformToken();
             $self'jettonWalletAddress = $msg'jettonWalletAddress;
             $self'totalReward = $msg'totalReward;
             $self'durationDays = $msg'durationDays;
@@ -627,7 +631,7 @@ _ %poolInfo() method_id(106583) {
             $self'startTime = $global_now();
             $self'endTime = ($global_now() + ((($msg'durationDays * 24) * 60) * 60));
             $global_emit($PoolCreated$_store_cell($PoolCreated$_constructor_jettonWalletAddress_totalReward_durationDays_rewardSlots_startTime_endTime($msg'jettonWalletAddress, $msg'totalReward, $msg'durationDays, $msg'rewardSlots, $self'startTime, $self'endTime), begin_cell()));
-            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
         }
         
@@ -639,7 +643,7 @@ _ %poolInfo() method_id(106583) {
             var $msg'forwardPayload = in_msg;
             throw_unless(62796, ( equal_slices_bits(__tact_context_get_sender(), $self'jettonWalletAddress) ));
             $self'depositedAmount = ($self'depositedAmount + $msg'amount);
-            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
         }
         
@@ -665,7 +669,7 @@ _ %poolInfo() method_id(106583) {
                 $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 150000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(1, $dust, $self'owner, $self'owner, null(), 10000000, $Cell$_fun_asSlice($Builder$_fun_endCell($Builder$_fun_storeBit(false, $global_beginCell())))), begin_cell())));
             }
             $global_emit($RewardsDistributed$_store_cell($RewardsDistributed$_constructor_totalDistributed_winnerCount($totalDistributed, $winnerCount), begin_cell()));
-            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
         }
         
@@ -689,7 +693,7 @@ _ %poolInfo() method_id(106583) {
             if (($refund > 0)) {
                 $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 150000000, 2, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload(1, $refund, $self'owner, $self'owner, null(), 10000000, $Cell$_fun_asSlice($Builder$_fun_endCell($Builder$_fun_storeBit(false, $global_beginCell())))), begin_cell())));
             }
-            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
         }
         
@@ -698,7 +702,7 @@ _ %poolInfo() method_id(106583) {
             var $msg'newJettonWalletAddress = in_msg~load_msg_addr();
             throw_unless(42780, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
             $self'jettonWalletAddress = $msg'newJettonWalletAddress;
-            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
         }
         
@@ -709,15 +713,15 @@ _ %poolInfo() method_id(106583) {
             var $msg'destination = in_msg~load_msg_addr();
             throw_unless(11957, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
             $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 300000000, 128, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload($msg'queryId, $msg'amount, $msg'destination, $self'admin, null(), 10000000, $Cell$_fun_asSlice($Builder$_fun_endCell($Builder$_fun_storeBit(false, $global_beginCell())))), begin_cell())));
-            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
         }
         
         ;; Receive Deploy message
         if (op == 0x946a98b6) {
             var $deploy'queryId = in_msg~load_uint(64);
-            ($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)~$GramketingPool$_fun_notify($DeployOk$_store_cell($DeployOk$_constructor_queryId($deploy'queryId), begin_cell()));
-            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            ($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount)~$GramketingPool$_fun_notify($DeployOk$_store_cell($DeployOk$_constructor_queryId($deploy'queryId), begin_cell()));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
         }
         
@@ -730,7 +734,7 @@ _ %poolInfo() method_id(106583) {
         throw_unless(53782, ($self'status == 0));
         $self'status = 1;
         $global_emit($PoolEnded$_store_cell($PoolEnded$_constructor_endTime($global_now()), begin_cell()));
-        $GramketingPool$_contract_store(($self'owner, $self'admin, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+        $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
         return ();
     }
     ;; Throw if not handled

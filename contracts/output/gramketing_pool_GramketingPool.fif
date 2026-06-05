@@ -158,19 +158,22 @@ PROGRAM{
     ENDC
   }>
   $GramketingPool$_store PROCINLINE:<{
-    s9 s10 XCHG2
+    s10 s11 XCHG2
     STSLICE
-    s1 s7 XCHG
+    s1 s8 XCHG
     STSLICE
-    s1 s5 XCHG
+    s1 s6 XCHG
+    64 STU
+    s1 s4 XCHG
     STSLICE
-    s0 s3 XCHG2
+    ROT
     STVARUINT16
     8 STU
     8 STU
-    64 STU
     SWAP
     NEWC
+    64 STU
+    s1 s2 XCHG
     64 STU
     s1 s2 XCHG
     8 STU
@@ -181,25 +184,26 @@ PROGRAM{
   $GramketingPool$_load PROCINLINE:<{
     LDMSGADDR
     LDMSGADDR
+    64 LDU
     LDMSGADDR
     LDVARUINT16
     8 LDU
     8 LDU
-    64 LDU
     LDREF
     SWAP
     CTOS
     64 LDU
+    64 LDU
     8 LDU
     LDVARUINT16
     DROP
-    s3 s10 XCHG
-    s3 s9 XCHG
-    s3 s8 XCHG
-    s3 s7 XCHG
-    s3 s6 XCHG
-    s3 s5 XCHG
-    s3 s4 XCHG
+    s4 s11 XCHG
+    s4 s10 XCHG
+    s4 s9 XCHG
+    s4 s8 XCHG
+    s4 s7 XCHG
+    s4 s6 XCHG
+    s4 s5 XCHG
   }>
   $Context$_get_value PROCINLINE:<{
     s1 s3 XCHG
@@ -210,7 +214,9 @@ PROGRAM{
   $GramketingPool$init$_load PROCINLINE:<{
     LDMSGADDR
     LDMSGADDR
-    -ROT
+    257 PUSHINT
+    LDIX
+    3 -ROLL
   }>
   $GramketingPool$_contract_init PROCINLINE:<{
         B{b5ee9c72410101010024000043800000000000000000000000000000000000000000000000000000000000000000104aec829d} B>boc <s PUSHSLICE
@@ -225,12 +231,12 @@ PROGRAM{
     SWAP
     IF:<{
       $GramketingPool$_load INLINECALLDICT
-      1 10 BLKDROP2
+      1 11 BLKDROP2
     }>ELSE<{
       $GramketingPool$init$_load INLINECALLDICT
-      s0 s2 XCHG
+      s0 s3 XCHG
       ENDS
-      SWAP
+      ROT
       $GramketingPool$_contract_init INLINECALLDICT
     }>
   }>
@@ -239,7 +245,7 @@ PROGRAM{
     TRUE
     SWAP
     1 STI
-    10 -ROLL
+    11 -ROLL
     $GramketingPool$_store INLINECALLDICT
     ENDC
     c4 POP
@@ -262,7 +268,7 @@ PROGRAM{
   $PoolInfo$_constructor_owner_admin_jettonWalletAddress_totalReward_depositedAmount_durationDays_rewardSlots_startTime_endTime_status PROCINLINE:<{
   }>
   $GramketingPool$_fun_poolInfo PROCREF:<{
-    s9 s8 s7 PUSH3
+    s10 s9 s7 PUSH3
     s9 s3 s8 PUSH3
     s10 s9 s8 PUSH3
     s10 PUSH
@@ -318,7 +324,7 @@ PROGRAM{
   %poolInfo PROC:<{
     $GramketingPool$_contract_load INLINECALLDICT
     $GramketingPool$_fun_poolInfo INLINECALLDICT
-    10 10 BLKDROP2
+    11 10 BLKDROP2
     $PoolInfo$_to_external INLINECALLDICT
   }>
   recv_internal PROC:<{
@@ -339,15 +345,15 @@ PROGRAM{
     s0 s2 XCHG
     __tact_context_sender SETGLOB
     $GramketingPool$_contract_load INLINECALLDICT
-    s0 s11 XCHG
+    s0 s12 XCHG
     IFJMP:<{
-      11 BLKDROP
+      12 BLKDROP
     }>
-    s9 PUSH
+    s10 PUSH
     SBITS
     31 GTINT
     IF:<{
-      s0 s9 XCHG
+      s0 s10 XCHG
       32 LDU
       OVER
       2970805445 PUSHINT
@@ -361,11 +367,11 @@ PROGRAM{
         DROP
         29498 PUSHINT
         __tact_context_get_sender INLINECALLDICT
-        s13 PUSH
+        s14 PUSH
         SDEQ
         THROWANYIFNOT
         5961 PUSHINT
-        s13 PUSH
+        s14 PUSH
         0 EQINT
         THROWANYIFNOT
         55690 PUSHINT
@@ -394,38 +400,38 @@ PROGRAM{
         OVER
         2 GTINT
         THROWANYIFNOT
-        s9 s11 XCHG
-        5 7 REVERSE
-        s6 s10 XCHG
+        s10 s12 XCHG
+        5 8 REVERSE
+        s7 s11 XCHG
+        s6 s12 XCHG
         s5 s11 XCHG
-        s4 s10 XCHG
+        s4 s12 XCHG
         s3 s11 XCHG
-        s10 s12 s13 XCHG3
+        s12 s13 s14 XCHG3
         $GramketingPool$_fun_requirePlatformToken INLINECALLDICT
         6 2 BLKDROP2
-        s5 s4 s6 PUSH3
-        s10 PUSH
+        s5 s6 s7 PUSH3
+        s11 PUSH
             NOW
             NOW
-        s12 PUSH
+        s13 PUSH
         24 MULCONST
         60 MULCONST
         60 MULCONST
         ADD
         s3 s11 XCHG
-        s10 s12 s13 XCHG3
-        s12 s13 PUSH2
+        s12 s13 s14 XCHG3
+        s13 s14 PUSH2
         $PoolCreated$_constructor_jettonWalletAddress_totalReward_durationDays_rewardSlots_startTime_endTime INLINECALLDICT
         NEWC
         $PoolCreated$_store_cell INLINECALLDICT
         $global_emit INLINECALLDICT
+        s6 s10 XCHG
         s5 s9 XCHG
         s4 s8 XCHG
-        s0 s6 XCHG
-        s0 s4 XCHG
-        s3 s3 XCHG2
-        s0 s7 XCHG
-        s5 s1 s5 XCHG3
+        s6 s7 s6 XCHG3
+        s1 s5 XCHG
+        s1 s3 XCHG
         $GramketingPool$_contract_store INLINECALLDICT
         RETALT
       }>
@@ -443,15 +449,15 @@ PROGRAM{
         s8 PUSH
         SDEQ
         THROWANYIFNOT
-        s1 s10 XCHG
+        s1 s11 XCHG
         ADD
+        s8 s10 XCHG
         s7 s9 XCHG
         s6 s8 XCHG
         s5 s7 XCHG
         s4 s6 XCHG
         s3 s5 XCHG
         s4 s3 s0 XCHG3
-        s1 s2 XCHG
         $GramketingPool$_contract_store INLINECALLDICT
         RETALT
       }>
@@ -464,11 +470,11 @@ PROGRAM{
         DROP
         43187 PUSHINT
         __tact_context_get_sender INLINECALLDICT
-        s9 PUSH
+        s10 PUSH
         SDEQ
         THROWANYIFNOT
         19935 PUSHINT
-        s10 PUSH
+        s11 PUSH
         1 EQINT
         IF:<{
           TRUE
@@ -479,19 +485,19 @@ PROGRAM{
         }>
         THROWANYIFNOT
         9050 PUSHINT
-        s0 s10 XCHG
+        s0 s11 XCHG
         2 NEQINT
-        s1 s10 XCHG
+        s1 s11 XCHG
         THROWANYIFNOT
         2 PUSHINT
         0 PUSHINT
-        s0 s10 PUSH2
+        s0 s11 PUSH2
         267 PUSHINT
         257 PUSHINT
         __tact_dict_min_slice_int INLINECALLDICT
         WHILE:<{
         }>DO<{
-          s14 s(-1) PUXC
+          s15 s(-1) PUXC
           MUL
           10000 PUSHINT
           DIV
@@ -513,7 +519,7 @@ PROGRAM{
           s4 s5 XCHG
           s4 s10 XCHG
           s0 s3 XCHG
-          19 s() PUSH
+          20 s() PUSH
           s1 s3 s3 XCHG3
           $JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload INLINECALLDICT
           NEWC
@@ -589,15 +595,15 @@ PROGRAM{
               SWAP
               SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
           267 PUSHINT
-          s13 PUSH
+          s14 PUSH
           s0 s2 XCHG
           257 PUSHINT
           __tact_dict_next_slice_int INLINECALLDICT
           s3 s4 XCHG
         }>
         2DROP
-        s11 POP
-        s11 s0 PUSH2
+        s12 POP
+        s12 s0 PUSH2
         SUB
         DUP
         0 GTINT
@@ -614,9 +620,9 @@ PROGRAM{
           $Cell$_fun_asSlice INLINECALLDICT
           s3 s4 XCHG
           s3 s6 XCHG
-          16 s() PUSH
-          s0 s3 XCHG
           17 s() PUSH
+          s0 s3 XCHG
+          18 s() PUSH
           s1 s3 s3 XCHG3
           $JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload INLINECALLDICT
           NEWC
@@ -693,13 +699,13 @@ PROGRAM{
         }>ELSE<{
           DROP
         }>
-        s0 s10 XCHG2
+        s0 s11 XCHG2
         $RewardsDistributed$_constructor_totalDistributed_winnerCount INLINECALLDICT
         NEWC
         $RewardsDistributed$_store_cell INLINECALLDICT
         $global_emit INLINECALLDICT
-        s7 s9 XCHG
-        2 7 BLKSWAP
+        s8 s10 XCHG
+        2 8 BLKSWAP
         $GramketingPool$_contract_store INLINECALLDICT
         RETALT
       }>
@@ -712,23 +718,23 @@ PROGRAM{
         DROP
         34390 PUSHINT
         __tact_context_get_sender INLINECALLDICT
-        s9 PUSH
+        s10 PUSH
         SDEQ
         THROWANYIFNOT
         9050 PUSHINT
-        s0 s10 XCHG
+        s0 s11 XCHG
         2 NEQINT
-        s1 s10 XCHG
+        s1 s11 XCHG
         THROWANYIFNOT
         2 PUSHINT
         0 PUSHINT
-        s10 PUSH
+        s11 PUSH
         267 PUSHINT
         257 PUSHINT
         __tact_dict_min_slice_int INLINECALLDICT
         WHILE:<{
         }>DO<{
-          s13 s(-1) PUXC
+          s14 s(-1) PUXC
           MUL
           10000 PUSHINT
           DIV
@@ -751,7 +757,7 @@ PROGRAM{
             s4 s5 XCHG
             s4 s9 XCHG
             s0 s3 XCHG
-            18 s() PUSH
+            19 s() PUSH
             s1 s3 s3 XCHG3
             $JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload INLINECALLDICT
             NEWC
@@ -830,14 +836,14 @@ PROGRAM{
             DROP
           }>
           267 PUSHINT
-          s12 PUSH
+          s13 PUSH
           s0 s2 XCHG
           257 PUSHINT
           __tact_dict_next_slice_int INLINECALLDICT
         }>
         2DROP
-        s10 POP
-        s10 s9 PUXC
+        s11 POP
+        s11 s10 PUXC
         SUB
         DUP
         0 GTINT
@@ -852,10 +858,11 @@ PROGRAM{
               1 STI
               ENDC
           $Cell$_fun_asSlice INLINECALLDICT
-          s14 PUSH
+          s15 PUSH
           s4 s5 XCHG
           s4 s7 XCHG
-          s3 s15 XCPU
+          s0 s3 XCHG
+          16 s() PUSH
           s1 s3 s3 XCHG3
           $JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload INLINECALLDICT
           NEWC
@@ -932,8 +939,8 @@ PROGRAM{
         }>ELSE<{
           DROP
         }>
-        s7 s9 XCHG
-        2 7 BLKSWAP
+        s8 s10 XCHG
+        2 8 BLKSWAP
         $GramketingPool$_contract_store INLINECALLDICT
         RETALT
       }>
@@ -948,16 +955,17 @@ PROGRAM{
         DROP
         42780 PUSHINT
         __tact_context_get_sender INLINECALLDICT
-        s8 PUSH
+        s9 PUSH
         SDEQ
         THROWANYIFNOT
+        s8 s10 XCHG
         s7 s9 XCHG
         s6 s8 XCHG
         s0 s7 XCHG
         s4 s6 XCHG
         s3 s5 XCHG
-        s4 s3 s0 XCHG3
-        s1 s2 XCHG
+        s4 s0 s3 XCHG3
+        s0 s2 XCHG
         $GramketingPool$_contract_store INLINECALLDICT
         RETALT
       }>
@@ -972,7 +980,7 @@ PROGRAM{
         DROP
         11957 PUSHINT
         __tact_context_get_sender INLINECALLDICT
-        s11 PUSH
+        s12 PUSH
         SDEQ
         THROWANYIFNOT
         300000000 PUSHINT
@@ -986,7 +994,7 @@ PROGRAM{
         $Cell$_fun_asSlice INLINECALLDICT
         s5 s7 XCHG
         5 3 REVERSE
-        s14 PUSH
+        s15 PUSH
         3 -ROLL
         $JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload INLINECALLDICT
         NEWC
@@ -1060,8 +1068,8 @@ PROGRAM{
             // Group 5: Sending the message, with `mode` on top
             SWAP
             SENDRAWMSG // https://github.com/tact-lang/tact/issues/1558
-        s7 s9 XCHG
-        2 7 BLKSWAP
+        s8 s10 XCHG
+        2 8 BLKSWAP
         $GramketingPool$_contract_store INLINECALLDICT
         RETALT
       }>
@@ -1074,6 +1082,7 @@ PROGRAM{
         $DeployOk$_constructor_queryId INLINECALLDICT
         NEWC
         $DeployOk$_store_cell INLINECALLDICT
+        s9 s11 XCHG
         s8 s10 XCHG
         s7 s9 XCHG
         s6 s8 XCHG
@@ -1081,27 +1090,26 @@ PROGRAM{
         s4 s6 XCHG
         s3 s5 XCHG
         s4 s3 s0 XCHG3
-        s1 s2 XCHG
         $GramketingPool$_fun_notify INLINECALLDICT
         $GramketingPool$_contract_store INLINECALLDICT
         RETALT
       }>
-      s0 s9 XCHG
+      s0 s10 XCHG
     }>
-    s0 s9 XCHG
+    s0 s10 XCHG
     HASHSU
     21964897672674582257810297575666849515540444836009425732114307140166339095350 PUSHINT
     EQUAL
     IFJMP:<{
       52626 PUSHINT
       __tact_context_get_sender INLINECALLDICT
-      s8 PUSH
+      s9 PUSH
       SDEQ
       THROWANYIFNOT
       53782 PUSHINT
-      s0 s9 XCHG
+      s0 s10 XCHG
       0 EQINT
-      s1 s9 XCHG
+      s1 s10 XCHG
       THROWANYIFNOT
       1 PUSHINT
           NOW
@@ -1109,15 +1117,17 @@ PROGRAM{
       NEWC
       $PoolEnded$_store_cell INLINECALLDICT
       $global_emit INLINECALLDICT
+      s8 s10 XCHG
       s7 s9 XCHG
       s6 s8 XCHG
       s5 s7 XCHG
       s4 s6 XCHG
       s3 s5 XCHG
       s4 s0 s3 XCHG3
+      s0 s2 XCHG
       $GramketingPool$_contract_store INLINECALLDICT
     }>
-    10 BLKDROP
+    11 BLKDROP
     130 THROW
   }>
   __tact_selector_hack PROC:<{
