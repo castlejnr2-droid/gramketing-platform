@@ -74,6 +74,10 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const [xUrl, setXUrl] = useState('');
   const [telegramUrl, setTelegramUrl] = useState('');
 
+  // Jetton metadata auto-fetch state
+  const [jettonFetchStatus, setJettonFetchStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [jettonFetchError, setJettonFetchError] = useState<string | null>(null);
+
   // Step 2
   const [campaignType, setCampaignType] = useState<CampaignType>('both');
   const [xPostLink, setXPostLink] = useState('');
@@ -361,6 +365,41 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
     return () => stopPolling();
   }, []);
 
+  // Auto-fetch jetton metadata when address field has a plausible TON address.
+  // Debounced 600 ms so we don't hammer the RPC on every keystroke.
+  useEffect(() => {
+    const trimmed = jettonMasterAddress.trim();
+    // TON addresses are 48 base64url chars (EQ/UQ prefix form)
+    if (trimmed.length < 44) {
+      setJettonFetchStatus('idle');
+      setJettonFetchError(null);
+      return;
+    }
+    setJettonFetchStatus('loading');
+    setJettonFetchError(null);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/jetton-meta?address=${encodeURIComponent(trimmed)}`);
+        const data = await res.json() as { name?: string; symbol?: string; image?: string; error?: string };
+        if (!res.ok || data.error) {
+          setJettonFetchStatus('error');
+          setJettonFetchError(data.error ?? 'Failed to fetch token metadata');
+          return;
+        }
+        if (data.name)   setProjectName(data.name);
+        if (data.symbol) setTokenSymbol(data.symbol.toUpperCase());
+        if (data.image)  setLogoUrl(data.image);
+        setJettonFetchStatus('success');
+      } catch {
+        setJettonFetchStatus('error');
+        setJettonFetchError('Could not reach metadata endpoint');
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [jettonMasterAddress]);
+
   const usdFees = USD_FEE_TABLE[durationDays];
 
   return (
@@ -414,6 +453,43 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
             <h2 className="text-xl font-semibold text-white mb-6">
               Project Information
             </h2>
+
+            {/* Jetton Master Address — first field; triggers metadata auto-fill */}
+            <div>
+              <label className="block text-sm text-white/60 mb-1.5">
+                Jetton Master Address *
+              </label>
+              <div className="relative">
+                <input
+                  value={jettonMasterAddress}
+                  onChange={(e) => setJettonMasterAddress(e.target.value)}
+                  placeholder="EQ..."
+                  className={`w-full bg-white/5 border rounded-xl px-4 py-3 pr-10 text-sm text-white placeholder-white/25 focus:outline-none font-mono text-xs transition-colors ${
+                    jettonFetchStatus === 'success'
+                      ? 'border-green-500/50 focus:border-green-500/70'
+                      : jettonFetchStatus === 'error'
+                      ? 'border-red-500/50 focus:border-red-500/70'
+                      : 'border-white/10 focus:border-[#0088CC]/50'
+                  }`}
+                />
+                {jettonFetchStatus === 'loading' && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 animate-spin" />
+                )}
+                {jettonFetchStatus === 'success' && (
+                  <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-400" />
+                )}
+                {jettonFetchStatus === 'error' && (
+                  <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
+                )}
+              </div>
+              {jettonFetchStatus === 'success' && (
+                <p className="mt-1.5 text-xs text-green-400/80">Token metadata loaded — fields below have been auto-filled.</p>
+              )}
+              {jettonFetchStatus === 'error' && jettonFetchError && (
+                <p className="mt-1.5 text-xs text-red-400">{jettonFetchError}</p>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm text-white/60 mb-1.5">
                 Project Name *
@@ -434,17 +510,6 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                 onChange={(e) => setTokenSymbol(e.target.value.toUpperCase())}
                 placeholder="e.g. MTON"
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#0088CC]/50"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-white/60 mb-1.5">
-                Jetton Master Address *
-              </label>
-              <input
-                value={jettonMasterAddress}
-                onChange={(e) => setJettonMasterAddress(e.target.value)}
-                placeholder="EQ..."
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#0088CC]/50 font-mono text-xs"
               />
             </div>
             <div>

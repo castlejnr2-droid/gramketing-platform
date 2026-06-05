@@ -36,11 +36,15 @@ export async function getJettonWalletAddress(
   return result.stack.readAddress();
 }
 
-// Pre-computed SHA-256 key for the "decimals" attribute in TEP-64 on-chain metadata.
+// Pre-computed SHA-256 keys for TEP-64 on-chain metadata dictionary.
 // Dictionary keys are SHA-256 hashes of the UTF-8 attribute name.
-const DECIMALS_DICT_KEY = BigInt(
-  '0x' + createHash('sha256').update('decimals', 'utf8').digest('hex'),
-);
+function dictKey(name: string): bigint {
+  return BigInt('0x' + createHash('sha256').update(name, 'utf8').digest('hex'));
+}
+const DECIMALS_DICT_KEY = dictKey('decimals');
+const NAME_DICT_KEY     = dictKey('name');
+const SYMBOL_DICT_KEY   = dictKey('symbol');
+const IMAGE_DICT_KEY    = dictKey('image');
 
 /**
  * Fetches the jetton decimals from the jetton master's `get_jetton_data` getter.
@@ -131,6 +135,69 @@ async function fetchOffChainDecimals(url: string): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+// ── Jetton metadata ───────────────────────────────────────────────────────────
+
+export interface JettonMetadata {
+  name: string;
+  symbol: string;
+  image: string;
+}
+
+/**
+ * Fetches name, symbol, and image from a jetton master's TEP-64 metadata.
+ * Handles both on-chain dictionary metadata (prefix 0x00) and off-chain JSON
+ * URL metadata (prefix 0x01). Throws on network/parse failure.
+ */
+export async function getJettonMetadata(jettonMasterAddress: string): Promise<JettonMetadata> {
+  const client = getTonClient();
+  const master = Address.parse(jettonMasterAddress);
+
+  const result = await client.runMethod(master, 'get_jetton_data', []);
+  result.stack.readBigNumber(); // total_supply
+  result.stack.readNumber();    // mintable
+  result.stack.readAddress();   // admin_address
+  const contentCell = result.stack.readCell();
+
+  const slice = contentCell.beginParse();
+  if (slice.remainingBits < 8) throw new Error('Empty metadata content cell');
+  const prefix = slice.loadUint(8);
+
+  let name = '';
+  let symbol = '';
+  let image = '';
+
+  if (prefix === 0x00) {
+    // On-chain dictionary metadata
+    if (slice.remainingBits > 0 || slice.remainingRefs > 0) {
+      const dict = Dictionary.load(
+        Dictionary.Keys.BigUint(256),
+        Dictionary.Values.Cell(),
+        slice,
+      );
+      const nameCell   = dict.get(NAME_DICT_KEY);
+      const symbolCell = dict.get(SYMBOL_DICT_KEY);
+      const imageCell  = dict.get(IMAGE_DICT_KEY);
+      if (nameCell)   name   = readSnakeString(nameCell).trim();
+      if (symbolCell) symbol = readSnakeString(symbolCell).trim();
+      if (imageCell)  image  = normalizeMetadataUrl(readSnakeString(imageCell).trim());
+    }
+  } else if (prefix === 0x01) {
+    // Off-chain JSON URL metadata
+    const url = normalizeMetadataUrl(slice.loadStringTail().trim());
+    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (resp.ok) {
+      const json = await resp.json() as Record<string, unknown>;
+      name   = String(json?.name   ?? '').trim();
+      symbol = String(json?.symbol ?? '').trim();
+      const rawImage = String(json?.image ?? '').trim();
+      if (rawImage) image = normalizeMetadataUrl(rawImage);
+    }
+  }
+
+  if (!name && !symbol) throw new Error('No name or symbol found in jetton metadata');
+  return { name, symbol, image };
 }
 
 // ── Contract deployment ───────────────────────────────────────────────────────
