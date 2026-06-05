@@ -200,6 +200,7 @@ export async function POST(req: NextRequest) {
         totalReward: String(totalReward),
         durationDays,
         rewardSlots,
+        nonce: BigInt(pool.createdAt.getTime()), // unique per pool — ms timestamp from DB
       });
 
       await prisma.pool.update({

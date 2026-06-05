@@ -132,7 +132,7 @@ async function main() {
   const owner = walletContract.address;
   const admin = walletContract.address;
 
-  const poolInit = await GramketingPool.init(owner, admin);
+  const poolInit = await GramketingPool.init(owner, admin, BigInt(Date.now()));
   const poolAddr = contractAddress(0, poolInit);
   const poolAddrBounceable    = poolAddr.toString({ bounceable: true,  urlSafe: true });
   const poolAddrNonBounceable = poolAddr.toString({ bounceable: false, urlSafe: true });

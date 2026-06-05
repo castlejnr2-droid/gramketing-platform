@@ -102,8 +102,8 @@ async function main() {
 
   const balance = await retry(() => client.getBalance(walletContract.address), 'getBalance');
   console.log(`  Balance: ${Number(balance) / 1e9} TON`);
-  if (balance < toNano('0.5')) {
-    throw new Error(`Insufficient balance — need at least 0.5 TON, have ${Number(balance) / 1e9} TON`);
+  if (balance < toNano('0.3')) {
+    throw new Error(`Insufficient balance — need at least 0.3 TON, have ${Number(balance) / 1e9} TON`);
   }
 
   // ── Step 2: Compute contract address ────────────────────────────────────
@@ -111,7 +111,7 @@ async function main() {
   const owner = walletContract.address;
   const admin = walletContract.address;
 
-  const poolInit = await GramketingPool.init(owner, admin);
+  const poolInit = await GramketingPool.init(owner, admin, BigInt(Date.now()));
   const poolAddress = contractAddress(0, poolInit);
   const poolAddrStr = poolAddress.toString({ bounceable: true, urlSafe: true });
   const poolAddrNB  = poolAddress.toString({ bounceable: false, urlSafe: true });
