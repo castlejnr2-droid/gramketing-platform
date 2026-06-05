@@ -166,6 +166,20 @@ export async function deployAndInitPool(params: {
   return { contractAddress: contractAddrStr, poolJettonWalletAddress };
 }
 
+// ── On-chain state reads ──────────────────────────────────────────────────────
+
+/**
+ * Fetches live pool state from the contract getter. Used as a pre-flight check
+ * before distribution to verify depositedAmount > 0 and status == ENDED.
+ */
+export async function fetchOnChainPoolInfo(contractAddressStr: string) {
+  const addr = Address.parse(contractAddressStr);
+  return tonRetry(
+    (c) => c.open(GramketingPool.fromAddress(addr)).getPoolInfo(),
+    'fetchPoolInfo',
+  );
+}
+
 // ── Distribution ──────────────────────────────────────────────────────────────
 
 /**
@@ -186,8 +200,41 @@ export async function sendDistributeRewards(
     Dictionary.Keys.Address(),
     Dictionary.Values.BigInt(257),
   );
-  for (const winner of winners) {
-    winnersDict.set(Address.parse(winner.walletAddress), BigInt(winner.shareBasisPoints));
+  // Parse and validate all addresses first so we get a named error, not a generic throw
+  const parsedWinners = winners.map((w) => {
+    let addr: Address;
+    try {
+      addr = Address.parse(w.walletAddress);
+    } catch (e) {
+      throw new Error(`Invalid TON address for winner: "${w.walletAddress}" — ${String(e)}`);
+    }
+    return { addr, shareBasisPoints: w.shareBasisPoints };
+  });
+
+  // Detect duplicates — bounceable and non-bounceable forms of the same wallet
+  // normalise to the same key in the dictionary and silently overwrite each other.
+  const seen = new Map<string, string>();
+  for (const w of parsedWinners) {
+    const canonical = `${w.addr.workChain}:${w.addr.hash.toString('hex')}`;
+    if (seen.has(canonical)) {
+      throw new Error(
+        `Duplicate TON address in winners list: "${w.addr.toString()}" maps to the same ` +
+        `on-chain key as "${seen.get(canonical)}" — fix the winners array before distributing`,
+      );
+    }
+    seen.set(canonical, w.addr.toString());
+    winnersDict.set(w.addr, BigInt(w.shareBasisPoints));
+  }
+
+  // Sanity-check: dict must have exactly as many entries as winners
+  // (if this ever fails something changed in the Address key implementation)
+  let dictSize = 0;
+  for (const _ of winnersDict) { dictSize++; } // eslint-disable-line @typescript-eslint/no-unused-vars
+  if (dictSize !== winners.length) {
+    throw new Error(
+      `Dictionary size mismatch after insert: expected ${winners.length}, got ${dictSize}. ` +
+      `Some addresses may have collapsed to the same key.`,
+    );
   }
 
   // Budget: 0.07 TON per winner (jetton transfer gas) + 0.1 TON base
