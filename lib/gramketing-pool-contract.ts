@@ -11,7 +11,7 @@ import {
   storeDistributeRewards,
   storeCancelPool,
 } from '../contracts/output/gramketing_pool_GramketingPool';
-import { getAdminWallet, getTonClient, sleep } from './ton-admin';
+import { getAdminWallet, getAdminKeypair, getTonClient, tonRetry, sleep } from './ton-admin';
 
 // ── Jetton helpers ────────────────────────────────────────────────────────────
 
@@ -178,7 +178,7 @@ export async function sendDistributeRewards(
   contractAddressStr: string,
   winners: { walletAddress: string; shareBasisPoints: number }[],
 ): Promise<void> {
-  const { keyPair, contract: walletContract } = await getAdminWallet();
+  const { keyPair, wallet } = await getAdminKeypair();
 
   const contractAddress = Address.parse(contractAddressStr);
 
@@ -193,26 +193,20 @@ export async function sendDistributeRewards(
   // Budget: 0.07 TON per winner (jetton transfer gas) + 0.1 TON base
   const gasAmount = toNano('0.1') + BigInt(winners.length) * toNano('0.07');
 
-  const seqno = await walletContract.getSeqno();
-  await walletContract.sendTransfer({
-    secretKey: keyPair.secretKey,
-    seqno,
-    messages: [
-      internal({
-        to: contractAddress,
-        value: gasAmount,
-        body: beginCell()
-          .store(
-            storeDistributeRewards({
-              $$type: 'DistributeRewards',
-              winners: winnersDict,
-            }),
-          )
-          .endCell(),
-      }),
-    ],
-    sendMode: SendMode.PAY_GAS_SEPARATELY,
-  });
+  const body = beginCell()
+    .store(storeDistributeRewards({ $$type: 'DistributeRewards', winners: winnersDict }))
+    .endCell();
+
+  const seqno = await tonRetry(c => c.open(wallet).getSeqno(), 'distribute/getSeqno');
+  await tonRetry(
+    c => c.open(wallet).sendTransfer({
+      secretKey: keyPair.secretKey,
+      seqno,
+      messages: [internal({ to: contractAddress, value: gasAmount, body })],
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+    }),
+    'distribute/sendTransfer',
+  );
 }
 
 // ── End pool ──────────────────────────────────────────────────────────────────
@@ -222,25 +216,21 @@ export async function sendDistributeRewards(
  * Transitions the pool status from ACTIVE to ENDED on-chain.
  */
 export async function sendEndPool(contractAddressStr: string): Promise<void> {
-  const { keyPair, contract: walletContract } = await getAdminWallet();
+  const { keyPair, wallet } = await getAdminKeypair();
   const contractAddress = Address.parse(contractAddressStr);
 
-  const seqno = await walletContract.getSeqno();
-  await walletContract.sendTransfer({
-    secretKey: keyPair.secretKey,
-    seqno,
-    messages: [
-      internal({
-        to: contractAddress,
-        value: toNano('0.05'),
-        body: beginCell()
-          .storeUint(0, 32)  // text comment opcode
-          .storeStringTail('endPool')
-          .endCell(),
-      }),
-    ],
-    sendMode: SendMode.PAY_GAS_SEPARATELY,
-  });
+  const body = beginCell().storeUint(0, 32).storeStringTail('endPool').endCell();
+
+  const seqno = await tonRetry(c => c.open(wallet).getSeqno(), 'endPool/getSeqno');
+  await tonRetry(
+    c => c.open(wallet).sendTransfer({
+      secretKey: keyPair.secretKey,
+      seqno,
+      messages: [internal({ to: contractAddress, value: toNano('0.05'), body })],
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+    }),
+    'endPool/sendTransfer',
+  );
 }
 
 // ── Cancellation ─────────────────────────────────────────────────────────────
@@ -256,7 +246,7 @@ export async function sendCancelPool(
   contractAddressStr: string,
   winners: { walletAddress: string; shareBasisPoints: number }[],
 ): Promise<void> {
-  const { keyPair, contract: walletContract } = await getAdminWallet();
+  const { keyPair, wallet } = await getAdminKeypair();
 
   const contractAddress = Address.parse(contractAddressStr);
 
@@ -273,26 +263,20 @@ export async function sendCancelPool(
   // Budget: 0.07 TON per winner (jetton transfer gas) + 0.1 TON base + 0.07 for owner refund
   const gasAmount = toNano('0.1') + BigInt(winners.length + 1) * toNano('0.07');
 
-  const seqno = await walletContract.getSeqno();
-  await walletContract.sendTransfer({
-    secretKey: keyPair.secretKey,
-    seqno,
-    messages: [
-      internal({
-        to: contractAddress,
-        value: gasAmount,
-        body: beginCell()
-          .store(
-            storeCancelPool({
-              $$type: 'CancelPool',
-              winners: winnersDict,
-            }),
-          )
-          .endCell(),
-      }),
-    ],
-    sendMode: SendMode.PAY_GAS_SEPARATELY,
-  });
+  const body = beginCell()
+    .store(storeCancelPool({ $$type: 'CancelPool', winners: winnersDict }))
+    .endCell();
+
+  const seqno = await tonRetry(c => c.open(wallet).getSeqno(), 'cancelPool/getSeqno');
+  await tonRetry(
+    c => c.open(wallet).sendTransfer({
+      secretKey: keyPair.secretKey,
+      seqno,
+      messages: [internal({ to: contractAddress, value: gasAmount, body })],
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+    }),
+    'cancelPool/sendTransfer',
+  );
 }
 
 // ── Platform fee transaction builders ────────────────────────────────────────
