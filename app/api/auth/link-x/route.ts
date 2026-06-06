@@ -27,6 +27,8 @@ export async function GET(req: NextRequest) {
     process.env.TWITTER_REDIRECT_URI ??
     `${req.nextUrl.origin}/api/auth/twitter/callback`;
 
+  const fromMiniapp = req.nextUrl.searchParams.get('from') === 'miniapp';
+
   // Step 1: request_token — oauth_callback must be in the Authorization header
   const requestTokenUrl = 'https://api.twitter.com/oauth/request_token';
   const authHeader = buildOAuth1Header({
@@ -79,13 +81,15 @@ export async function GET(req: NextRequest) {
   // Set cookie directly on the redirect response — cookies().set() from next/headers
   // does NOT attach Set-Cookie to a NextResponse.redirect() in the same handler.
   const response = NextResponse.redirect(authorizeUrl);
-  response.cookies.set('x_oauth1', oauthTokenSecret, {
+  const cookieOpts = {
     httpOnly: true,
     secure:   process.env.NODE_ENV === 'production',
     maxAge:   600, // 10 minutes
     path:     '/',
     sameSite: 'lax',
-  });
+  } as const;
+  response.cookies.set('x_oauth1', oauthTokenSecret, cookieOpts);
+  response.cookies.set('x_oauth1_origin', fromMiniapp ? 'miniapp' : 'website', cookieOpts);
   return response;
 }
 

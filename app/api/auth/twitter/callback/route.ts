@@ -14,29 +14,32 @@ export async function GET(req: NextRequest) {
   // Twitter sends ?denied=<token> when the user refuses
   const denied        = searchParams.get('denied');
 
-  const settingsUrl = `${origin}/miniapp/settings`;
+  // Read cookies once — needed for both origin routing and token secret
+  const cookieStore    = await cookies();
+  const fromMiniapp    = cookieStore.get('x_oauth1_origin')?.value === 'miniapp';
+  const baseUrl        = fromMiniapp ? `${origin}/miniapp/settings` : `${origin}/dashboard`;
+
+  const allCookieNames = cookieStore.getAll().map((c) => c.name);
 
   console.log('[twitter/callback] received — oauth_token:', oauthToken, '| verifier present:', !!oauthVerifier, '| denied:', denied);
 
   if (denied) {
     console.warn('[twitter/callback] user denied access');
-    return NextResponse.redirect(`${settingsUrl}?x=error&reason=access_denied`);
+    return NextResponse.redirect(`${baseUrl}?x=error&reason=access_denied`);
   }
 
   if (!oauthToken || !oauthVerifier) {
     console.error('[twitter/callback] missing oauth_token or oauth_verifier');
-    return NextResponse.redirect(`${settingsUrl}?x=error&reason=missing_params`);
+    return NextResponse.redirect(`${baseUrl}?x=error&reason=missing_params`);
   }
 
   // Read the oauth_token_secret we stored before redirecting to X
-  const cookieStore   = await cookies();
-  const allCookieNames = cookieStore.getAll().map((c) => c.name);
   console.log('[twitter/callback] cookies present:', allCookieNames);
 
   const tokenSecret = cookieStore.get('x_oauth1')?.value;
   if (!tokenSecret) {
     console.error('[twitter/callback] x_oauth1 cookie missing — cookie was not set or not sent');
-    return NextResponse.redirect(`${settingsUrl}?x=error&reason=session_expired`);
+    return NextResponse.redirect(`${baseUrl}?x=error&reason=session_expired`);
   }
 
   console.log('[twitter/callback] token_secret present, proceeding to access_token exchange');
@@ -45,7 +48,7 @@ export async function GET(req: NextRequest) {
   const walletAddress = await getAuthWallet(req);
   if (!walletAddress) {
     console.error('[twitter/callback] no wallet auth cookie');
-    return NextResponse.redirect(`${settingsUrl}?x=error&reason=not_authenticated`);
+    return NextResponse.redirect(`${baseUrl}?x=error&reason=not_authenticated`);
   }
 
   const consumerKey    = process.env.TWITTER_CONSUMER_KEY!;
@@ -71,7 +74,7 @@ export async function GET(req: NextRequest) {
   if (!accessRes.ok) {
     const err = await accessRes.text();
     console.error('[twitter/callback] access_token exchange failed:', accessRes.status, err);
-    return NextResponse.redirect(`${settingsUrl}?x=error&reason=token_exchange_failed`);
+    return NextResponse.redirect(`${baseUrl}?x=error&reason=token_exchange_failed`);
   }
 
   const accessBody   = await accessRes.text();
@@ -85,7 +88,7 @@ export async function GET(req: NextRequest) {
 
   if (!accessToken || !accessTokenSecret || !xAccountId || !xHandle) {
     console.error('[twitter/callback] incomplete access_token response:', accessBody);
-    return NextResponse.redirect(`${settingsUrl}?x=error&reason=no_user_data`);
+    return NextResponse.redirect(`${baseUrl}?x=error&reason=no_user_data`);
   }
 
   // Fetch profile image via v2 with OAuth 1.0a user auth (best-effort)
@@ -121,7 +124,7 @@ export async function GET(req: NextRequest) {
   if ('error' in result) {
     console.error('[twitter/callback] linkXAccount error:', result.error);
     return NextResponse.redirect(
-      `${settingsUrl}?x=error&reason=${encodeURIComponent(result.error)}`,
+      `${baseUrl}?x=error&reason=${encodeURIComponent(result.error)}`,
     );
   }
 
@@ -133,5 +136,5 @@ export async function GET(req: NextRequest) {
   }
 
   console.log('[twitter/callback] success — linked @', xHandle, 'to', walletAddress);
-  return NextResponse.redirect(`${settingsUrl}?x=linked`);
+  return NextResponse.redirect(`${baseUrl}?x=linked`);
 }
