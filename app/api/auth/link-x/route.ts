@@ -1,51 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash, randomBytes } from 'crypto';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 
 const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-// GET: Redirect to Twitter OAuth 2.0 PKCE authorization URL
-// TODO: Implement full Twitter OAuth 2.0 PKCE flow
-// Steps:
-// 1. Generate code_verifier (random 43–128 char string)
-// 2. Compute code_challenge = base64url(sha256(code_verifier))
-// 3. Store code_verifier in session/cookie
-// 4. Redirect to:
-//    https://twitter.com/i/oauth2/authorize
-//      ?response_type=code
-//      &client_id=TWITTER_CLIENT_ID
-//      &redirect_uri=CALLBACK_URL
-//      &scope=tweet.read+users.read
-//      &state=RANDOM_STATE
-//      &code_challenge=CODE_CHALLENGE
-//      &code_challenge_method=S256
+// GET: Begin Twitter OAuth 2.0 PKCE flow → redirect to authorization URL
 export async function GET(req: NextRequest) {
   const clientId = process.env.TWITTER_CLIENT_ID;
-  const redirectUri = `${req.nextUrl.origin}/api/auth/link-x/callback`;
-
   if (!clientId) {
-    return NextResponse.json(
-      { error: 'TWITTER_CLIENT_ID not configured' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'TWITTER_CLIENT_ID not configured' }, { status: 500 });
   }
 
-  // TODO: generate proper PKCE challenge and state
-  const state = Math.random().toString(36).slice(2);
-  const codeVerifier = Math.random().toString(36).slice(2).repeat(3);
+  // PKCE: code_verifier is 32 random bytes → base64url (43 URL-safe chars)
+  const codeVerifier = randomBytes(32).toString('base64url');
+  const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
+  const state = randomBytes(16).toString('hex');
 
+  // Persist state + verifier in a short-lived httpOnly cookie (10 min)
+  const cookieStore = await cookies();
+  cookieStore.set('x_oauth', JSON.stringify({ state, codeVerifier }), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 600,
+    path: '/',
+    sameSite: 'lax',
+  });
+
+  const redirectUri = `${req.nextUrl.origin}/api/auth/twitter/callback`;
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
     scope: 'tweet.read users.read',
     state,
-    code_challenge: codeVerifier, // TODO: replace with actual sha256 PKCE challenge
-    code_challenge_method: 'plain', // TODO: use S256
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
   });
 
-  const url = `https://twitter.com/i/oauth2/authorize?${params}`;
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(`https://twitter.com/i/oauth2/authorize?${params}`);
 }
 
 /**

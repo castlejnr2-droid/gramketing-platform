@@ -64,6 +64,14 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUniqueOrThrow({ where: { walletAddress } });
 
+    // ── X account required for X posts ───────────────────────────────────
+    if (platform === 'X' && !user.xAccountId) {
+      return NextResponse.json(
+        { error: 'Connect your X account in Settings before submitting X posts.' },
+        { status: 403 }
+      );
+    }
+
     // ── Telegram channel ownership check ─────────────────────────────────
     if (platform === 'TELEGRAM') {
       const savedChannel = user.telegramChannelUrl
