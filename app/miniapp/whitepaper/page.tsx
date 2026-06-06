@@ -38,7 +38,8 @@ export default function MiniAppWhitepaperPage() {
 
         <a
           href="/Gramketing_Whitepaper_v1.0.docx"
-          download
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#0088CC] hover:bg-[#0099DD] text-white font-semibold text-sm transition-all shadow-lg shadow-[#0088CC]/20"
         >
           <Download className="w-4 h-4" />
@@ -93,7 +94,8 @@ export default function MiniAppWhitepaperPage() {
         <p className="text-xs text-white/40">Download the full PDF for the complete technical specification.</p>
         <a
           href="/Gramketing_Whitepaper_v1.0.docx"
-          download
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0088CC] hover:bg-[#0099DD] text-white font-semibold text-sm transition-all w-full justify-center"
         >
           <Download className="w-4 h-4" />

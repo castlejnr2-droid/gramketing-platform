@@ -1,6 +1,7 @@
 'use client';
 import { getParticipantTier } from '@/lib/points';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Link from 'next/link';
 import { ReferralCard } from '@/components/ReferralCard';
@@ -47,6 +48,7 @@ interface AccountInfo {
   username?: string;
   xHandle?: string;
   xAccountId?: string | null;
+  xProfileImageUrl?: string | null;
   xUnlinkedAt?: string | null;
   telegramChannelUrl?: string;
   telegramChatId?: string;
@@ -138,6 +140,27 @@ export default function DashboardPage() {
   const [unlinkTgError, setUnlinkTgError] = useState<string | null>(null);
   const [unlinkingX, setUnlinkingX] = useState(false);
   const [unlinkXError, setUnlinkXError] = useState<string | null>(null);
+  const [xBanner, setXBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const xParam = searchParams.get('x');
+    if (!xParam) return;
+    if (xParam === 'linked') {
+      setXBanner({ type: 'success', message: 'X account connected successfully!' });
+    } else if (xParam === 'error') {
+      const reason = searchParams.get('reason') ?? 'unknown';
+      const friendly =
+        reason === 'access_denied' ? 'You cancelled the X authorisation.' :
+        reason === 'session_expired' ? 'Session expired — please try again.' :
+        reason === 'state_mismatch' ? 'Security check failed — please try again.' :
+        reason === 'not_authenticated' ? 'You were signed out — please reconnect your wallet.' :
+        reason === 'token_exchange_failed' ? 'Twitter rejected the request — please try again.' :
+        reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
+      setXBanner({ type: 'error', message: friendly });
+    }
+    window.history.replaceState({}, '', '/dashboard');
+  }, [searchParams]);
 
   useEffect(() => {
     if (!wallet) {
@@ -580,15 +603,40 @@ export default function DashboardPage() {
               <label className="block text-sm font-medium text-white/70 mb-2">
                 X (Twitter) Account
               </label>
+
+              {/* OAuth result banner */}
+              {xBanner && (
+                <div className={`mb-3 flex items-start gap-2 p-3 rounded-xl text-xs ${
+                  xBanner.type === 'success'
+                    ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                    : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                }`}>
+                  <span>{xBanner.type === 'success' ? '✓' : '✕'}</span>
+                  <span>{xBanner.message}</span>
+                  <button onClick={() => setXBanner(null)} className="ml-auto opacity-60 hover:opacity-100">✕</button>
+                </div>
+              )}
+
               {account?.xAccountId ? (
                 <div>
                   <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
                     <div className="flex items-center gap-3">
-                      <svg className="w-5 h-5 text-green-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                      </svg>
+                      {account.xProfileImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={account.xProfileImageUrl}
+                          alt={account.xHandle ?? 'X profile'}
+                          className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-1 ring-green-500/30"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-green-400" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                          </svg>
+                        </div>
+                      )}
                       <div>
-                        <p className="text-sm font-medium text-green-400">X account linked</p>
+                        <p className="text-sm font-medium text-green-400">Connected</p>
                         {account.xHandle && (
                           <p className="text-xs text-white/40 mt-0.5">@{account.xHandle}</p>
                         )}
@@ -599,7 +647,7 @@ export default function DashboardPage() {
                       disabled={unlinkingX}
                       className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-40"
                     >
-                      {unlinkingX ? 'Unlinking…' : 'Unlink'}
+                      {unlinkingX ? 'Disconnecting…' : 'Disconnect'}
                     </button>
                   </div>
                   {unlinkXError && <p className="mt-1.5 text-xs text-red-400">{unlinkXError}</p>}
@@ -615,9 +663,9 @@ export default function DashboardPage() {
                         <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
                           <span className="text-yellow-400 text-base mt-0.5">⏳</span>
                           <div>
-                            <p className="text-sm font-medium text-yellow-400">Unlink cooldown active</p>
+                            <p className="text-sm font-medium text-yellow-400">Cooldown active</p>
                             <p className="text-xs text-white/40 mt-0.5">
-                              You can link a new X account on{' '}
+                              You can re-connect on{' '}
                               <span className="text-white/70">{nextAllowed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>.
                             </p>
                           </div>
@@ -625,18 +673,17 @@ export default function DashboardPage() {
                       );
                     }
                     return (
-                      <div className="flex items-start gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/10">
-                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <svg className="w-4 h-4 text-white/50" viewBox="0 0 24 24" fill="currentColor">
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => { window.location.href = '/api/auth/link-x'; }}
+                          className="btn-primary text-sm flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                           </svg>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-white/60">X account verification coming soon</p>
-                          <p className="text-xs text-white/30 mt-1">
-                            OAuth verification is required to submit X posts and earn X points. This feature is under development.
-                          </p>
-                        </div>
+                          Connect X Account
+                        </button>
+                        <p className="text-xs text-white/30">Required to submit X posts to pools.</p>
                       </div>
                     );
                   })()}
