@@ -90,7 +90,7 @@ export function Navbar() {
               alt="Gramketing"
               width={150}
               height={36}
-              style={{ objectFit: 'contain' }}
+              style={{ objectFit: 'contain', mixBlendMode: 'screen' }}
               priority
             />
           </Link>
