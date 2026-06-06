@@ -88,7 +88,7 @@ export function Navbar() {
             <img
               src="/gramketing-logo.png"
               alt="Gramketing"
-              style={{ height: '56px', width: 'auto', display: 'block', transform: 'scale(1.8)', transformOrigin: 'left center' }}
+              style={{ height: '56px', width: 'auto', display: 'block', transform: 'scale(2.2)', transformOrigin: 'left center' }}
             />
           </Link>
 
