@@ -2,32 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 import { fetchTelegramPostMetrics, extractTelegramChannel } from '@/lib/telegram';
-import axios from 'axios';
+import { fetchTweetMetrics, extractTweetId } from '@/lib/twitter-api';
 
 const X_REGEX = /^https?:\/\/(www\.)?(x\.com|twitter\.com)\/[^/]+\/status\/\d+/;
 const TG_REGEX = /^https?:\/\/t\.me\/[^/]+\/\d+/;
 const MAX_DAILY_SUBMISSIONS = 2;
 const MIN_VIEWS = 100;
-
-async function fetchXMetrics(postUrl: string): Promise<{ views: number; likes: number; reposts: number } | null> {
-  const match = postUrl.match(/status\/(\d+)/);
-  if (!match) return null;
-  const tweetId = match[1];
-  try {
-    const res = await axios.get(
-      `https://api.twitter.com/2/tweets/${tweetId}?tweet.fields=public_metrics`,
-      { headers: { Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}` }, timeout: 8000 }
-    );
-    const m = res.data?.data?.public_metrics ?? {};
-    return {
-      views: m.impression_count ?? 0,
-      likes: m.like_count ?? 0,
-      reposts: m.retweet_count ?? 0,
-    };
-  } catch {
-    return null; // fail open
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -153,12 +133,15 @@ export async function POST(req: NextRequest) {
     let fetchedViews: number | null = null;
 
     if (platform === 'X') {
-      const metrics = await fetchXMetrics(postUrl);
-      if (metrics !== null) {
-        fetchedViews = metrics.views;
-        views = metrics.views;
-        likes = metrics.likes;
-        reposts = metrics.reposts;
+      const tweetId = extractTweetId(postUrl);
+      if (tweetId) {
+        const [result] = await fetchTweetMetrics([tweetId]);
+        if (result.ok) {
+          fetchedViews = result.views;
+          views = result.views;
+          likes = result.likes;
+          reposts = result.retweets;
+        }
       }
     } else {
       const metrics = await fetchTelegramPostMetrics(postUrl);

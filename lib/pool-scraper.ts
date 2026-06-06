@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/prisma';
-import axios from 'axios';
 import { calculateTotalPoints, CampaignType } from '@/lib/points';
 import { fetchTelegramPostMetrics } from '@/lib/telegram';
 import { logAdminEvent } from '@/lib/admin-log';
+import { fetchTweetMetrics, extractTweetId } from '@/lib/twitter-api';
 
 // ── X / Twitter scraping ──────────────────────────────────────────────────────
 
@@ -10,35 +10,33 @@ export type XScrapeResult =
   | { ok: true; views: number; likes: number; reposts: number }
   | { ok: false; error: 'TOKEN_EXPIRED' | 'NOT_FOUND' | 'UNKNOWN'; views: number; likes: number; reposts: number };
 
-export async function fetchXPostMetrics(postUrl: string, currentViews = 0, currentLikes = 0, currentReposts = 0): Promise<XScrapeResult> {
-  const match = postUrl.match(/status\/(\d+)/);
-  if (!match) return { ok: false, error: 'UNKNOWN', views: currentViews, likes: currentLikes, reposts: currentReposts };
-  const tweetId = match[1];
-  try {
-    const res = await axios.get(
-      `https://api.twitter.com/2/tweets/${tweetId}?tweet.fields=public_metrics`,
-      {
-        headers: { Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}` },
-        timeout: 10_000,
-      }
-    );
-    const m = res.data?.data?.public_metrics ?? {};
-    return {
-      ok: true,
-      views: m.impression_count ?? 0,
-      likes: m.like_count ?? 0,
-      reposts: m.retweet_count ?? 0,
-    };
-  } catch (err: unknown) {
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status === 401 || status === 403) {
-      return { ok: false, error: 'TOKEN_EXPIRED', views: currentViews, likes: currentLikes, reposts: currentReposts };
-    }
-    if (status === 404) {
-      return { ok: false, error: 'NOT_FOUND', views: currentViews, likes: currentLikes, reposts: currentReposts };
-    }
+/**
+ * Fetches metrics for a single X post URL.
+ * Thin wrapper around fetchTweetMetrics (which is cached + batched) kept for
+ * backward compatibility with the legacy Submission rescrape route.
+ */
+export async function fetchXPostMetrics(
+  postUrl: string,
+  currentViews = 0,
+  currentLikes = 0,
+  currentReposts = 0,
+): Promise<XScrapeResult> {
+  const tweetId = extractTweetId(postUrl);
+  if (!tweetId) {
     return { ok: false, error: 'UNKNOWN', views: currentViews, likes: currentLikes, reposts: currentReposts };
   }
+
+  const [result] = await fetchTweetMetrics([tweetId]);
+
+  if (result.ok) {
+    return { ok: true, views: result.views, likes: result.likes, reposts: result.retweets };
+  }
+
+  const error: XScrapeResult['error'] =
+    result.error === 'NOT_FOUND' ? 'NOT_FOUND' :
+    result.error === 'TOKEN_EXPIRED' ? 'TOKEN_EXPIRED' :
+    'UNKNOWN';
+  return { ok: false, error, views: currentViews, likes: currentLikes, reposts: currentReposts };
 }
 
 // ── Token balance check ───────────────────────────────────────────────────────
@@ -182,6 +180,29 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
     postsByUser.get(uid)!.push(post);
   }
 
+  // ── Batch-fetch all X post metrics up-front ────────────────────────────────
+  // Collect (post.id → tweetId) for every X post in this pool so we can call
+  // the Twitter API once in batches of up to 100 instead of one call per post.
+  const tweetIdByPostId = new Map<string, string>();
+  const tweetIdsToFetch: string[] = [];
+
+  for (const post of poolPosts) {
+    if (post.platform === 'X') {
+      const tweetId = extractTweetId(post.postLink);
+      if (tweetId) {
+        tweetIdByPostId.set(post.id, tweetId);
+        tweetIdsToFetch.push(tweetId);
+      }
+    }
+  }
+
+  // fetchTweetMetrics deduplicates, checks the cache, and batches API calls
+  const tweetResultsArr = await fetchTweetMetrics(tweetIdsToFetch);
+  // Build a map from tweetId → result for O(1) lookup below
+  const tweetResultMap = new Map(
+    tweetIdsToFetch.map((id, i) => [id, tweetResultsArr[i]])
+  );
+
   let scraped = 0;
   let xTokenExpired = false;
 
@@ -197,10 +218,22 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
 
     for (const post of posts) {
       if (post.platform === 'X') {
-        const result = await fetchXPostMetrics(post.postLink, post.views, post.likes, post.reposts);
+        const tweetId = tweetIdByPostId.get(post.id);
+        const result = tweetId ? tweetResultMap.get(tweetId) : undefined;
+
+        if (!result) {
+          // Could not extract a tweet ID from the URL — malformed link
+          await prisma.poolPost.update({
+            where: { id: post.id },
+            data: { scrapeError: 'UNKNOWN: could not parse tweet ID from URL', lastScrapedAt: now },
+          });
+          errors.push(`Cannot parse tweet ID from: ${post.postLink}`);
+          xPoints += post.points;
+          continue;
+        }
 
         if (!result.ok && result.error === 'TOKEN_EXPIRED') {
-          // Do not overwrite metrics; mark scrape error
+          // Do not overwrite metrics; mark scrape error and keep existing points
           await prisma.poolPost.update({
             where: { id: post.id },
             data: {
@@ -208,45 +241,54 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
               lastScrapedAt: now,
             },
           });
-          const errStr = `X token expired for post ${post.id} (${post.postLink})`;
-          errors.push(errStr);
+          errors.push(`X token expired for post ${post.id} (${post.postLink})`);
           xTokenExpired = true;
-          // Use existing points
           xPoints += post.points;
           continue;
         }
 
         if (!result.ok && result.error === 'NOT_FOUND') {
-          const errStr = `X post not found: ${post.postLink}`;
-          errors.push(errStr);
           await prisma.poolPost.update({
             where: { id: post.id },
             data: { scrapeError: 'NOT_FOUND: post deleted or unavailable', lastScrapedAt: now },
           });
+          errors.push(`X post not found: ${post.postLink}`);
           xPoints += post.points;
           continue;
         }
 
+        if (!result.ok) {
+          // RATE_LIMITED or UNKNOWN — keep existing metrics
+          await prisma.poolPost.update({
+            where: { id: post.id },
+            data: { scrapeError: `${result.error}: ${post.postLink}`, lastScrapedAt: now },
+          });
+          errors.push(`X scrape error (${result.error}) for post ${post.id}`);
+          xPoints += post.points;
+          continue;
+        }
+
+        // Successful fetch
         const pts =
           result.views >= 100
-            ? result.views * 0.8 + result.likes * 0.1 + result.reposts * 0.1
-            : post.points; // keep last valid if below threshold
+            ? result.views * 0.8 + result.likes * 0.1 + result.retweets * 0.1
+            : post.points; // keep last valid score if below minimum view threshold
 
         await prisma.poolPost.update({
           where: { id: post.id },
           data: {
             views: result.views,
             likes: result.likes,
-            reposts: result.reposts,
+            reposts: result.retweets,
             points: pts,
             lastScrapedAt: now,
-            scrapeError: result.ok ? null : `${result.error}: ${post.postLink}`,
+            scrapeError: null,
           },
         });
         xPoints += pts;
         scraped++;
       } else {
-        // TELEGRAM
+        // TELEGRAM — still fetched individually (no batch endpoint available)
         try {
           const { views, reactions } = await fetchTelegramPostMetrics(post.postLink);
           const pts = views * 0.8 + reactions * 0.2;

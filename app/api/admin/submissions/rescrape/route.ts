@@ -1,24 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet, isAdmin } from '@/lib/auth';
-import axios from 'axios';
 import { fetchTelegramPostMetrics } from '@/lib/telegram';
+import { fetchTweetMetrics, extractTweetId } from '@/lib/twitter-api';
 import { calculateXPoints, calculateTelegramPoints } from '@/lib/points';
-
-async function fetchXMetrics(postUrl: string) {
-  const match = postUrl.match(/status\/(\d+)/);
-  if (!match) return null;
-  try {
-    const res = await axios.get(
-      `https://api.twitter.com/2/tweets/${match[1]}?tweet.fields=public_metrics`,
-      { headers: { Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}` }, timeout: 8000 },
-    );
-    const m = res.data?.data?.public_metrics ?? {};
-    return { views: m.impression_count ?? 0, likes: m.like_count ?? 0, reposts: m.retweet_count ?? 0 };
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,10 +22,13 @@ export async function POST(req: NextRequest) {
         reactions = post.reactions, points = post.points;
 
     if (post.platform === 'X') {
-      const m = await fetchXMetrics(post.postLink);
-      if (m) {
-        views = m.views; likes = m.likes; reposts = m.reposts;
-        points = calculateXPoints(views, likes, reposts);
+      const tweetId = extractTweetId(post.postLink);
+      if (tweetId) {
+        const [result] = await fetchTweetMetrics([tweetId]);
+        if (result.ok) {
+          views = result.views; likes = result.likes; reposts = result.retweets;
+          points = calculateXPoints(views, likes, reposts);
+        }
       }
     } else {
       const m = await fetchTelegramPostMetrics(post.postLink);

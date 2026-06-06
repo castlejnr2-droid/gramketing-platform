@@ -224,3 +224,18 @@ model AdminLog {
   details   Json?
   createdAt DateTime @default(now())
 }
+
+/// Cache for Twitter API v2 tweet public_metrics responses.
+/// Each row stores metrics for one tweet ID for one UTC calendar day.
+/// The scraper checks this before calling the API to avoid duplicate charges
+/// ($0.005 per tweet fetch on the Basic plan).
+model TweetMetricsCache {
+  tweetId   String   @id              // numeric tweet ID string
+  views     Int                       // impression_count
+  likes     Int                       // like_count
+  retweets  Int                       // retweet_count
+  fetchedAt DateTime @default(now())  // when this row was written / last refreshed
+  utcDay    String                    // YYYY-MM-DD UTC date — cache key for invalidation
+
+  @@index([utcDay])
+}
