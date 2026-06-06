@@ -115,9 +115,9 @@ export default function HomePage() {
                 letterSpacing: '-0.03em',
               }}
             >
-              Contribute, Promote and Market
+              Contribute, Promote and Market TON Projects
               <br />
-              <span style={{ color: '#00d4ff' }}>TON Projects on X &amp; Telegram</span>
+              <span style={{ color: '#00d4ff' }}>on X &amp; Telegram</span>
               <br />
               and Earn Real Rewards.
             </h1>
