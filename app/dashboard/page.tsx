@@ -1,6 +1,6 @@
 'use client';
 import { getParticipantTier } from '@/lib/points';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Link from 'next/link';
@@ -62,6 +62,36 @@ function TierBadge({ totalPoints }: { totalPoints: number }) {
       {label}
     </span>
   );
+}
+
+/** Reads OAuth return params and fires the banner callback.
+ *  Must live in its own component so useSearchParams() is scoped inside
+ *  a <Suspense> boundary — otherwise Next.js can't statically prerender /dashboard. */
+function XOAuthBanner({
+  onBanner,
+}: {
+  onBanner: (b: { type: 'success' | 'error'; message: string } | null) => void;
+}) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const xParam = searchParams.get('x');
+    if (!xParam) return;
+    if (xParam === 'linked') {
+      onBanner({ type: 'success', message: 'X account connected successfully!' });
+    } else if (xParam === 'error') {
+      const reason = searchParams.get('reason') ?? 'unknown';
+      const friendly =
+        reason === 'access_denied'       ? 'You cancelled the X authorisation.' :
+        reason === 'session_expired'     ? 'Session expired — please try again.' :
+        reason === 'state_mismatch'      ? 'Security check failed — please try again.' :
+        reason === 'not_authenticated'   ? 'You were signed out — please reconnect your wallet.' :
+        reason === 'token_exchange_failed' ? 'Twitter rejected the request — please try again.' :
+        reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
+      onBanner({ type: 'error', message: friendly });
+    }
+    window.history.replaceState({}, '', '/dashboard');
+  }, [searchParams, onBanner]);
+  return null;
 }
 
 export default function DashboardPage() {
@@ -141,26 +171,6 @@ export default function DashboardPage() {
   const [unlinkingX, setUnlinkingX] = useState(false);
   const [unlinkXError, setUnlinkXError] = useState<string | null>(null);
   const [xBanner, setXBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const xParam = searchParams.get('x');
-    if (!xParam) return;
-    if (xParam === 'linked') {
-      setXBanner({ type: 'success', message: 'X account connected successfully!' });
-    } else if (xParam === 'error') {
-      const reason = searchParams.get('reason') ?? 'unknown';
-      const friendly =
-        reason === 'access_denied' ? 'You cancelled the X authorisation.' :
-        reason === 'session_expired' ? 'Session expired — please try again.' :
-        reason === 'state_mismatch' ? 'Security check failed — please try again.' :
-        reason === 'not_authenticated' ? 'You were signed out — please reconnect your wallet.' :
-        reason === 'token_exchange_failed' ? 'Twitter rejected the request — please try again.' :
-        reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
-      setXBanner({ type: 'error', message: friendly });
-    }
-    window.history.replaceState({}, '', '/dashboard');
-  }, [searchParams]);
 
   useEffect(() => {
     if (!wallet) {
@@ -326,6 +336,11 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen pt-24 pb-20 px-4">
+      {/* Reads ?x=linked|error from URL after OAuth redirect; isolated in Suspense
+          so useSearchParams() doesn't block static prerendering of this page. */}
+      <Suspense fallback={null}>
+        <XOAuthBanner onBanner={setXBanner} />
+      </Suspense>
       <div className="max-w-6xl mx-auto">
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-white mb-2">Dashboard</h1>
