@@ -16,8 +16,8 @@ const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
  * unlike OAuth 2.0 PKCE which shows "Log in" instead of "Authorize app".
  */
 export async function GET(req: NextRequest) {
-  const consumerKey    = process.env.TWITTER_CLIENT_ID;
-  const consumerSecret = process.env.TWITTER_CLIENT_SECRET;
+  const consumerKey    = process.env.TWITTER_CONSUMER_KEY;
+  const consumerSecret = process.env.TWITTER_CONSUMER_SECRET;
 
   if (!consumerKey || !consumerSecret) {
     return NextResponse.json({ error: 'Twitter credentials not configured' }, { status: 500 });
