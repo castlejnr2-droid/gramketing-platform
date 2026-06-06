@@ -48,8 +48,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${settingsUrl}?x=error&reason=not_authenticated`);
   }
 
-  const consumerKey    = process.env.TWITTER_CLIENT_ID!;
-  const consumerSecret = process.env.TWITTER_CLIENT_SECRET!;
+  const consumerKey    = process.env.TWITTER_CONSUMER_KEY!;
+  const consumerSecret = process.env.TWITTER_CONSUMER_SECRET!;
 
   // Step 3: exchange oauth_token + oauth_verifier for a permanent access token
   const accessTokenUrl = 'https://api.twitter.com/oauth/access_token';
