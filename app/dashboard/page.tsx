@@ -2,7 +2,7 @@
 import { getParticipantTier } from '@/lib/points';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
+import { useTonWallet, useTonConnectUI, useIsConnectionRestored } from '@tonconnect/ui-react';
 import Link from 'next/link';
 import { ReferralCard } from '@/components/ReferralCard';
 import { Trophy, TrendingUp, Settings, ChevronRight, CheckCircle, Layers, Wallet } from 'lucide-react';
@@ -97,6 +97,7 @@ function XOAuthBanner({
 export default function DashboardPage() {
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
+  const connectionRestored = useIsConnectionRestored();
   const [activePools, setActivePools] = useState<MyPool[]>([]);
   const [endedPools, setEndedPools] = useState<MyPool[]>([]);
   const [account, setAccount] = useState<AccountInfo | null>(null);
@@ -300,6 +301,19 @@ export default function DashboardPage() {
     }
   };
 
+  // While TonConnect is restoring a stored session (async bridge reconnect),
+  // show the loading state so we don't flash "Connect Your Wallet" at a user
+  // who is already connected — especially after an OAuth redirect.
+  if (!connectionRestored || loading) {
+    return (
+      <div className="min-h-screen pt-24 px-4 flex items-center justify-center">
+        <div className="glass-card p-8 text-white/40">
+          Loading dashboard...
+        </div>
+      </div>
+    );
+  }
+
   if (!wallet) {
     return (
       <div className="min-h-screen pt-24 px-4 flex items-center justify-center">
@@ -319,16 +333,6 @@ export default function DashboardPage() {
             <Wallet className="w-4 h-4" />
             Connect Wallet
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen pt-24 px-4 flex items-center justify-center">
-        <div className="glass-card p-8 text-white/40">
-          Loading dashboard...
         </div>
       </div>
     );

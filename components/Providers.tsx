@@ -6,12 +6,25 @@ function AuthListener() {
   const [tonConnectUI] = useTonConnectUI();
 
   useEffect(() => {
+    // TonConnect fires onStatusChange once immediately on subscribe with the
+    // current state. On a fresh page load the bridge reconnection is async, so
+    // the first callback is often null even when a session exists in localStorage.
+    // Guard: only call logout if we have already seen the wallet connected in
+    // this session (i.e. this is a real disconnect, not a mid-restore null).
+    let seenConnected = false;
+
     const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
       if (!wallet) {
-        // Wallet disconnected — clear the auth cookie
+        if (!seenConnected) {
+          // TonConnect is still restoring — don't logout yet.
+          return;
+        }
+        // Genuine disconnect (user disconnected or bridge dropped after connection)
         await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
         return;
       }
+
+      seenConnected = true;
 
       // Wallet connected — authenticate with the server
       const walletAddress = wallet.account.address;
