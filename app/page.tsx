@@ -115,9 +115,11 @@ export default function HomePage() {
                 letterSpacing: '-0.03em',
               }}
             >
-              Earn Rewards for
+              Contribute, Promote and Market
               <br />
-              <span style={{ color: '#00d4ff' }}>Marketing on X &amp; Telegram</span>
+              <span style={{ color: '#00d4ff' }}>TON Projects on X &amp; Telegram</span>
+              <br />
+              and Earn Real Rewards.
             </h1>
 
             {/* Subheadline */}
