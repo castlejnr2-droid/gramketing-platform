@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomBytes } from 'crypto';
-import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 
@@ -17,16 +16,6 @@ export async function GET(req: NextRequest) {
   const codeVerifier = randomBytes(32).toString('base64url');
   const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
   const state = randomBytes(16).toString('hex');
-
-  // Persist state + verifier in a short-lived httpOnly cookie (10 min)
-  const cookieStore = await cookies();
-  cookieStore.set('x_oauth', JSON.stringify({ state, codeVerifier }), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 600,
-    path: '/',
-    sameSite: 'lax',
-  });
 
   // Must exactly match the URI registered in the X Developer Console.
   // TWITTER_REDIRECT_URI overrides the dynamic origin so production and preview
@@ -47,7 +36,21 @@ export async function GET(req: NextRequest) {
 
   const authUrl = `https://twitter.com/i/oauth2/authorize?${params}`;
   console.log('[link-x] Authorization URL:', authUrl);
-  return NextResponse.redirect(authUrl);
+  console.log('[link-x] state:', state);
+  console.log('[link-x] redirect_uri:', redirectUri);
+
+  // Set cookie directly on the redirect response — cookies().set() from
+  // next/headers does NOT attach to a NextResponse.redirect() returned in the
+  // same handler, so the x_oauth cookie would never reach the browser.
+  const response = NextResponse.redirect(authUrl);
+  response.cookies.set('x_oauth', JSON.stringify({ state, codeVerifier }), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 600,
+    path: '/',
+    sameSite: 'lax',
+  });
+  return response;
 }
 
 /**

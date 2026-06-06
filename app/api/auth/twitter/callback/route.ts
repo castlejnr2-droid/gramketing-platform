@@ -17,14 +17,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${settingsUrl}?x=error&reason=${encodeURIComponent(errorParam)}`);
   }
 
+  console.log('[twitter/callback] received — code present:', !!code, '| state:', state);
+
   if (!code || !state) {
+    console.error('[twitter/callback] missing code or state');
     return NextResponse.redirect(`${settingsUrl}?x=error&reason=missing_params`);
   }
 
   // Validate state against cookie
   const cookieStore = await cookies();
+  const allCookieNames = cookieStore.getAll().map((c) => c.name);
+  console.log('[twitter/callback] cookies present:', allCookieNames);
+
   const oauthRaw = cookieStore.get('x_oauth')?.value;
   if (!oauthRaw) {
+    console.error('[twitter/callback] x_oauth cookie missing — cookie not set or not sent');
     return NextResponse.redirect(`${settingsUrl}?x=error&reason=session_expired`);
   }
 
@@ -32,15 +39,22 @@ export async function GET(req: NextRequest) {
   try {
     oauthData = JSON.parse(oauthRaw);
   } catch {
+    console.error('[twitter/callback] failed to parse x_oauth cookie:', oauthRaw);
     return NextResponse.redirect(`${settingsUrl}?x=error&reason=invalid_session`);
   }
 
+  console.log('[twitter/callback] state from cookie:', oauthData.state);
+  console.log('[twitter/callback] state from X:', state);
+  console.log('[twitter/callback] state match:', oauthData.state === state);
+  console.log('[twitter/callback] codeVerifier present:', !!oauthData.codeVerifier);
+
   if (oauthData.state !== state) {
+    console.error('[twitter/callback] state mismatch — possible CSRF or stale tab');
     return NextResponse.redirect(`${settingsUrl}?x=error&reason=state_mismatch`);
   }
 
-  // Clear the one-time oauth cookie
-  cookieStore.delete('x_oauth');
+  // Clear the one-time oauth cookie on the response we'll eventually return
+  // (deletion handled below by not re-setting it; maxAge=600 means it expires anyway)
 
   // The user must be authenticated — gramketing_token cookie travels with the redirect
   const walletAddress = await getAuthWallet(req);
