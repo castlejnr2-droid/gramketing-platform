@@ -45,6 +45,7 @@ const DECIMALS_DICT_KEY = dictKey('decimals');
 const NAME_DICT_KEY     = dictKey('name');
 const SYMBOL_DICT_KEY   = dictKey('symbol');
 const IMAGE_DICT_KEY    = dictKey('image');
+const URI_DICT_KEY      = dictKey('uri');    // hybrid format: on-chain dict with off-chain URI
 
 /**
  * Fetches the jetton decimals from the jetton master's `get_jetton_data` getter.
@@ -169,7 +170,7 @@ export async function getJettonMetadata(jettonMasterAddress: string): Promise<Je
   let image = '';
 
   if (prefix === 0x00) {
-    // On-chain dictionary metadata
+    // On-chain dictionary metadata (TEP-64 HashmapE 256 ^SnakeData)
     if (slice.remainingBits > 0 || slice.remainingRefs > 0) {
       const dict = Dictionary.load(
         Dictionary.Keys.BigUint(256),
@@ -182,6 +183,24 @@ export async function getJettonMetadata(jettonMasterAddress: string): Promise<Je
       if (nameCell)   name   = readSnakeString(nameCell).trim();
       if (symbolCell) symbol = readSnakeString(symbolCell).trim();
       if (imageCell)  image  = normalizeMetadataUrl(readSnakeString(imageCell).trim());
+
+      // Hybrid format: some tokens (e.g. SENDIT) store only `decimals` + `uri`
+      // in the on-chain dict and keep the rest of the metadata off-chain at
+      // that URI. Fall through and fetch the URI if name/symbol are still missing.
+      if (!name && !symbol) {
+        const uriCell = dict.get(URI_DICT_KEY);
+        if (uriCell) {
+          const url = normalizeMetadataUrl(readSnakeString(uriCell).trim());
+          const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+          if (resp.ok) {
+            const json = await resp.json() as Record<string, unknown>;
+            name   = String(json?.name   ?? '').trim();
+            symbol = String(json?.symbol ?? '').trim();
+            const rawImage = String(json?.image ?? '').trim();
+            if (rawImage && !image) image = normalizeMetadataUrl(rawImage);
+          }
+        }
+      }
     }
   } else if (prefix === 0x01) {
     // Off-chain JSON URL metadata
