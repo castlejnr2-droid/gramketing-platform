@@ -59,9 +59,9 @@ export async function getJettonDecimals(jettonMasterAddress: string): Promise<nu
 
     // get_jetton_data returns: (total_supply, mintable, admin_address, content, wallet_code)
     const result = await client.runMethod(master, 'get_jetton_data', []);
-    result.stack.readBigNumber(); // total_supply
-    result.stack.readNumber();    // mintable
-    result.stack.readAddress();   // admin_address
+    result.stack.readBigNumber();   // total_supply
+    result.stack.readNumber();      // mintable
+    result.stack.readAddressOpt();  // admin_address (may be addr_none when admin is burned)
     const contentCell = result.stack.readCell();
 
     const slice = contentCell.beginParse();
@@ -76,11 +76,22 @@ export async function getJettonDecimals(jettonMasterAddress: string): Promise<nu
         Dictionary.Values.Cell(),
         slice,
       );
+      // First try the `decimals` key directly in the on-chain dict
       const cell = dict.get(DECIMALS_DICT_KEY);
       if (cell) {
         const str = readSnakeString(cell).trim();
         const n = parseInt(str, 10);
         if (!isNaN(n) && n >= 0 && n <= 18) return n;
+      }
+      // Hybrid format: on-chain dict may only have a `uri` key pointing to off-chain JSON
+      // (e.g. tokens that store decimals solely off-chain). Fall through to fetch that URI.
+      const uriCell = dict.get(URI_DICT_KEY);
+      if (uriCell) {
+        const url = normalizeMetadataUrl(readSnakeString(uriCell).trim());
+        if (url) {
+          const n = await fetchOffChainDecimals(url);
+          if (n !== null) return n;
+        }
       }
     } else if (prefix === 0x01) {
       // Off-chain URL metadata — fetch JSON and read `decimals` field
@@ -296,7 +307,10 @@ export async function deployAndInitPool(params: {
 
   if (info.startTime === 0n) {
     // Not yet initialized — send CreatePool
-    const totalRewardBigInt = BigInt(Math.round(parseFloat(params.totalReward)));
+    // Fetch decimals so totalReward is stored in the contract in nano-token units
+    // (the contract declares totalReward as `coins`, i.e. a nano-denomination integer).
+    const decimals = await getJettonDecimals(params.jettonMasterAddress);
+    const totalRewardBigInt = displayToNano(params.totalReward, decimals);
 
     const seqno = await walletContract.getSeqno();
     await walletContract.sendTransfer({
@@ -546,6 +560,35 @@ export async function buildJettonFeeTransaction(params: {
   };
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Converts a decimal display-unit string (e.g. "1000" or "0.5") to the raw
+ * integer nano-token amount without using floating-point arithmetic.
+ *
+ * Floating-point (parseFloat × Math.pow) loses precision beyond 2^53 ≈ 9×10^15,
+ * which is crossed at ~9 M tokens for a 9-decimal token, or ~9 B tokens for a
+ * 6-decimal token. This implementation works correctly for amounts up to 10^36.
+ */
+function displayToNano(displayAmount: string, decimals: number): bigint {
+  const trimmed = displayAmount.trim();
+  const dotIndex = trimmed.indexOf('.');
+  let intPart: string;
+  let fracPart: string;
+  if (dotIndex === -1) {
+    intPart = trimmed;
+    fracPart = '';
+  } else {
+    intPart = trimmed.slice(0, dotIndex);
+    fracPart = trimmed.slice(dotIndex + 1);
+  }
+  // Pad / truncate fractional part to exactly `decimals` digits
+  const paddedFrac = fracPart.padEnd(decimals, '0').slice(0, decimals);
+  const raw = (intPart || '0') + paddedFrac;
+  // Remove leading zeros, but keep at least one digit
+  return BigInt(raw.replace(/^0+(?=\d)/, '') || '0');
+}
+
 // ── Jetton deposit transaction builder ───────────────────────────────────────
 
 /**
@@ -576,10 +619,9 @@ export async function buildDepositTransaction(params: {
   const poolContractAddr = Address.parse(params.contractAddress);
   const creatorAddr = Address.parse(params.creatorWalletAddress);
 
-  // Convert display amount to nano-tokens using the token's decimal places
-  const rawAmount = BigInt(
-    Math.round(parseFloat(params.totalReward) * Math.pow(10, params.decimals)),
-  );
+  // Convert display amount to nano-tokens using the token's decimal places.
+  // Uses integer arithmetic (displayToNano) to avoid float precision loss.
+  const rawAmount = displayToNano(params.totalReward, params.decimals);
 
   // Standard TEP-74 jetton transfer message body
   // Opcode 0x0f8a7ea5 is sent to the creator's own jetton wallet, which routes
