@@ -37,7 +37,10 @@ export async function GET(req: NextRequest) {
     oauthCallback:  callbackUrl,
   });
 
-  console.log('[link-x] requesting request_token, callback:', callbackUrl);
+  console.log('[link-x] requesting request_token', {
+    callback:          callbackUrl,
+    consumerKeyPrefix: consumerKey.slice(0, 8) + '…',
+  });
 
   const tokenRes = await fetch(requestTokenUrl, {
     method:  'POST',
@@ -45,8 +48,13 @@ export async function GET(req: NextRequest) {
   });
 
   if (!tokenRes.ok) {
-    const err = await tokenRes.text();
-    console.error('[link-x] request_token failed:', tokenRes.status, err);
+    const errBody    = await tokenRes.text();
+    const errHeaders = Object.fromEntries(tokenRes.headers.entries());
+    console.error('[link-x] request_token failed', {
+      status:  tokenRes.status,
+      headers: errHeaders,
+      body:    errBody,
+    });
     return NextResponse.json({ error: 'Failed to get request token from Twitter' }, { status: 500 });
   }
 
