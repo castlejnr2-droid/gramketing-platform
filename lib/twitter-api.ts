@@ -174,7 +174,7 @@ export async function fetchTweetMetrics(tweetIds: string[]): Promise<TweetFetchR
       const upserts: Promise<unknown>[] = [];
 
       for (const tweet of json.data ?? []) {
-        const pm = tweet.public_metrics ?? {};
+        const pm = tweet.public_metrics;
         const m: TweetMetrics = {
           tweetId: tweet.id,
           views: pm.impression_count ?? 0,
