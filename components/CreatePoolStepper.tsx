@@ -369,8 +369,10 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   // Debounced 600 ms so we don't hammer the RPC on every keystroke.
   useEffect(() => {
     const trimmed = jettonMasterAddress.trim();
-    // TON addresses are 48 base64url chars (EQ/UQ prefix form)
-    if (trimmed.length < 44) {
+    // Wait until the input is long enough to plausibly be a TON address.
+    // User-friendly form (EQ/UQ) = 48 chars; raw form (0:hex) = 66 chars.
+    // Use 32 as a loose gate so we don't fire on partial keystrokes.
+    if (trimmed.length < 32) {
       setJettonFetchStatus('idle');
       setJettonFetchError(null);
       return;

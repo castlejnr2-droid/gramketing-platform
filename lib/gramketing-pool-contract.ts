@@ -155,9 +155,9 @@ export async function getJettonMetadata(jettonMasterAddress: string): Promise<Je
   const master = Address.parse(jettonMasterAddress);
 
   const result = await client.runMethod(master, 'get_jetton_data', []);
-  result.stack.readBigNumber(); // total_supply
-  result.stack.readNumber();    // mintable
-  result.stack.readAddress();   // admin_address
+  result.stack.readBigNumber();    // total_supply
+  result.stack.readNumber();       // mintable
+  result.stack.readAddressOpt();   // admin_address (may be addr_none when admin is burned)
   const contentCell = result.stack.readCell();
 
   const slice = contentCell.beginParse();
