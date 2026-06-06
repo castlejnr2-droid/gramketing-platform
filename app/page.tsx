@@ -109,7 +109,7 @@ export default function HomePage() {
               className="hero-fadein text-white"
               style={{
                 animationDelay: '0.1s',
-                fontSize: 'clamp(2.4rem, 6vw, 4.2rem)',
+                fontSize: 'clamp(1.8rem, 4vw, 3rem)',
                 fontWeight: 800,
                 lineHeight: 1.08,
                 letterSpacing: '-0.03em',
