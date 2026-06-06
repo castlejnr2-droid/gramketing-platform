@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Link from 'next/link';
@@ -17,10 +17,36 @@ interface AccountInfo {
   telegramUnlinkedAt?: string | null;
 }
 
+function XOAuthBanner({
+  onBanner,
+}: {
+  onBanner: (b: { type: 'success' | 'error'; message: string } | null) => void;
+}) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const xParam = searchParams.get('x');
+    if (!xParam) return;
+    if (xParam === 'linked') {
+      onBanner({ type: 'success', message: 'X account connected successfully!' });
+    } else if (xParam === 'error') {
+      const reason = searchParams.get('reason') ?? 'unknown';
+      const friendly =
+        reason === 'access_denied'        ? 'You cancelled the X authorisation.' :
+        reason === 'session_expired'      ? 'Session expired — please try again.' :
+        reason === 'state_mismatch'       ? 'Security check failed — please try again.' :
+        reason === 'not_authenticated'    ? 'You were signed out — please reconnect your wallet.' :
+        reason === 'token_exchange_failed'? 'Twitter rejected the request — please try again.' :
+        reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
+      onBanner({ type: 'error', message: friendly });
+    }
+    window.history.replaceState({}, '', '/miniapp/settings');
+  }, [searchParams, onBanner]);
+  return null;
+}
+
 export default function MiniAppSettingsPage() {
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
-  const searchParams = useSearchParams();
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [usernameInput, setUsernameInput] = useState('');
   const [tgChannelInput, setTgChannelInput] = useState('');
@@ -49,27 +75,6 @@ export default function MiniAppSettingsPage() {
       })
       .catch(() => {});
   }, [wallet]);
-
-  // Handle OAuth return: ?x=linked or ?x=error
-  useEffect(() => {
-    const xParam = searchParams.get('x');
-    if (!xParam) return;
-    if (xParam === 'linked') {
-      setXBanner({ type: 'success', message: 'X account connected successfully!' });
-    } else if (xParam === 'error') {
-      const reason = searchParams.get('reason') ?? 'unknown';
-      const friendly =
-        reason === 'access_denied' ? 'You cancelled the X authorisation.' :
-        reason === 'session_expired' ? 'Session expired — please try again.' :
-        reason === 'state_mismatch' ? 'Security check failed — please try again.' :
-        reason === 'not_authenticated' ? 'You were signed out — please reconnect your wallet.' :
-        reason === 'token_exchange_failed' ? 'Twitter rejected the request — please try again.' :
-        reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
-      setXBanner({ type: 'error', message: friendly });
-    }
-    // Clean the query params without a page reload
-    window.history.replaceState({}, '', '/miniapp/settings');
-  }, [searchParams]);
 
   const saveUsername = async () => {
     setUsernameError(null);
@@ -166,6 +171,9 @@ export default function MiniAppSettingsPage() {
 
   return (
     <div className="pt-5 pb-4 px-4">
+      <Suspense fallback={null}>
+        <XOAuthBanner onBanner={setXBanner} />
+      </Suspense>
       <h1 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
         <Settings className="w-6 h-6 text-[#0088CC]" /> Settings
       </h1>
