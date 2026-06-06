@@ -83,11 +83,13 @@ export function Navbar() {
       <div style={{ padding: '1.2rem 2rem 1.2rem 1.5rem' }}>
         <div className="flex items-center justify-between">
           {/* Brand */}
-          <Link
-            href="/"
-            className="text-xl font-bold text-[#0088CC] hover:text-[#00AAFF] transition-colors tracking-wide"
-          >
-            GRAMKETING
+          <Link href="/" className="flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/gramketing-logo.png"
+              alt="Gramketing"
+              style={{ height: '36px', width: 'auto', display: 'block' }}
+            />
           </Link>
 
           {/* Desktop Nav Links */}
