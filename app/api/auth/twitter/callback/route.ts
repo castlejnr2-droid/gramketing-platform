@@ -14,7 +14,7 @@ import { linkXAccount } from '@/app/api/auth/link-x/route';
  * Values are serialised with JSON.stringify and additionally escaped for safe
  * inline-script embedding to prevent XSS.
  */
-function htmlPostMessage(payload: Record<string, unknown>, fallbackUrl: string): Response {
+function htmlPostMessage(payload: Record<string, unknown>, fallbackUrl: string, targetOrigin: string): Response {
   const safe = (v: unknown) =>
     JSON.stringify(v)
       .replace(/</g, '\\u003c')
@@ -28,8 +28,9 @@ function htmlPostMessage(payload: Record<string, unknown>, fallbackUrl: string):
 (function(){
   var p=${safe(payload)};
   var f=${safe(fallbackUrl)};
+  var t=${safe(targetOrigin)};
   if(window.opener&&!window.opener.closed){
-    try{window.opener.postMessage(p,window.location.origin);}catch(e){}
+    try{window.opener.postMessage(p,t);}catch(e){}
     window.close();
   }else{
     window.location.replace(f);
@@ -66,6 +67,7 @@ export async function GET(req: NextRequest) {
     return htmlPostMessage(
       { type: 'X_LINKED', success: false, reason: 'access_denied' },
       `${baseUrl}?x=error&reason=access_denied`,
+      origin,
     );
   }
 
@@ -74,6 +76,7 @@ export async function GET(req: NextRequest) {
     return htmlPostMessage(
       { type: 'X_LINKED', success: false, reason: 'missing_params' },
       `${baseUrl}?x=error&reason=missing_params`,
+      origin,
     );
   }
 
@@ -86,6 +89,7 @@ export async function GET(req: NextRequest) {
     return htmlPostMessage(
       { type: 'X_LINKED', success: false, reason: 'session_expired' },
       `${baseUrl}?x=error&reason=session_expired`,
+      origin,
     );
   }
 
@@ -98,6 +102,7 @@ export async function GET(req: NextRequest) {
     return htmlPostMessage(
       { type: 'X_LINKED', success: false, reason: 'not_authenticated' },
       `${baseUrl}?x=error&reason=not_authenticated`,
+      origin,
     );
   }
 
@@ -127,6 +132,7 @@ export async function GET(req: NextRequest) {
     return htmlPostMessage(
       { type: 'X_LINKED', success: false, reason: 'token_exchange_failed' },
       `${baseUrl}?x=error&reason=token_exchange_failed`,
+      origin,
     );
   }
 
@@ -144,6 +150,7 @@ export async function GET(req: NextRequest) {
     return htmlPostMessage(
       { type: 'X_LINKED', success: false, reason: 'no_user_data' },
       `${baseUrl}?x=error&reason=no_user_data`,
+      origin,
     );
   }
 
@@ -182,6 +189,7 @@ export async function GET(req: NextRequest) {
     return htmlPostMessage(
       { type: 'X_LINKED', success: false, reason: result.error },
       `${baseUrl}?x=error&reason=${encodeURIComponent(result.error)}`,
+      origin,
     );
   }
 
@@ -196,5 +204,6 @@ export async function GET(req: NextRequest) {
   return htmlPostMessage(
     { type: 'X_LINKED', success: true },
     `${baseUrl}?x=linked`,
+    origin,
   );
 }

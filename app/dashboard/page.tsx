@@ -197,10 +197,21 @@ export default function DashboardPage() {
   // without a full page reload (which would drop the TonConnect session).
   useEffect(() => {
     function handleMessage(e: MessageEvent) {
-      if (e.origin !== window.location.origin) return;
+      console.log('[XOAuth] postMessage received — origin:', e.origin, '| data:', e.data);
+
+      // Accept messages from the production domain and from the current origin
+      // (covers local dev, preview deployments, and www vs non-www variants).
+      const allowedOrigins = ['https://gramketing.com', window.location.origin];
+      if (!allowedOrigins.includes(e.origin)) {
+        console.log('[XOAuth] ignoring message from unexpected origin:', e.origin);
+        return;
+      }
+
       if (!e.data || e.data.type !== 'X_LINKED') return;
 
       if (e.data.success) {
+        // Force-refetch the full user profile so the X handle / avatar update
+        // immediately without a page reload.
         fetch('/api/dashboard', { credentials: 'include' })
           .then((r) => r.json())
           .then((d) => {
