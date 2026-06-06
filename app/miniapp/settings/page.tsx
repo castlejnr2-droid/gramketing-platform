@@ -76,6 +76,37 @@ export default function MiniAppSettingsPage() {
       .catch(() => {});
   }, [wallet]);
 
+  // Listen for postMessage from the X OAuth popup.
+  useEffect(() => {
+    function handleMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      if (!e.data || e.data.type !== 'X_LINKED') return;
+
+      if (e.data.success) {
+        fetch('/api/dashboard', { credentials: 'include' })
+          .then((r) => r.json())
+          .then((d) => {
+            setAccount(d.account ?? null);
+            setXBanner({ type: 'success', message: 'X account connected successfully!' });
+          })
+          .catch(() => setXBanner({ type: 'success', message: 'X account connected successfully!' }));
+      } else {
+        const reason: string = e.data.reason ?? 'unknown';
+        const friendly =
+          reason === 'access_denied'        ? 'You cancelled the X authorisation.' :
+          reason === 'session_expired'      ? 'Session expired — please try again.' :
+          reason === 'missing_params'       ? 'OAuth params missing — please try again.' :
+          reason === 'not_authenticated'    ? 'You were signed out — please reconnect your wallet.' :
+          reason === 'token_exchange_failed'? 'Twitter rejected the request — please try again.' :
+          reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
+        setXBanner({ type: 'error', message: friendly });
+      }
+    }
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   const saveUsername = async () => {
     setUsernameError(null);
     setSavingUsername(true);
@@ -275,7 +306,14 @@ export default function MiniAppSettingsPage() {
                 return (
                   <div className="space-y-3">
                     <button
-                      onClick={() => { window.location.href = '/api/auth/link-x'; }}
+                      onClick={() => {
+                        const popup = window.open(
+                          '/api/auth/link-x?from=miniapp',
+                          'x-oauth',
+                          'width=600,height=700,scrollbars=yes',
+                        );
+                        if (!popup) window.location.href = '/api/auth/link-x?from=miniapp';
+                      }}
                       className="btn-primary text-sm flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">

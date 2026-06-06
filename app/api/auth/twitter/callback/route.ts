@@ -1,9 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 import { buildOAuth1Header } from '@/lib/twitter-oauth1';
 import { linkXAccount } from '@/app/api/auth/link-x/route';
+
+/**
+ * Returns an HTML page that postMessages `payload` to the opener window, then
+ * closes itself. Falls back to a plain client-side redirect when the page has
+ * no opener (direct navigation or popup was blocked and the user ended up here
+ * in the main tab).
+ *
+ * Values are serialised with JSON.stringify and additionally escaped for safe
+ * inline-script embedding to prevent XSS.
+ */
+function htmlPostMessage(payload: Record<string, unknown>, fallbackUrl: string): Response {
+  const safe = (v: unknown) =>
+    JSON.stringify(v)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e')
+      .replace(/&/g, '\\u0026');
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Connecting\u2026</title></head>
+<body>
+<script>
+(function(){
+  var p=${safe(payload)};
+  var f=${safe(fallbackUrl)};
+  if(window.opener&&!window.opener.closed){
+    try{window.opener.postMessage(p,window.location.origin);}catch(e){}
+    window.close();
+  }else{
+    window.location.replace(f);
+  }
+})();
+\u003c/script>
+</body></html>`;
+
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = req.nextUrl;
@@ -25,12 +63,18 @@ export async function GET(req: NextRequest) {
 
   if (denied) {
     console.warn('[twitter/callback] user denied access');
-    return NextResponse.redirect(`${baseUrl}?x=error&reason=access_denied`);
+    return htmlPostMessage(
+      { type: 'X_LINKED', success: false, reason: 'access_denied' },
+      `${baseUrl}?x=error&reason=access_denied`,
+    );
   }
 
   if (!oauthToken || !oauthVerifier) {
     console.error('[twitter/callback] missing oauth_token or oauth_verifier');
-    return NextResponse.redirect(`${baseUrl}?x=error&reason=missing_params`);
+    return htmlPostMessage(
+      { type: 'X_LINKED', success: false, reason: 'missing_params' },
+      `${baseUrl}?x=error&reason=missing_params`,
+    );
   }
 
   // Read the oauth_token_secret we stored before redirecting to X
@@ -39,7 +83,10 @@ export async function GET(req: NextRequest) {
   const tokenSecret = cookieStore.get('x_oauth1')?.value;
   if (!tokenSecret) {
     console.error('[twitter/callback] x_oauth1 cookie missing — cookie was not set or not sent');
-    return NextResponse.redirect(`${baseUrl}?x=error&reason=session_expired`);
+    return htmlPostMessage(
+      { type: 'X_LINKED', success: false, reason: 'session_expired' },
+      `${baseUrl}?x=error&reason=session_expired`,
+    );
   }
 
   console.log('[twitter/callback] token_secret present, proceeding to access_token exchange');
@@ -48,7 +95,10 @@ export async function GET(req: NextRequest) {
   const walletAddress = await getAuthWallet(req);
   if (!walletAddress) {
     console.error('[twitter/callback] no wallet auth cookie');
-    return NextResponse.redirect(`${baseUrl}?x=error&reason=not_authenticated`);
+    return htmlPostMessage(
+      { type: 'X_LINKED', success: false, reason: 'not_authenticated' },
+      `${baseUrl}?x=error&reason=not_authenticated`,
+    );
   }
 
   const consumerKey    = process.env.TWITTER_CONSUMER_KEY!;
@@ -74,7 +124,10 @@ export async function GET(req: NextRequest) {
   if (!accessRes.ok) {
     const err = await accessRes.text();
     console.error('[twitter/callback] access_token exchange failed:', accessRes.status, err);
-    return NextResponse.redirect(`${baseUrl}?x=error&reason=token_exchange_failed`);
+    return htmlPostMessage(
+      { type: 'X_LINKED', success: false, reason: 'token_exchange_failed' },
+      `${baseUrl}?x=error&reason=token_exchange_failed`,
+    );
   }
 
   const accessBody   = await accessRes.text();
@@ -88,7 +141,10 @@ export async function GET(req: NextRequest) {
 
   if (!accessToken || !accessTokenSecret || !xAccountId || !xHandle) {
     console.error('[twitter/callback] incomplete access_token response:', accessBody);
-    return NextResponse.redirect(`${baseUrl}?x=error&reason=no_user_data`);
+    return htmlPostMessage(
+      { type: 'X_LINKED', success: false, reason: 'no_user_data' },
+      `${baseUrl}?x=error&reason=no_user_data`,
+    );
   }
 
   // Fetch profile image via v2 with OAuth 1.0a user auth (best-effort)
@@ -123,7 +179,8 @@ export async function GET(req: NextRequest) {
   const result = await linkXAccount(walletAddress, xAccountId, xHandle, storedToken);
   if ('error' in result) {
     console.error('[twitter/callback] linkXAccount error:', result.error);
-    return NextResponse.redirect(
+    return htmlPostMessage(
+      { type: 'X_LINKED', success: false, reason: result.error },
       `${baseUrl}?x=error&reason=${encodeURIComponent(result.error)}`,
     );
   }
@@ -136,5 +193,8 @@ export async function GET(req: NextRequest) {
   }
 
   console.log('[twitter/callback] success — linked @', xHandle, 'to', walletAddress);
-  return NextResponse.redirect(`${baseUrl}?x=linked`);
+  return htmlPostMessage(
+    { type: 'X_LINKED', success: true },
+    `${baseUrl}?x=linked`,
+  );
 }
