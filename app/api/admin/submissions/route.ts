@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const platform  = searchParams.get('platform');   // X | TELEGRAM
     const poolId    = searchParams.get('poolId');
     const search    = searchParams.get('search');      // post URL or wallet
+    const status    = searchParams.get('status');      // PENDING | VERIFIED | REJECTED
     const sortBy    = searchParams.get('sortBy') ?? 'submittedAt'; // points | views | submittedAt
     const page      = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
 
@@ -33,6 +34,9 @@ export async function GET(req: NextRequest) {
         { participant: { user: { xHandle:        { contains: search, mode: 'insensitive' } } } },
         { participant: { user: { telegramHandle: { contains: search, mode: 'insensitive' } } } },
       ];
+    }
+    if (status && ['PENDING', 'VERIFIED', 'REJECTED'].includes(status)) {
+      where.status = status;
     }
 
     const orderBy =
@@ -90,6 +94,7 @@ export async function GET(req: NextRequest) {
       reposts: p.reposts,
       reactions: p.reactions,
       points: p.points,
+      status: p.status,
       submittedAt: p.submittedAt.toISOString(),
       lastScrapedAt: p.lastScrapedAt?.toISOString() ?? null,
       pool: {

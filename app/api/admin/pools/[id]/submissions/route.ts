@@ -16,10 +16,13 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const platform = searchParams.get('platform'); // X | TELEGRAM | null
 
+    const statusFilter = searchParams.get('status'); // PENDING | VERIFIED | REJECTED
+
     const posts = await prisma.poolPost.findMany({
       where: {
         poolId,
         ...(platform ? { platform: platform as 'X' | 'TELEGRAM' } : {}),
+        ...(statusFilter ? { status: statusFilter as 'PENDING' | 'VERIFIED' | 'REJECTED' } : {}),
       },
       include: {
         participant: {
@@ -47,6 +50,7 @@ export async function GET(
       reposts: p.reposts,
       reactions: p.reactions,
       points: p.points,
+      status: p.status,
       submittedAt: p.submittedAt.toISOString(),
       lastScrapedAt: p.lastScrapedAt?.toISOString() ?? null,
       participant: {

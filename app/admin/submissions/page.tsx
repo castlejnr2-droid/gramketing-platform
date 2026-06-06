@@ -6,7 +6,7 @@ import { TonConnectButton } from '@tonconnect/ui-react';
 import {
   Shield, ArrowLeft, Search, RefreshCw, ExternalLink,
   AlertCircle, CheckCircle, Loader2, FileText, ChevronLeft,
-  ChevronRight, Copy, Check, X, Filter,
+  ChevronRight, Copy, Check, X, Filter, ThumbsUp, ThumbsDown,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -20,6 +20,7 @@ interface Submission {
   reposts: number;
   reactions: number;
   points: number;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
   submittedAt: string;
   lastScrapedAt: string | null;
   pool: { id: string; name: string; tokenSymbol: string; status: string };
@@ -31,8 +32,9 @@ interface Stats { total: number; x: number; telegram: number; avgPoints: number;
 
 interface PoolOption { id: string; name: string; tokenSymbol: string }
 
-type Platform = 'ALL' | 'X' | 'TELEGRAM';
-type SortBy   = 'submittedAt' | 'points' | 'views' | 'lastScraped';
+type Platform   = 'ALL' | 'X' | 'TELEGRAM';
+type SubStatus  = 'ALL' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+type SortBy     = 'submittedAt' | 'points' | 'views' | 'lastScraped';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -60,6 +62,12 @@ const STATUS_BADGE: Record<string, string> = {
   DISTRIBUTED: 'bg-white/8 text-white/30',
 };
 
+const SUB_STATUS_BADGE: Record<string, string> = {
+  PENDING:  'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',
+  VERIFIED: 'bg-green-500/15 text-green-400 border-green-500/25',
+  REJECTED: 'bg-red-500/15 text-red-400 border-red-500/25',
+};
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminSubmissionsPage() {
@@ -73,18 +81,24 @@ export default function AdminSubmissionsPage() {
   const [isAdmin, setIsAdmin]         = useState(false);
 
   // Filters
-  const [platform, setPlatform]   = useState<Platform>('ALL');
-  const [poolId, setPoolId]       = useState('');
-  const [search, setSearch]       = useState('');
-  const [sortBy, setSortBy]       = useState<SortBy>('submittedAt');
-  const [page, setPage]           = useState(1);
+  const [platform, setPlatform]     = useState<Platform>('ALL');
+  const [poolId, setPoolId]         = useState('');
+  const [statusFilter, setStatusFilter] = useState<SubStatus>('ALL');
+  const [search, setSearch]         = useState('');
+  const [sortBy, setSortBy]         = useState<SortBy>('submittedAt');
+  const [page, setPage]             = useState(1);
 
-  // Per-row scrape state
-  const [scraping, setScraping]   = useState<Record<string, boolean>>({});
-  const [scraped, setScraped]     = useState<Record<string, Submission>>({});
-  const [feedback, setFeedback]   = useState<{ msg: string; ok: boolean } | null>(null);
+  // Selection for bulk actions
+  const [selected, setSelected]     = useState<Set<string>>(new Set());
 
-  const searchRef = useRef<HTMLInputElement>(null);
+  // Per-row scrape / status state
+  const [scraping, setScraping]     = useState<Record<string, boolean>>({});
+  const [updating, setUpdating]     = useState<Record<string, boolean>>({});
+  const [scraped, setScraped]       = useState<Record<string, Submission>>({});
+  const [feedback, setFeedback]     = useState<{ msg: string; ok: boolean } | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const searchRef   = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Fetch submissions ────────────────────────────────────────────────────
@@ -92,9 +106,10 @@ export default function AdminSubmissionsPage() {
   const fetchSubmissions = useCallback(async (p = page) => {
     setLoading(true);
     const params = new URLSearchParams({ sortBy, page: String(p) });
-    if (platform !== 'ALL') params.set('platform', platform);
-    if (poolId)   params.set('poolId', poolId);
-    if (search)   params.set('search', search);
+    if (platform !== 'ALL')     params.set('platform', platform);
+    if (poolId)                 params.set('poolId', poolId);
+    if (search)                 params.set('search', search);
+    if (statusFilter !== 'ALL') params.set('status', statusFilter);
 
     try {
       const res = await fetch(`/api/admin/submissions?${params}`, { credentials: 'include' });
@@ -104,10 +119,11 @@ export default function AdminSubmissionsPage() {
       setSubmissions(d.submissions ?? []);
       setPagination(d.pagination ?? null);
       setStats(d.stats ?? null);
+      setSelected(new Set()); // clear selection on page change
     } finally {
       setLoading(false);
     }
-  }, [platform, poolId, search, sortBy, page]);
+  }, [platform, poolId, search, statusFilter, sortBy, page]);
 
   // Fetch pool list for filter dropdown
   const fetchPools = useCallback(async () => {
@@ -130,7 +146,7 @@ export default function AdminSubmissionsPage() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => { setPage(1); fetchSubmissions(1); }, 350);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [platform, poolId, search, sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [platform, poolId, statusFilter, search, sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (wallet && isAdmin) fetchSubmissions(page); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -146,7 +162,6 @@ export default function AdminSubmissionsPage() {
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? 'Failed');
-      // Patch the row in-place
       setScraped((s) => ({ ...s, [postId]: d.post }));
       setFeedback({ msg: 'Re-scraped.', ok: true });
     } catch (e: unknown) {
@@ -154,6 +169,69 @@ export default function AdminSubmissionsPage() {
     } finally {
       setScraping((s) => ({ ...s, [postId]: false }));
     }
+  };
+
+  // ── Per-row status update ─────────────────────────────────────────────────
+
+  const updateStatus = async (subId: string, newStatus: 'VERIFIED' | 'REJECTED' | 'PENDING') => {
+    setUpdating((s) => ({ ...s, [subId]: true }));
+    try {
+      const res = await fetch(`/api/admin/submissions/${subId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? 'Failed');
+      setSubmissions((prev) => prev.map((s) => s.id === subId ? { ...s, status: newStatus } : s));
+    } catch (e: unknown) {
+      setFeedback({ msg: e instanceof Error ? e.message : 'Failed', ok: false });
+    } finally {
+      setUpdating((s) => ({ ...s, [subId]: false }));
+    }
+  };
+
+  // ── Bulk actions ──────────────────────────────────────────────────────────
+
+  const bulkUpdate = async (newStatus: 'VERIFIED' | 'REJECTED') => {
+    if (selected.size === 0) return;
+    setBulkLoading(true);
+    setFeedback(null);
+    try {
+      const res = await fetch('/api/admin/submissions/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ids: Array.from(selected), status: newStatus }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? 'Failed');
+      const label = newStatus === 'VERIFIED' ? 'approved' : 'rejected';
+      setFeedback({ msg: `${d.updated} submission${d.updated !== 1 ? 's' : ''} ${label}.`, ok: true });
+      setSubmissions((prev) => prev.map((s) => selected.has(s.id) ? { ...s, status: newStatus } : s));
+      setSelected(new Set());
+    } catch (e: unknown) {
+      setFeedback({ msg: e instanceof Error ? e.message : 'Bulk action failed', ok: false });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const toggleAll = () => {
+    if (selected.size === submissions.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(submissions.map((s) => s.id)));
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   // ── Guards ───────────────────────────────────────────────────────────────
@@ -177,7 +255,8 @@ export default function AdminSubmissionsPage() {
     </div>
   );
 
-  const hasFilters = platform !== 'ALL' || poolId || search;
+  const hasFilters = platform !== 'ALL' || poolId || search || statusFilter !== 'ALL';
+  const allSelected = submissions.length > 0 && selected.size === submissions.length;
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -213,11 +292,11 @@ export default function AdminSubmissionsPage() {
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-7">
             {[
-              { label: 'Total',          value: fmt(stats.total),       color: 'text-white' },
-              { label: 'X / Twitter',    value: fmt(stats.x),           color: 'text-white/70' },
-              { label: 'Telegram',       value: fmt(stats.telegram),    color: 'text-[#0088CC]' },
-              { label: 'Avg Points',     value: fmt(stats.avgPoints),   color: 'text-yellow-400' },
-              { label: 'Total Points',   value: fmt(stats.totalPoints), color: 'text-purple-400' },
+              { label: 'Total',        value: fmt(stats.total),       color: 'text-white' },
+              { label: 'X / Twitter',  value: fmt(stats.x),           color: 'text-white/70' },
+              { label: 'Telegram',     value: fmt(stats.telegram),    color: 'text-[#0088CC]' },
+              { label: 'Avg Points',   value: fmt(stats.avgPoints),   color: 'text-yellow-400' },
+              { label: 'Total Points', value: fmt(stats.totalPoints), color: 'text-purple-400' },
             ].map((s) => (
               <div key={s.label} className="glass-card p-4 text-center">
                 <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -228,7 +307,7 @@ export default function AdminSubmissionsPage() {
         )}
 
         {/* Controls */}
-        <div className="flex flex-col lg:flex-row gap-3 mb-5">
+        <div className="flex flex-col lg:flex-row gap-3 mb-5 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
@@ -253,6 +332,16 @@ export default function AdminSubmissionsPage() {
               <button key={p} onClick={() => { setPlatform(p); setPage(1); }}
                 className={`px-4 py-2.5 text-xs font-semibold transition-all ${platform === p ? 'bg-[#0088CC] text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
                 {p === 'ALL' ? 'All' : p === 'X' ? 'X / Twitter' : 'Telegram'}
+              </button>
+            ))}
+          </div>
+
+          {/* Status filter */}
+          <div className="flex rounded-xl overflow-hidden border border-white/10 shrink-0">
+            {(['ALL', 'PENDING', 'VERIFIED', 'REJECTED'] as SubStatus[]).map((s) => (
+              <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }}
+                className={`px-3 py-2.5 text-xs font-semibold transition-all ${statusFilter === s ? 'bg-[#0088CC] text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
+                {s === 'ALL' ? 'All' : s === 'PENDING' ? 'Pending' : s === 'VERIFIED' ? 'Approved' : 'Rejected'}
               </button>
             ))}
           </div>
@@ -286,12 +375,38 @@ export default function AdminSubmissionsPage() {
 
           {/* Clear filters */}
           {hasFilters && (
-            <button onClick={() => { setSearch(''); setPlatform('ALL'); setPoolId(''); setPage(1); }}
+            <button onClick={() => { setSearch(''); setPlatform('ALL'); setPoolId(''); setStatusFilter('ALL'); setPage(1); }}
               className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-white/10 text-white/40 hover:text-white hover:border-white/25 text-xs transition-all shrink-0">
               <X className="w-3.5 h-3.5" /> Clear
             </button>
           )}
         </div>
+
+        {/* Bulk action bar */}
+        {selected.size > 0 && (
+          <div className="mb-4 flex items-center gap-3 p-3 rounded-xl bg-[#0088CC]/10 border border-[#0088CC]/20">
+            <span className="text-sm text-white/60">{selected.size} selected</span>
+            <button
+              onClick={() => bulkUpdate('VERIFIED')}
+              disabled={bulkLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/15 border border-green-500/25 text-green-400 text-xs font-semibold hover:bg-green-500/25 transition-all disabled:opacity-40"
+            >
+              {bulkLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-3 h-3" />}
+              Approve all
+            </button>
+            <button
+              onClick={() => bulkUpdate('REJECTED')}
+              disabled={bulkLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/25 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-all disabled:opacity-40"
+            >
+              {bulkLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsDown className="w-3 h-3" />}
+              Reject all
+            </button>
+            <button onClick={() => setSelected(new Set())} className="ml-auto text-white/30 hover:text-white text-xs">
+              Deselect
+            </button>
+          </div>
+        )}
 
         {/* Table */}
         <div className="glass-card overflow-hidden">
@@ -299,7 +414,15 @@ export default function AdminSubmissionsPage() {
             <table className="w-full text-xs">
               <thead className="border-b border-white/10 bg-white/[0.02]">
                 <tr>
-                  {['Platform', 'Post', 'Author', 'Pool', 'Views', 'Engagement', 'Points', 'Submitted', 'Scraped', ''].map((h) => (
+                  <th className="px-3 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      className="rounded border-white/20 bg-white/5 accent-[#0088CC]"
+                    />
+                  </th>
+                  {['Platform', 'Post', 'Author', 'Pool', 'Views', 'Engagement', 'Points', 'Status', 'Submitted', 'Scraped', ''].map((h) => (
                     <th key={h} className="px-3 py-3 text-left font-medium text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -308,14 +431,14 @@ export default function AdminSubmissionsPage() {
                 {loading ? (
                   Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      {Array.from({ length: 10 }).map((_, j) => (
+                      {Array.from({ length: 12 }).map((_, j) => (
                         <td key={j} className="px-3 py-3"><div className="h-3 bg-white/8 rounded w-full" /></td>
                       ))}
                     </tr>
                   ))
                 ) : submissions.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-14 text-center text-white/30">
+                    <td colSpan={12} className="px-4 py-14 text-center text-white/30">
                       {hasFilters ? 'No submissions match your filters.' : 'No submissions yet.'}
                     </td>
                   </tr>
@@ -328,9 +451,20 @@ export default function AdminSubmissionsPage() {
                     const reactions = patched?.reactions ?? sub.reactions;
                     const points    = patched?.points   ?? sub.points;
                     const lastScraped = patched?.lastScrapedAt ?? sub.lastScrapedAt;
+                    const isSelected = selected.has(sub.id);
 
                     return (
-                      <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors">
+                      <tr key={sub.id} className={`hover:bg-white/[0.02] transition-colors ${isSelected ? 'bg-[#0088CC]/[0.04]' : ''}`}>
+
+                        {/* Checkbox */}
+                        <td className="px-3 py-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleOne(sub.id)}
+                            className="rounded border-white/20 bg-white/5 accent-[#0088CC]"
+                          />
+                        </td>
 
                         {/* Platform */}
                         <td className="px-3 py-3">
@@ -396,6 +530,13 @@ export default function AdminSubmissionsPage() {
                           </span>
                         </td>
 
+                        {/* Status */}
+                        <td className="px-3 py-3">
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${SUB_STATUS_BADGE[sub.status]}`}>
+                            {sub.status === 'VERIFIED' ? 'approved' : sub.status.toLowerCase()}
+                          </span>
+                        </td>
+
                         {/* Submitted */}
                         <td className="px-3 py-3 text-white/30 whitespace-nowrap">
                           {new Date(sub.submittedAt).toLocaleDateString()}
@@ -410,17 +551,52 @@ export default function AdminSubmissionsPage() {
 
                         {/* Actions */}
                         <td className="px-3 py-3">
-                          <button
-                            onClick={() => rescrape(sub.id)}
-                            disabled={scraping[sub.id]}
-                            title="Re-scrape"
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-white/15 text-white/40 hover:text-white hover:border-white/30 transition-all disabled:opacity-30 text-xs"
-                          >
-                            {scraping[sub.id]
-                              ? <Loader2 className="w-3 h-3 animate-spin" />
-                              : <RefreshCw className="w-3 h-3" />}
-                            <span className="hidden sm:inline">Scrape</span>
-                          </button>
+                          <div className="flex items-center gap-1">
+                            {sub.status !== 'VERIFIED' && (
+                              <button
+                                onClick={() => updateStatus(sub.id, 'VERIFIED')}
+                                disabled={updating[sub.id]}
+                                title="Approve"
+                                className="p-1.5 rounded-lg border border-green-500/30 text-green-400/60 hover:text-green-400 hover:bg-green-500/10 transition-all disabled:opacity-30"
+                              >
+                                {updating[sub.id]
+                                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                                  : <ThumbsUp className="w-3 h-3" />}
+                              </button>
+                            )}
+                            {sub.status !== 'REJECTED' && (
+                              <button
+                                onClick={() => updateStatus(sub.id, 'REJECTED')}
+                                disabled={updating[sub.id]}
+                                title="Reject"
+                                className="p-1.5 rounded-lg border border-red-500/30 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-30"
+                              >
+                                {updating[sub.id]
+                                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                                  : <ThumbsDown className="w-3 h-3" />}
+                              </button>
+                            )}
+                            {sub.status !== 'PENDING' && (
+                              <button
+                                onClick={() => updateStatus(sub.id, 'PENDING')}
+                                disabled={updating[sub.id]}
+                                title="Reset to pending"
+                                className="p-1.5 rounded-lg border border-white/15 text-white/30 hover:text-white hover:border-white/30 transition-all disabled:opacity-30"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => rescrape(sub.id)}
+                              disabled={scraping[sub.id]}
+                              title="Re-scrape"
+                              className="p-1.5 rounded-lg border border-white/15 text-white/30 hover:text-white hover:border-white/30 transition-all disabled:opacity-30"
+                            >
+                              {scraping[sub.id]
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <RefreshCw className="w-3 h-3" />}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -444,7 +620,6 @@ export default function AdminSubmissionsPage() {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                {/* Page numbers */}
                 {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                   const start = Math.max(1, pagination.page - 2);
                   const p = start + i;

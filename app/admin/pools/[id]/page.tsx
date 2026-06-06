@@ -8,7 +8,7 @@ import {
   ArrowLeft, Shield, AlertCircle, CheckCircle, Loader2,
   ExternalLink, RefreshCw, XCircle, Coins, StopCircle,
   Users, FileText, Info, BarChart2, Copy, Check,
-  Trophy, Zap,
+  Trophy, Zap, ThumbsUp, ThumbsDown,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -63,6 +63,7 @@ interface LeaderboardEntry {
   referralBonusPoints: number;
   referralMultiplier: number;
   holderBoost: number;
+  submissionCount: number;
 }
 
 interface Submission {
@@ -74,6 +75,7 @@ interface Submission {
   reposts: number;
   reactions: number;
   points: number;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
   submittedAt: string;
   lastScrapedAt: string | null;
   participant: {
@@ -92,7 +94,7 @@ interface WinnerPreview {
   rank: number; walletAddress: string; totalPoints: number; proRataAmount: string;
 }
 
-type Tab = 'overview' | 'leaderboard' | 'submissions' | 'info';
+type Tab = 'overview' | 'leaderboard' | 'participants' | 'submissions' | 'info';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -100,6 +102,12 @@ const STATUS_STYLES: Record<string, string> = {
   ACTIVE:      'bg-green-500/15 text-green-400 border-green-500/25',
   ENDED:       'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',
   DISTRIBUTED: 'bg-white/10 text-white/40 border-white/10',
+};
+
+const SUB_STATUS_STYLES: Record<string, string> = {
+  PENDING:  'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',
+  VERIFIED: 'bg-green-500/15 text-green-400 border-green-500/25',
+  REJECTED: 'bg-red-500/15 text-red-400 border-red-500/25',
 };
 
 function shortAddr(a: string) { return `${a.slice(0, 6)}…${a.slice(-4)}`; }
@@ -159,6 +167,7 @@ export default function AdminPoolDetailPage() {
   const [subLoading, setSubLoading] = useState(false);
   const [isAdmin, setIsAdmin]       = useState(false);
   const [subPlatform, setSubPlatform] = useState<'ALL' | 'X' | 'TELEGRAM'>('ALL');
+  const [subStatus, setSubStatus]   = useState<'ALL' | 'PENDING' | 'VERIFIED' | 'REJECTED'>('ALL');
   const [actionStates, setActionStates] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback]     = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -196,11 +205,14 @@ export default function AdminPoolDetailPage() {
     }
   }, [poolId]);
 
-  const fetchSubmissions = useCallback(async (platform: string) => {
+  const fetchSubmissions = useCallback(async (platform: string, status: string) => {
     setSubLoading(true);
-    const params = platform !== 'ALL' ? `?platform=${platform}` : '';
+    const params = new URLSearchParams();
+    if (platform !== 'ALL') params.set('platform', platform);
+    if (status !== 'ALL') params.set('status', status);
+    const qs = params.toString();
     try {
-      const res = await fetch(`/api/admin/pools/${poolId}/submissions${params}`, { credentials: 'include' });
+      const res = await fetch(`/api/admin/pools/${poolId}/submissions${qs ? `?${qs}` : ''}`, { credentials: 'include' });
       const d = await res.json();
       setSubs(d.submissions ?? []);
     } finally {
@@ -212,12 +224,13 @@ export default function AdminPoolDetailPage() {
 
   useEffect(() => {
     if (tab === 'leaderboard' && leaderboard.length === 0) fetchLeaderboard();
-    if (tab === 'submissions') fetchSubmissions(subPlatform);
+    if (tab === 'participants' && leaderboard.length === 0) fetchLeaderboard();
+    if (tab === 'submissions') fetchSubmissions(subPlatform, subStatus);
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (tab === 'submissions') fetchSubmissions(subPlatform);
-  }, [subPlatform]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (tab === 'submissions') fetchSubmissions(subPlatform, subStatus);
+  }, [subPlatform, subStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
@@ -274,6 +287,26 @@ export default function AdminPoolDetailPage() {
     }
   };
 
+  const updateSubStatus = async (subId: string, newStatus: 'VERIFIED' | 'REJECTED' | 'PENDING') => {
+    const key = `sub-${subId}`;
+    setAction(key, true);
+    try {
+      const res = await fetch(`/api/admin/submissions/${subId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? 'Failed');
+      setSubs((prev) => prev.map((s) => s.id === subId ? { ...s, status: newStatus } : s));
+    } catch (e: unknown) {
+      setFeedback({ msg: e instanceof Error ? e.message : 'Failed', ok: false });
+    } finally {
+      setAction(key, false);
+    }
+  };
+
   // ── Guards ───────────────────────────────────────────────────────────────────
 
   if (!wallet) return (
@@ -309,6 +342,9 @@ export default function AdminPoolDetailPage() {
   const elapsedPct = Math.round((elapsedMs / totalMs) * 100);
   const daysLeft = Math.max(0, Math.ceil((end - now) / 86_400_000));
   const isLive = pool.status === 'ACTIVE' && now < end;
+
+  // For leaderboard reward share %
+  const totalPoints = leaderboard.reduce((sum, e) => sum + e.totalPoints, 0);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -407,12 +443,13 @@ export default function AdminPoolDetailPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 rounded-xl border border-white/10 bg-white/[0.02] mb-5 w-fit">
+        <div className="flex flex-wrap gap-1 p-1 rounded-xl border border-white/10 bg-white/[0.02] mb-5 w-fit">
           {([
-            { key: 'overview',     icon: <BarChart2 className="w-3.5 h-3.5" />, label: 'Overview' },
-            { key: 'leaderboard',  icon: <Trophy className="w-3.5 h-3.5" />,    label: 'Leaderboard' },
-            { key: 'submissions',  icon: <FileText className="w-3.5 h-3.5" />,  label: 'Submissions' },
-            { key: 'info',         icon: <Info className="w-3.5 h-3.5" />,      label: 'Info' },
+            { key: 'overview',      icon: <BarChart2 className="w-3.5 h-3.5" />, label: 'Overview' },
+            { key: 'leaderboard',   icon: <Trophy className="w-3.5 h-3.5" />,    label: 'Leaderboard' },
+            { key: 'participants',  icon: <Users className="w-3.5 h-3.5" />,     label: 'Participants' },
+            { key: 'submissions',   icon: <FileText className="w-3.5 h-3.5" />,  label: 'Submissions' },
+            { key: 'info',          icon: <Info className="w-3.5 h-3.5" />,      label: 'Info' },
           ] as { key: Tab; icon: React.ReactNode; label: string }[]).map((t) => (
             <button
               key={t.key}
@@ -485,31 +522,36 @@ export default function AdminPoolDetailPage() {
                 <table className="w-full text-xs">
                   <thead className="border-b border-white/10 bg-white/[0.02]">
                     <tr>
-                      {['#', 'Wallet', 'Username', 'X', 'Telegram', 'Total', 'X Pts', 'TG Pts', 'Referral', 'Holder', 'Joined'].map((h) => (
+                      {['#', 'Wallet', 'Username', 'X', 'Telegram', 'Total', 'X Pts', 'TG Pts', 'Ref Bonus', 'Ref Mult', 'Holder', 'Share %', 'Joined'].map((h) => (
                         <th key={h} className="px-3 py-3 text-left font-medium text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {leaderboard.map((e) => (
-                      <tr key={e.userId} className={`hover:bg-white/[0.02] transition-colors ${e.rank <= pool.rewardSlots ? 'bg-yellow-500/[0.02]' : ''}`}>
-                        <td className="px-3 py-2.5">
-                          {e.rank <= pool.rewardSlots
-                            ? <span className="text-yellow-400 font-bold">#{e.rank}</span>
-                            : <span className="text-white/30">#{e.rank}</span>}
-                        </td>
-                        <td className="px-3 py-2.5"><CopyAddr addr={e.walletAddress} /></td>
-                        <td className="px-3 py-2.5 text-white/50">{e.username ?? '—'}</td>
-                        <td className="px-3 py-2.5 text-white/50">{e.xHandle ? `@${e.xHandle}` : '—'}</td>
-                        <td className="px-3 py-2.5 text-white/50">{e.telegramHandle ? `@${e.telegramHandle}` : '—'}</td>
-                        <td className="px-3 py-2.5 font-semibold text-white">{fmt(Math.round(e.totalPoints))}</td>
-                        <td className="px-3 py-2.5 text-[#1DA1F2]">{fmt(Math.round(e.xPoints))}</td>
-                        <td className="px-3 py-2.5 text-[#0088CC]">{fmt(Math.round(e.telegramPoints))}</td>
-                        <td className="px-3 py-2.5 text-purple-400">{fmt(Math.round(e.referralBonusPoints))}</td>
-                        <td className="px-3 py-2.5 text-yellow-400">{e.holderBoost > 1 ? `${e.holderBoost}×` : '—'}</td>
-                        <td className="px-3 py-2.5 text-white/25 whitespace-nowrap">{new Date(e.joinedAt).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
+                    {leaderboard.map((e) => {
+                      const sharePct = totalPoints > 0 ? (e.totalPoints / totalPoints * 100) : 0;
+                      return (
+                        <tr key={e.userId} className={`hover:bg-white/[0.02] transition-colors ${e.rank <= pool.rewardSlots ? 'bg-yellow-500/[0.02]' : ''}`}>
+                          <td className="px-3 py-2.5">
+                            {e.rank <= pool.rewardSlots
+                              ? <span className="text-yellow-400 font-bold">#{e.rank}</span>
+                              : <span className="text-white/30">#{e.rank}</span>}
+                          </td>
+                          <td className="px-3 py-2.5"><CopyAddr addr={e.walletAddress} /></td>
+                          <td className="px-3 py-2.5 text-white/50">{e.username ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-white/50">{e.xHandle ? `@${e.xHandle}` : '—'}</td>
+                          <td className="px-3 py-2.5 text-white/50">{e.telegramHandle ? `@${e.telegramHandle}` : '—'}</td>
+                          <td className="px-3 py-2.5 font-semibold text-white">{fmt(Math.round(e.totalPoints))}</td>
+                          <td className="px-3 py-2.5 text-[#1DA1F2]">{fmt(Math.round(e.xPoints))}</td>
+                          <td className="px-3 py-2.5 text-[#0088CC]">{fmt(Math.round(e.telegramPoints))}</td>
+                          <td className="px-3 py-2.5 text-purple-400">{fmt(Math.round(e.referralBonusPoints))}</td>
+                          <td className="px-3 py-2.5 text-purple-300">{e.referralMultiplier > 1 ? `${e.referralMultiplier}×` : '—'}</td>
+                          <td className="px-3 py-2.5 text-yellow-400">{e.holderBoost > 1 ? `${e.holderBoost}×` : '—'}</td>
+                          <td className="px-3 py-2.5 text-white/50">{sharePct.toFixed(1)}%</td>
+                          <td className="px-3 py-2.5 text-white/25 whitespace-nowrap">{new Date(e.joinedAt).toLocaleDateString()}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 <div className="px-4 py-3 border-t border-white/5 text-xs text-white/25 flex items-center gap-2">
@@ -521,17 +563,79 @@ export default function AdminPoolDetailPage() {
           </div>
         )}
 
+        {/* ── Participants tab ──────────────────────────────────────────────── */}
+        {tab === 'participants' && (
+          <div className="glass-card overflow-hidden">
+            {lbLoading ? (
+              <div className="p-12 text-center"><Loader2 className="w-6 h-6 text-white/30 animate-spin mx-auto" /></div>
+            ) : leaderboard.length === 0 ? (
+              <div className="p-12 text-center text-white/30">No participants yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="border-b border-white/10 bg-white/[0.02]">
+                    <tr>
+                      {['Wallet', 'Username', 'X', 'Telegram', 'Joined', 'Submissions', 'Holder Boost', 'Ref Multiplier'].map((h) => (
+                        <th key={h} className="px-3 py-3 text-left font-medium text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {leaderboard.map((e) => (
+                      <tr key={e.userId} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-3 py-2.5"><CopyAddr addr={e.walletAddress} /></td>
+                        <td className="px-3 py-2.5 text-white/50">{e.username ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-white/50">{e.xHandle ? `@${e.xHandle}` : '—'}</td>
+                        <td className="px-3 py-2.5 text-white/50">{e.telegramHandle ? `@${e.telegramHandle}` : '—'}</td>
+                        <td className="px-3 py-2.5 text-white/25 whitespace-nowrap">{new Date(e.joinedAt).toLocaleDateString()}</td>
+                        <td className="px-3 py-2.5 text-white/60">{e.submissionCount}</td>
+                        <td className="px-3 py-2.5">
+                          {e.holderBoost > 1
+                            ? <span className="text-yellow-400 font-semibold">{e.holderBoost}×</span>
+                            : <span className="text-white/20">—</span>}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {e.referralMultiplier > 1
+                            ? <span className="text-purple-400 font-semibold">{e.referralMultiplier}×</span>
+                            : <span className="text-white/20">—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="px-4 py-3 border-t border-white/5 text-xs text-white/25 flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5" />
+                  {leaderboard.length} participants
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Submissions tab ───────────────────────────────────────────────── */}
         {tab === 'submissions' && (
           <div className="space-y-4">
-            {/* Platform filter */}
-            <div className="flex rounded-xl overflow-hidden border border-white/10 w-fit">
-              {(['ALL', 'X', 'TELEGRAM'] as const).map((p) => (
-                <button key={p} onClick={() => setSubPlatform(p)}
-                  className={`px-4 py-2 text-xs font-semibold transition-all ${subPlatform === p ? 'bg-[#0088CC] text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
-                  {p === 'ALL' ? 'All' : p === 'X' ? 'X / Twitter' : 'Telegram'}
-                </button>
-              ))}
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              {/* Platform filter */}
+              <div className="flex rounded-xl overflow-hidden border border-white/10">
+                {(['ALL', 'X', 'TELEGRAM'] as const).map((p) => (
+                  <button key={p} onClick={() => setSubPlatform(p)}
+                    className={`px-4 py-2 text-xs font-semibold transition-all ${subPlatform === p ? 'bg-[#0088CC] text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
+                    {p === 'ALL' ? 'All' : p === 'X' ? 'X / Twitter' : 'Telegram'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Status filter */}
+              <div className="flex rounded-xl overflow-hidden border border-white/10">
+                {(['ALL', 'PENDING', 'VERIFIED', 'REJECTED'] as const).map((s) => (
+                  <button key={s} onClick={() => setSubStatus(s)}
+                    className={`px-4 py-2 text-xs font-semibold transition-all ${subStatus === s ? 'bg-[#0088CC] text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
+                    {s === 'ALL' ? 'All Status' : s === 'PENDING' ? 'Pending' : s === 'VERIFIED' ? 'Approved' : 'Rejected'}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="glass-card overflow-hidden">
@@ -544,7 +648,7 @@ export default function AdminPoolDetailPage() {
                   <table className="w-full text-xs">
                     <thead className="border-b border-white/10 bg-white/[0.02]">
                       <tr>
-                        {['Platform', 'Post', 'Author', 'Views', 'Likes', 'Reposts', 'Points', 'Scraped', 'Submitted'].map((h) => (
+                        {['Platform', 'Post', 'Author', 'Views', 'Likes', 'Reposts', 'Points', 'Status', 'Scraped', 'Submitted', 'Actions'].map((h) => (
                           <th key={h} className="px-3 py-3 text-left font-medium text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -574,11 +678,54 @@ export default function AdminPoolDetailPage() {
                           <td className="px-3 py-2.5 text-white/55">{fmt(s.likes)}</td>
                           <td className="px-3 py-2.5 text-white/55">{fmt(s.reposts)}</td>
                           <td className="px-3 py-2.5 font-semibold text-[#0088CC]">{s.points.toFixed(0)}</td>
+                          <td className="px-3 py-2.5">
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${SUB_STATUS_STYLES[s.status]}`}>
+                              {s.status === 'VERIFIED' ? 'approved' : s.status.toLowerCase()}
+                            </span>
+                          </td>
                           <td className="px-3 py-2.5 text-white/25 whitespace-nowrap">
                             {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleDateString() : '—'}
                           </td>
                           <td className="px-3 py-2.5 text-white/25 whitespace-nowrap">
                             {new Date(s.submittedAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-1">
+                              {s.status !== 'VERIFIED' && (
+                                <button
+                                  onClick={() => updateSubStatus(s.id, 'VERIFIED')}
+                                  disabled={actionStates[`sub-${s.id}`]}
+                                  title="Approve"
+                                  className="p-1.5 rounded-lg border border-green-500/30 text-green-400/60 hover:text-green-400 hover:bg-green-500/10 transition-all disabled:opacity-30"
+                                >
+                                  {actionStates[`sub-${s.id}`]
+                                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                                    : <ThumbsUp className="w-3 h-3" />}
+                                </button>
+                              )}
+                              {s.status !== 'REJECTED' && (
+                                <button
+                                  onClick={() => updateSubStatus(s.id, 'REJECTED')}
+                                  disabled={actionStates[`sub-${s.id}`]}
+                                  title="Reject"
+                                  className="p-1.5 rounded-lg border border-red-500/30 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-30"
+                                >
+                                  {actionStates[`sub-${s.id}`]
+                                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                                    : <ThumbsDown className="w-3 h-3" />}
+                                </button>
+                              )}
+                              {s.status !== 'PENDING' && (
+                                <button
+                                  onClick={() => updateSubStatus(s.id, 'PENDING')}
+                                  disabled={actionStates[`sub-${s.id}`]}
+                                  title="Reset to pending"
+                                  className="p-1.5 rounded-lg border border-white/15 text-white/30 hover:text-white hover:border-white/30 transition-all disabled:opacity-30"
+                                >
+                                  <RefreshCw className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}

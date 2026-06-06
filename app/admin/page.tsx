@@ -7,7 +7,7 @@ import {
   Shield, RefreshCw, XCircle, Coins, Users, Loader2,
   AlertCircle, CheckCircle, LayoutList, Ban, TrendingUp,
   StopCircle, ExternalLink, FileText, Clock, Zap, WifiOff,
-  Activity, ChevronDown, ChevronUp,
+  Activity,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -155,7 +155,6 @@ export default function AdminPage() {
 
   // Admin logs
   const [adminLogs, setAdminLogs]       = useState<AdminLogEntry[]>([]);
-  const [showLogs, setShowLogs]         = useState(false);
   const [logsLoading, setLogsLoading]   = useState(false);
 
   // Cancel modal
@@ -169,7 +168,7 @@ export default function AdminPage() {
   const fetchLogs = useCallback(async () => {
     setLogsLoading(true);
     try {
-      const res = await fetch('/api/admin/logs?limit=50', { credentials: 'include' });
+      const res = await fetch('/api/admin/logs?limit=5', { credentials: 'include' });
       const d = await res.json();
       setAdminLogs(d.logs ?? []);
     } catch { /* ignore */ } finally {
@@ -197,13 +196,13 @@ export default function AdminPage() {
         .then(setTokenStatus)
         .catch(() => {});
 
-      // Refresh logs if panel is open
-      if (showLogs) fetchLogs();
+      // Always refresh activity feed
+      fetchLogs();
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [showLogs, fetchLogs]);
+  }, [fetchLogs]);
 
   useEffect(() => {
     if (!wallet) { setLoading(false); return; }
@@ -565,77 +564,66 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* Admin Logs */}
+        {/* Activity Feed */}
         <section className="mb-10">
-          <button
-            onClick={() => {
-              const next = !showLogs;
-              setShowLogs(next);
-              if (next && adminLogs.length === 0) fetchLogs();
-            }}
-            className="flex items-center gap-2 mb-4 text-sm text-white/50 hover:text-white transition-colors w-full text-left"
-          >
-            <Activity className="w-4 h-4 text-[#0088CC]" />
-            <span className="font-semibold text-white">System Logs</span>
-            <span className="text-white/30 text-xs ml-1">recent events &amp; errors</span>
-            <span className="ml-auto text-white/25">
-              {showLogs ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </span>
-          </button>
-          {showLogs && (
-            <div className="glass-card overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 bg-white/[0.02]">
-                <p className="text-xs text-white/40 uppercase tracking-wider font-medium">Recent Events</p>
-                <button
-                  onClick={fetchLogs}
-                  disabled={logsLoading}
-                  className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white transition-colors disabled:opacity-30"
-                >
-                  <RefreshCw className={`w-3 h-3 ${logsLoading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </button>
-              </div>
-              {logsLoading && adminLogs.length === 0 ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-white/25 text-sm">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Loading logs…
-                </div>
-              ) : adminLogs.length === 0 ? (
-                <p className="text-xs text-white/25 px-4 py-6">No logs yet.</p>
-              ) : (
-                <div className="divide-y divide-white/5 max-h-96 overflow-y-auto">
-                  {adminLogs.map((log) => {
-                    const levelCls =
-                      log.level === 'error' ? 'text-red-400 bg-red-500/8 border-l-2 border-red-500/40' :
-                      log.level === 'warn'  ? 'text-amber-400 bg-amber-500/5 border-l-2 border-amber-500/30' :
-                      'text-white/60 bg-transparent border-l-2 border-transparent';
-                    return (
-                      <div key={log.id} className={`px-4 py-3 ${levelCls}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                                log.level === 'error' ? 'bg-red-500/20 text-red-400' :
-                                log.level === 'warn'  ? 'bg-amber-500/20 text-amber-400' :
-                                'bg-white/8 text-white/40'
-                              }`}>{log.level}</span>
-                              <span className="text-[10px] font-mono text-white/30 bg-white/5 px-1.5 py-0.5 rounded">{log.action}</span>
-                              {log.pool && (
-                                <span className="text-[10px] text-[#0088CC]/70">{log.pool.project.name} (${log.pool.tokenSymbol})</span>
-                              )}
-                            </div>
-                            <p className="text-xs text-white/70 leading-relaxed">{log.message}</p>
-                          </div>
-                          <span className="text-[10px] text-white/25 whitespace-nowrap shrink-0">
-                            {new Date(log.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[#0088CC]" />
+              <h2 className="font-semibold text-white">Recent Activity</h2>
+              <span className="text-white/30 text-xs">last 5 events</span>
             </div>
-          )}
+            <button
+              onClick={fetchLogs}
+              disabled={logsLoading}
+              className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white transition-colors disabled:opacity-30"
+            >
+              <RefreshCw className={`w-3 h-3 ${logsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+          <div className="glass-card overflow-hidden">
+            {logsLoading && adminLogs.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-white/25 text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+              </div>
+            ) : adminLogs.length === 0 ? (
+              <p className="text-xs text-white/25 px-4 py-6">No activity yet.</p>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {adminLogs.map((log) => {
+                  const levelCls =
+                    log.level === 'error' ? 'bg-red-500/[0.04] border-l-2 border-red-500/40' :
+                    log.level === 'warn'  ? 'bg-amber-500/[0.03] border-l-2 border-amber-500/30' :
+                    'border-l-2 border-transparent';
+                  return (
+                    <div key={log.id} className={`px-4 py-3 ${levelCls}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                              log.level === 'error' ? 'bg-red-500/20 text-red-400' :
+                              log.level === 'warn'  ? 'bg-amber-500/20 text-amber-400' :
+                              'bg-white/8 text-white/40'
+                            }`}>{log.level}</span>
+                            <span className="text-[10px] font-mono text-white/30 bg-white/5 px-1.5 py-0.5 rounded">{log.action}</span>
+                            {log.pool && (
+                              <Link href={`/admin/pools/${log.pool.id}`} className="text-[10px] text-[#0088CC]/70 hover:text-[#0088CC] transition-colors">
+                                {log.pool.project.name} (${log.pool.tokenSymbol})
+                              </Link>
+                            )}
+                          </div>
+                          <p className="text-xs text-white/60 leading-relaxed">{log.message}</p>
+                        </div>
+                        <span className="text-[10px] text-white/25 whitespace-nowrap shrink-0">
+                          {new Date(log.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Ban tool */}
