@@ -28,18 +28,26 @@ export async function GET(req: NextRequest) {
     sameSite: 'lax',
   });
 
-  const redirectUri = `${req.nextUrl.origin}/api/auth/twitter/callback`;
+  // Must exactly match the URI registered in the X Developer Console.
+  // TWITTER_REDIRECT_URI overrides the dynamic origin so production and preview
+  // deployments all use the same registered value.
+  const redirectUri =
+    process.env.TWITTER_REDIRECT_URI ??
+    `${req.nextUrl.origin}/api/auth/twitter/callback`;
+
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'tweet.read users.read',
+    scope: 'tweet.read users.read offline.access',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   });
 
-  return NextResponse.redirect(`https://twitter.com/i/oauth2/authorize?${params}`);
+  const authUrl = `https://twitter.com/i/oauth2/authorize?${params}`;
+  console.log('[link-x] Authorization URL:', authUrl);
+  return NextResponse.redirect(authUrl);
 }
 
 /**

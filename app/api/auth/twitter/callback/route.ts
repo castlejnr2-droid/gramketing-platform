@@ -54,7 +54,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${settingsUrl}?x=error&reason=server_misconfigured`);
   }
 
-  const redirectUri = `${origin}/api/auth/twitter/callback`;
+  // Must be byte-for-byte identical to what was sent in the authorization request
+  const redirectUri =
+    process.env.TWITTER_REDIRECT_URI ??
+    `${origin}/api/auth/twitter/callback`;
 
   // Exchange authorization code for access token
   const tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
