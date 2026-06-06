@@ -145,7 +145,7 @@ export function SubmitPostModal({
                   </div>
                 )}
 
-                {/* Platform selector — hidden when only one platform is available */}
+                {/* Platform selector - hidden when only one platform is available */}
                 {availablePlatforms.length > 1 && (
                   <div className="flex mb-5 rounded-xl overflow-hidden border border-white/10">
                     {availablePlatforms.map((p) => (

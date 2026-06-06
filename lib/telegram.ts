@@ -53,9 +53,9 @@ async function scrapePublicPost(channel: string, messageId: number): Promise<Tel
  * Fetch view count and reaction count for a public Telegram channel post.
  *
  * Strategy:
- *   1. Try the Bot API `getMessages` endpoint — works if the bot happens to
+ *   1. Try the Bot API `getMessages` endpoint - works if the bot happens to
  *      be in the channel (returns non-zero values).
- *   2. Fall back to scraping the public t.me embed page — no bot membership
+ *   2. Fall back to scraping the public t.me embed page - no bot membership
  *      required, works for any public channel.
  *
  * Returns { views: 0, reactions: 0 } on any error so callers fail open.

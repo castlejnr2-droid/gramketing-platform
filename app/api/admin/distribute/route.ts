@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Pool already distributed' }, { status: 400 });
     }
     if (!pool.contractAddress) {
-      const msg = 'Pool has no deployed contract address — cannot distribute on-chain';
+      const msg = 'Pool has no deployed contract address - cannot distribute on-chain';
       await logAdminEvent({ action: 'DISTRIBUTE_REWARDS', level: 'error', poolId, message: msg });
       return NextResponse.json({ error: msg }, { status: 400 });
     }
@@ -49,14 +49,14 @@ export async function POST(req: NextRequest) {
     if (winners.length === 0) {
       await logAdminEvent({
         action: 'DISTRIBUTE_REWARDS', level: 'warn', poolId,
-        message: 'Distribution aborted — no eligible winners (all participants have 0 points)',
+        message: 'Distribution aborted - no eligible winners (all participants have 0 points)',
       });
       return NextResponse.json({ error: 'No eligible winners found' }, { status: 400 });
     }
 
     // ── Step 2: Log and validate the winner list ─────────────────────────────
     // Print exactly what will be sent to the contract, before touching the chain.
-    console.log(`[distribute] Pool ${poolId} — ${winners.length} winner(s) (pool.rewardSlots=${pool.rewardSlots}):`);
+    console.log(`[distribute] Pool ${poolId} - ${winners.length} winner(s) (pool.rewardSlots=${pool.rewardSlots}):`);
     console.log(`[distribute] pool.totalReward (DB) = ${pool.totalReward}`);
     for (let i = 0; i < winners.length; i++) {
       const w = winners[i];
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 3: Pre-flight on-chain check ────────────────────────────────────
-    // Verify depositedAmount > 0 before sending anything — the contract computes
+    // Verify depositedAmount > 0 before sending anything - the contract computes
     // amounts as (depositedAmount * bps / 10000), so if depositedAmount is 0
     // every winner receives 0 tokens even though the transaction succeeds.
     let onChainInfo;
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
 
     if (onChainInfo.depositedAmount === 0n) {
       const msg =
-        `Contract depositedAmount is 0 — deposit ${pool.tokenSymbol} to ${pool.contractAddress} first. ` +
+        `Contract depositedAmount is 0 - deposit ${pool.tokenSymbol} to ${pool.contractAddress} first. ` +
         `Every winner would receive 0 tokens if distribution runs now.`;
       await logAdminEvent({
         action: 'DISTRIBUTE_REWARDS', level: 'error', poolId, message: msg,
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (onChainInfo.status === 2n) {
-      const msg = 'Contract is already in DISTRIBUTED state on-chain — cannot redistribute';
+      const msg = 'Contract is already in DISTRIBUTED state on-chain - cannot redistribute';
       await logAdminEvent({
         action: 'DISTRIBUTE_REWARDS', level: 'error', poolId, message: msg,
       });
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
 
     await logAdminEvent({
       action: 'DISTRIBUTE_REWARDS', level: 'info', poolId,
-      message: `Distribution complete — ${winners.length} winner(s) paid from contract ${pool.contractAddress}`,
+      message: `Distribution complete - ${winners.length} winner(s) paid from contract ${pool.contractAddress}`,
       details: {
         contractAddress: pool.contractAddress,
         depositedAmount: onChainInfo.depositedAmount.toString(),

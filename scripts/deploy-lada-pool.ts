@@ -5,12 +5,12 @@
  *
  * Pool parameters:
  *   Jetton master:  EQBjNisz_m-sdA9TcosQMmugdhl6hDjGcCMgQFa85p_8jx7p  (LADA mainnet)
- *   Total reward:   100 LADA  (100_000_000_000 nano — 9 decimals)
+ *   Total reward:   100 LADA  (100_000_000_000 nano - 9 decimals)
  *   Duration:       7 days
  *   Reward slots:   5
- *   Nonce:          1780699848943  (timestamp — ensures unique contract address)
+ *   Nonce:          1780699848943  (timestamp - ensures unique contract address)
  *
- * Winners (for reference — passed to DistributeRewards separately):
+ * Winners (for reference - passed to DistributeRewards separately):
  *   30%  UQBT3gemp3WFCdrzZySK4qYxyqlxFAnnkw6f2zAQuW7wycpY  →  30 LADA  (3000 bps)
  *   25%  UQAVodkqGkP7tFeMkNvObvdAqpu4T4RGZAVZJ8gK_fm6i8qY  →  25 LADA  (2500 bps)
  *   20%  UQD4MGOmgi8JgC1-lmCwy7z-5ofDTG8yx8QeeDPHdd8H3PFo  →  20 LADA  (2000 bps)
@@ -54,7 +54,7 @@ const JETTON_MASTER     = 'EQBjNisz_m-sdA9TcosQMmugdhl6hDjGcCMgQFa85p_8jx7p'; //
 const TOTAL_REWARD_NANO = 100_000_000_000n; // 100 LADA at 9 decimals
 const DURATION_DAYS     = 7;
 const REWARD_SLOTS      = 5;
-const NONCE             = 1780699848943n; // timestamp salt — guarantees unique contract address
+const NONCE             = 1780699848943n; // timestamp salt - guarantees unique contract address
 
 export const WINNERS = [
   { wallet: 'UQBT3gemp3WFCdrzZySK4qYxyqlxFAnnkw6f2zAQuW7wycpY', bps: 3000, pct: 30, lada: 30  },
@@ -74,7 +74,7 @@ async function retry<T>(fn: () => Promise<T>, label: string, maxAttempts = 5): P
       const is429 = String(err).includes('429');
       if (attempt === maxAttempts) throw err;
       const delay = is429 ? 3000 * attempt : 2000;
-      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} — retrying in ${delay / 1000}s…`);
+      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} - retrying in ${delay / 1000}s…`);
       await sleep(delay);
     }
   }
@@ -102,7 +102,7 @@ async function getAdminKeypairAndWallet(): Promise<{
 
 async function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  Deploy GramketingPool — LADA pool');
+  console.log('  Deploy GramketingPool - LADA pool');
   console.log('════════════════════════════════════════════════════════\n');
 
   const { keyPair, contract: walletContract, client, address: adminAddr } = await getAdminKeypairAndWallet();
@@ -162,7 +162,7 @@ async function main() {
     if (!active) throw new Error('Deployment timed out');
     console.log('\n  ✓ Contract is active.');
   } else {
-    console.log('  Already active — skipping deploy.');
+    console.log('  Already active - skipping deploy.');
   }
 
   // ── Step 2: CreatePool ───────────────────────────────────────────────────
@@ -201,7 +201,7 @@ async function main() {
     if (stored !== poolJettonWalletStr) throw new Error(`Jetton wallet mismatch: ${stored}`);
     console.log('  ✓ Pool initialized with correct LADA jetton wallet.');
   } else {
-    console.log('  Already initialized — skipping.');
+    console.log('  Already initialized - skipping.');
   }
 
   // ── Step 3: endPool ──────────────────────────────────────────────────────
@@ -227,10 +227,10 @@ async function main() {
     await sleep(15000);
     const info3 = await retry(() => openPool.getPoolInfo(), 'getPoolInfo3');
     console.log(`  Status after: ${info3.status} (expected 1)`);
-    if (info3.status !== 1n) throw new Error(`endPool failed — status=${info3.status}`);
+    if (info3.status !== 1n) throw new Error(`endPool failed - status=${info3.status}`);
     console.log('  ✓ Pool ended.');
   } else {
-    console.log(`  Already status ${infoEnd.status} — skipping.`);
+    console.log(`  Already status ${infoEnd.status} - skipping.`);
   }
 
   // ── Summary ──────────────────────────────────────────────────────────────

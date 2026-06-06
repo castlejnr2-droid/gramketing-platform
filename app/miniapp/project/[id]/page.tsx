@@ -129,7 +129,7 @@ export default function MiniAppProjectPage() {
             <p className="font-bold text-[#0088CC] text-xs">
               {totalRewardDistributed > 0
                 ? `${totalRewardDistributed.toLocaleString()} ${project.tokenSymbol}`
-                : '—'}
+                : '-'}
             </p>
           </div>
         </div>

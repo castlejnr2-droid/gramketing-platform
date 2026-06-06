@@ -41,7 +41,7 @@ export async function GET(
       orderBy: { submittedAt: 'desc' },
     });
 
-    // Referral boosts — who they referred and their holdings
+    // Referral boosts - who they referred and their holdings
     const referralBoosts = await prisma.referralBoost.findMany({
       where: { referrerId: userId, poolId },
       include: {

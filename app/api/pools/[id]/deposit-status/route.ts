@@ -37,7 +37,7 @@ export async function GET(
 
       return NextResponse.json({ deposited, balance });
     } catch {
-      // TON API error — return unknown status
+      // TON API error - return unknown status
       return NextResponse.json({ deposited: false, balance: '0', apiError: true });
     }
   } catch (err) {

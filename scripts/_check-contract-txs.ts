@@ -24,7 +24,7 @@ async function main() {
     const inSrc  = inMsg?.info?.type === 'internal'
       ? inMsg.info.src?.toString({ bounceable: true, urlSafe: true }) ?? 'unknown'
       : 'external';
-    const inVal  = inMsg?.info?.type === 'internal' ? inMsg.info.value.coins.toString() : '—';
+    const inVal  = inMsg?.info?.type === 'internal' ? inMsg.info.value.coins.toString() : '-';
     const bounce = inMsg?.info?.type === 'internal' ? inMsg.info.bounce : false;
 
     const exitCode     = tx.description.type === 'generic'
@@ -48,7 +48,7 @@ async function main() {
       const dest = msg?.info?.type === 'internal'
         ? msg.info.dest?.toString({ bounceable: true, urlSafe: true }) ?? 'unknown'
         : 'external';
-      const val = msg?.info?.type === 'internal' ? msg.info.value.coins.toString() : '—';
+      const val = msg?.info?.type === 'internal' ? msg.info.value.coins.toString() : '-';
       console.log(`  OUT  to: ${dest}  value: ${val} nanoTON`);
     }
     if (outCount === 0) console.log('  OUT  (none)');

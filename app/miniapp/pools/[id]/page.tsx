@@ -91,7 +91,7 @@ function estimateReward(pts: number, allPts: number, totalReward: string, symbol
   if (allPts === 0 || pts === 0) return `0 ${symbol}`;
   const share = pts / allPts;
   const n = parseFloat(totalReward);
-  if (isNaN(n)) return '—';
+  if (isNaN(n)) return '-';
   const est = n * share;
   return fmtReward(String(est), symbol);
 }
@@ -212,7 +212,7 @@ export default function MiniAppPoolDetailPage() {
   }, [poolId]);
 
   const fetchMyStats = useCallback(async () => {
-    // No wallet gate here — if a JWT cookie exists (from TonConnect or Telegram link),
+    // No wallet gate here - if a JWT cookie exists (from TonConnect or Telegram link),
     // the API will return data. 401 means no session; we stay at initial unauthenticated state.
     try {
       const res = await fetch(`/api/submissions/${poolId}`, { credentials: 'include' });
@@ -261,7 +261,7 @@ export default function MiniAppPoolDetailPage() {
     }
   }, [isAuthed, refCode, poolId]);
 
-  // Live countdown — ticks every second
+  // Live countdown - ticks every second
   useEffect(() => {
     if (!pool || pool.status !== 'ACTIVE') return;
     const tick = () => setCountdown(formatCountdown(pool.endDate));
@@ -286,7 +286,7 @@ export default function MiniAppPoolDetailPage() {
         setJoinError(d.error ?? 'Failed to join pool');
       }
     } catch {
-      setJoinError('Network error — please try again');
+      setJoinError('Network error - please try again');
     } finally {
       setJoiningPool(false);
     }
@@ -390,7 +390,7 @@ export default function MiniAppPoolDetailPage() {
           <StatCard label="Slots" value={String(pool.rewardSlots)} />
         </div>
 
-        {/* Promoted posts — quick preview */}
+        {/* Promoted posts - quick preview */}
         {(showXPost || showTgPost) && (
           <div className="space-y-2 mb-4">
             {showXPost && pool.xPostLink && (
@@ -416,7 +416,7 @@ export default function MiniAppPoolDetailPage() {
                   <Wallet className="w-3.5 h-3.5 text-[#0088CC]" />
                   TON Wallet Required
                 </p>
-                Rewards are paid on-chain directly to your wallet. Connect your TON wallet to join and earn — Telegram has a built-in TON wallet you can use.
+                Rewards are paid on-chain directly to your wallet. Connect your TON wallet to join and earn - Telegram has a built-in TON wallet you can use.
               </div>
               <button
                 onClick={() => tonConnectUI.openModal()}
@@ -470,14 +470,14 @@ export default function MiniAppPoolDetailPage() {
             <div>
               <p className="text-[10px] text-white/40 uppercase tracking-wider">Your Rank</p>
               <p className="text-sm font-bold text-white">
-                {myRank ? `#${myRank}` : '—'}
+                {myRank ? `#${myRank}` : '-'}
                 <span className="text-white/30 text-xs font-normal ml-1">of {pool._count.participants}</span>
               </p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-[10px] text-white/40 uppercase tracking-wider">Est. Reward</p>
-            <p className="text-sm font-bold text-[#0088CC]">{myEstReward ?? '—'}</p>
+            <p className="text-sm font-bold text-[#0088CC]">{myEstReward ?? '-'}</p>
           </div>
           <div className="text-right">
             <p className="text-[10px] text-white/40 uppercase tracking-wider">Points</p>
@@ -542,7 +542,7 @@ export default function MiniAppPoolDetailPage() {
             </div>
           ) : pool.status !== 'ACTIVE' ? (
             <div className="glass-card p-10 text-center text-white/40 text-sm">
-              This pool has ended — no more submissions accepted.
+              This pool has ended - no more submissions accepted.
             </div>
           ) : (
             <div className="space-y-4">
@@ -816,7 +816,7 @@ export default function MiniAppPoolDetailPage() {
                     <div key={t.label} className={`flex items-center justify-between px-3 py-2 rounded-lg border ${t.color}`}>
                       <span className="text-xs font-semibold">{t.label} ({t.mult})</span>
                       <span className="text-xs">
-                        {/* mGRAM always has 9 decimals — divide stored nano value accordingly */}
+                        {/* mGRAM always has 9 decimals - divide stored nano value accordingly */}
                         {(BigInt(t.val!) / 1_000_000_000n).toLocaleString()}+ tokens
                       </span>
                     </div>

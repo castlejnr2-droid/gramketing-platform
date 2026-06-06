@@ -1,10 +1,10 @@
 /**
  * scripts/deposit-and-distribute-lada.ts
  *
- * Step 1 — Deposit 100 LADA from admin wallet to the LADA pool contract
+ * Step 1 - Deposit 100 LADA from admin wallet to the LADA pool contract
  *           (forwardTonAmount = 0.15 TON, outer gas = 0.35 TON)
- * Step 2 — Verify depositedAmount = 100_000_000 nano
- * Step 3 — Trigger DistributeRewards
+ * Step 2 - Verify depositedAmount = 100_000_000 nano
+ * Step 3 - Trigger DistributeRewards
  */
 
 import * as dotenv from 'dotenv';
@@ -49,7 +49,7 @@ async function retry<T>(fn: () => Promise<T>, label: string, maxAttempts = 5): P
       const is429 = String(err).includes('429');
       if (attempt === maxAttempts) throw err;
       const delay = is429 ? 3000 * attempt : 2000;
-      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} — retrying in ${delay / 1000}s…`);
+      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} - retrying in ${delay / 1000}s…`);
       await sleep(delay);
     }
   }
@@ -80,7 +80,7 @@ async function waitForSeqno(walletContract: OpenedContract<WalletContractV5R1>, 
 
 async function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  LADA Pool — Deposit → Verify → Distribute');
+  console.log('  LADA Pool - Deposit → Verify → Distribute');
   console.log('════════════════════════════════════════════════════════\n');
   console.log(`  Contract: ${CONTRACT}`);
   console.log(`  Amount:   ${AMOUNT} nano (100 LADA)\n`);
@@ -98,7 +98,7 @@ async function main() {
   const pool = client.open(GramketingPool.fromAddress(contractAddr));
 
   // ══════════════════════════════════════════════════════
-  // STEP 1 — Deposit 100 LADA
+  // STEP 1 - Deposit 100 LADA
   // ══════════════════════════════════════════════════════
   console.log('\n──────────────────────────────────────────────────────');
   console.log('  Step 1: Deposit 100 LADA');
@@ -141,7 +141,7 @@ async function main() {
   console.log('  ✓ Confirmed.');
 
   // ══════════════════════════════════════════════════════
-  // STEP 2 — Verify depositedAmount
+  // STEP 2 - Verify depositedAmount
   // ══════════════════════════════════════════════════════
   console.log('\n──────────────────────────────────────────────────────');
   console.log('  Step 2: Verify depositedAmount');
@@ -156,7 +156,7 @@ async function main() {
 
   if (info.depositedAmount === 0n) {
     // Wait a bit longer and retry once
-    console.log('  depositedAmount still 0 — waiting 15s more…');
+    console.log('  depositedAmount still 0 - waiting 15s more…');
     await sleep(15000);
     info = await retry(() => pool.getPoolInfo(), 'getPoolInfo-retry');
     console.log(`  depositedAmount: ${info.depositedAmount.toString()} nano`);
@@ -168,7 +168,7 @@ async function main() {
   console.log('  ✓ depositedAmount = 100000000. Deposit confirmed.');
 
   // ══════════════════════════════════════════════════════
-  // STEP 3 — DistributeRewards
+  // STEP 3 - DistributeRewards
   // ══════════════════════════════════════════════════════
   console.log('\n──────────────────────────────────────────────────────');
   console.log('  Step 3: DistributeRewards');
@@ -211,7 +211,7 @@ async function main() {
   const finalInfo = await retry(() => pool.getPoolInfo(), 'getPoolInfo-final');
   console.log(`\n  Final status: ${finalInfo.status.toString()} (expected 2 = DISTRIBUTED)`);
   if (finalInfo.status !== 2n) {
-    console.log('  ⚠ Status not yet DISTRIBUTED — may still be propagating. Check TON Viewer.');
+    console.log('  ⚠ Status not yet DISTRIBUTED - may still be propagating. Check TON Viewer.');
   } else {
     console.log('  ✓ Contract is DISTRIBUTED.');
   }

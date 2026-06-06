@@ -538,15 +538,15 @@ export default function AdminPoolDetailPage() {
                               : <span className="text-white/30">#{e.rank}</span>}
                           </td>
                           <td className="px-3 py-2.5"><CopyAddr addr={e.walletAddress} /></td>
-                          <td className="px-3 py-2.5 text-white/50">{e.username ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-white/50">{e.xHandle ? `@${e.xHandle}` : '—'}</td>
-                          <td className="px-3 py-2.5 text-white/50">{e.telegramHandle ? `@${e.telegramHandle}` : '—'}</td>
+                          <td className="px-3 py-2.5 text-white/50">{e.username ?? '-'}</td>
+                          <td className="px-3 py-2.5 text-white/50">{e.xHandle ? `@${e.xHandle}` : '-'}</td>
+                          <td className="px-3 py-2.5 text-white/50">{e.telegramHandle ? `@${e.telegramHandle}` : '-'}</td>
                           <td className="px-3 py-2.5 font-semibold text-white">{fmt(Math.round(e.totalPoints))}</td>
                           <td className="px-3 py-2.5 text-[#1DA1F2]">{fmt(Math.round(e.xPoints))}</td>
                           <td className="px-3 py-2.5 text-[#0088CC]">{fmt(Math.round(e.telegramPoints))}</td>
                           <td className="px-3 py-2.5 text-purple-400">{fmt(Math.round(e.referralBonusPoints))}</td>
-                          <td className="px-3 py-2.5 text-purple-300">{e.referralMultiplier > 1 ? `${e.referralMultiplier}×` : '—'}</td>
-                          <td className="px-3 py-2.5 text-yellow-400">{e.holderBoost > 1 ? `${e.holderBoost}×` : '—'}</td>
+                          <td className="px-3 py-2.5 text-purple-300">{e.referralMultiplier > 1 ? `${e.referralMultiplier}×` : '-'}</td>
+                          <td className="px-3 py-2.5 text-yellow-400">{e.holderBoost > 1 ? `${e.holderBoost}×` : '-'}</td>
                           <td className="px-3 py-2.5 text-white/50">{sharePct.toFixed(1)}%</td>
                           <td className="px-3 py-2.5 text-white/25 whitespace-nowrap">{new Date(e.joinedAt).toLocaleDateString()}</td>
                         </tr>
@@ -584,20 +584,20 @@ export default function AdminPoolDetailPage() {
                     {leaderboard.map((e) => (
                       <tr key={e.userId} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-3 py-2.5"><CopyAddr addr={e.walletAddress} /></td>
-                        <td className="px-3 py-2.5 text-white/50">{e.username ?? '—'}</td>
-                        <td className="px-3 py-2.5 text-white/50">{e.xHandle ? `@${e.xHandle}` : '—'}</td>
-                        <td className="px-3 py-2.5 text-white/50">{e.telegramHandle ? `@${e.telegramHandle}` : '—'}</td>
+                        <td className="px-3 py-2.5 text-white/50">{e.username ?? '-'}</td>
+                        <td className="px-3 py-2.5 text-white/50">{e.xHandle ? `@${e.xHandle}` : '-'}</td>
+                        <td className="px-3 py-2.5 text-white/50">{e.telegramHandle ? `@${e.telegramHandle}` : '-'}</td>
                         <td className="px-3 py-2.5 text-white/25 whitespace-nowrap">{new Date(e.joinedAt).toLocaleDateString()}</td>
                         <td className="px-3 py-2.5 text-white/60">{e.submissionCount}</td>
                         <td className="px-3 py-2.5">
                           {e.holderBoost > 1
                             ? <span className="text-yellow-400 font-semibold">{e.holderBoost}×</span>
-                            : <span className="text-white/20">—</span>}
+                            : <span className="text-white/20">-</span>}
                         </td>
                         <td className="px-3 py-2.5">
                           {e.referralMultiplier > 1
                             ? <span className="text-purple-400 font-semibold">{e.referralMultiplier}×</span>
-                            : <span className="text-white/20">—</span>}
+                            : <span className="text-white/20">-</span>}
                         </td>
                       </tr>
                     ))}
@@ -684,7 +684,7 @@ export default function AdminPoolDetailPage() {
                             </span>
                           </td>
                           <td className="px-3 py-2.5 text-white/25 whitespace-nowrap">
-                            {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleDateString() : '—'}
+                            {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleDateString() : '-'}
                           </td>
                           <td className="px-3 py-2.5 text-white/25 whitespace-nowrap">
                             {new Date(s.submittedAt).toLocaleDateString()}
@@ -765,7 +765,7 @@ export default function AdminPoolDetailPage() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-white/25 text-xs">—</p>
+                    <p className="text-white/25 text-xs">-</p>
                   )}
                 </div>
               ))}

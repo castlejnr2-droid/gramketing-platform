@@ -225,7 +225,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
         const result = tweetId ? tweetResultMap.get(tweetId) : undefined;
 
         if (!result) {
-          // Could not extract a tweet ID from the URL — malformed link
+          // Could not extract a tweet ID from the URL - malformed link
           await prisma.poolPost.update({
             where: { id: post.id },
             data: { scrapeError: 'UNKNOWN: could not parse tweet ID from URL', lastScrapedAt: now },
@@ -261,7 +261,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
         }
 
         if (!result.ok) {
-          // RATE_LIMITED or UNKNOWN — keep existing metrics
+          // RATE_LIMITED or UNKNOWN - keep existing metrics
           await prisma.poolPost.update({
             where: { id: post.id },
             data: { scrapeError: `${result.error}: ${post.postLink}`, lastScrapedAt: now },
@@ -291,7 +291,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
         xPoints += pts;
         scraped++;
       } else {
-        // TELEGRAM — still fetched individually (no batch endpoint available)
+        // TELEGRAM - still fetched individually (no batch endpoint available)
         try {
           const { views, reactions } = await fetchTelegramPostMetrics(post.postLink);
           const pts = views * 0.8 + reactions * 0.2;
@@ -356,7 +356,7 @@ export async function scrapeAllActivePools() {
     where: { status: 'ACTIVE', endDate: { lte: now } },
   });
   for (const pool of expiredPools) {
-    console.log(`Pool ${pool.id} expired — marking ENDED`);
+    console.log(`Pool ${pool.id} expired - marking ENDED`);
     await saveLeaderboardSnapshot(pool.id);
     await prisma.pool.update({ where: { id: pool.id }, data: { status: 'ENDED' } });
   }

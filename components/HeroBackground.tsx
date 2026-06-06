@@ -38,7 +38,7 @@ export function HeroBackground() {
     let animId: number;
     let t = 0;
 
-    // Mouse parallax — track on window
+    // Mouse parallax - track on window
     const mouse  = { x: 0, y: 0 };
     const mTarget = { x: 0, y: 0 };
     const onMouseMove = (e: MouseEvent) => {
@@ -74,7 +74,7 @@ export function HeroBackground() {
     const draw = () => {
       ctx.clearRect(0, 0, W, H);
 
-      // Slow global drift angle — full rotation every ~420s
+      // Slow global drift angle - full rotation every ~420s
       const drift = t * 0.0015;
 
       for (const o of ORBS) {

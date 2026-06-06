@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
     const poolsWithCount = pools.map((p) => ({
       ...p,
-      // BigInt fields must be serialised — convert to string
+      // BigInt fields must be serialised - convert to string
       tier1Threshold: p.tier1Threshold.toString(),
       tier2Threshold: p.tier2Threshold.toString(),
       tier3Threshold: p.tier3Threshold.toString(),

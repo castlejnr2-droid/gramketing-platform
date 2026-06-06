@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Privacy Policy — Gramketing',
+  title: 'Privacy Policy - Gramketing',
   description: 'Privacy Policy for the Gramketing performance marketing platform on TON.',
 };
 

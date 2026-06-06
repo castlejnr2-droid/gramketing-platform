@@ -41,9 +41,9 @@ function is429(err: unknown): boolean {
  * Retries a TON RPC call with exponential backoff and optional endpoint failover.
  *
  * Attempt schedule:
- *   1st attempt  — primary endpoint, immediate
- *   2nd attempt  — primary endpoint, after 2 s
- *   3rd attempt  — fallback endpoint (if set) or primary, after 4 s
+ *   1st attempt  - primary endpoint, immediate
+ *   2nd attempt  - primary endpoint, after 2 s
+ *   3rd attempt  - fallback endpoint (if set) or primary, after 4 s
  *
  * If all three attempts fail, the last error is rethrown.
  * The callback receives a fresh TonClient so it can re-open any contract/wallet.
@@ -73,7 +73,7 @@ export async function tonRetry<T>(
         const delay = DELAYS[attempt - 1];
         console.warn(
           `[ton-retry] ${label}: attempt ${attempt}/${MAX_ATTEMPTS} failed ` +
-          `(${rateLimit ? '429 rate-limit' : 'error'}) on ${endpointLabel} — ` +
+          `(${rateLimit ? '429 rate-limit' : 'error'}) on ${endpointLabel} - ` +
           `retrying in ${delay / 1000}s…`,
         );
         await sleep(delay);

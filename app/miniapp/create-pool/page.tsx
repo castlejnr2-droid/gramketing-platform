@@ -17,7 +17,7 @@ const INFO_CARDS = [
   {
     icon: <Trophy className="w-4 h-4 text-[#0088CC]" />,
     title: 'Performance-Based',
-    desc: 'Rewards distributed proportionally by points — top marketers earn more.',
+    desc: 'Rewards distributed proportionally by points - top marketers earn more.',
   },
 ];
 
@@ -70,7 +70,7 @@ export default function MiniAppCreatePoolPage() {
         ))}
       </div>
 
-      {/* Stepper — redirects to /miniapp/pools/:id on success */}
+      {/* Stepper - redirects to /miniapp/pools/:id on success */}
       <CreatePoolStepper basePath="/miniapp" />
     </div>
   );

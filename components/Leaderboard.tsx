@@ -106,7 +106,7 @@ function estimateReward(totalPoints: number, allPoints: number, totalReward: str
   if (allPoints === 0) return `0 ${symbol}`;
   const share = totalPoints / allPoints;
   const rewardNum = parseFloat(totalReward);
-  if (isNaN(rewardNum)) return '—';
+  if (isNaN(rewardNum)) return '-';
   const est = rewardNum * share;
   return `${est >= 1000 ? (est / 1000).toFixed(1) + 'K' : est.toFixed(0)} ${symbol}`;
 }
@@ -265,7 +265,7 @@ function ParticipantModal({
                           {s.scrapeError && (
                             <div className="flex items-center gap-1 text-amber-400/80 text-[10px]">
                               <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                              {s.scrapeError.startsWith('TOKEN_EXPIRED') ? 'X token expired — last known metrics shown' : s.scrapeError}
+                              {s.scrapeError.startsWith('TOKEN_EXPIRED') ? 'X token expired - last known metrics shown' : s.scrapeError}
                             </div>
                           )}
                         </div>

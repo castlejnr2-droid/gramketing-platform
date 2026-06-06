@@ -393,7 +393,7 @@ Range: 1.0x (no referrals) to 2.0x (top referrer)`}</CodeBlock>
       <div className="glass-card p-5 mb-3 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-white mb-0.5">Whitepaper</p>
-          <p className="text-xs text-white/40">Full technical specification — architecture, economics, smart contracts.</p>
+          <p className="text-xs text-white/40">Full technical specification - architecture, economics, smart contracts.</p>
         </div>
         <Link
           href="/miniapp/whitepaper"

@@ -14,7 +14,12 @@
  *   npx ts-node --project scripts/tsconfig.json scripts/admin-rescue-distribute.ts
  */
 
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 import { Address, beginCell, toNano, internal, SendMode } from '@ton/core';
+import type { OpenedContract } from '@ton/core';
 import { pbkdf2 } from 'crypto';
 import { promisify } from 'util';
 import {
@@ -57,7 +62,7 @@ async function retry<T>(fn: () => Promise<T>, label: string, maxAttempts = 5): P
       const is429 = String(err).includes('429');
       if (attempt === maxAttempts) throw err;
       const delay = is429 ? 3000 * attempt : 2000;
-      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} — retrying in ${delay / 1000}s…`);
+      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} - retrying in ${delay / 1000}s…`);
       await sleep(delay);
     }
   }
@@ -86,11 +91,29 @@ function nanoToTon(n: bigint) {
   return `${n / 1_000_000_000n}.${(n % 1_000_000_000n).toString().padStart(9, '0').replace(/0+$/, '') || '0'}`;
 }
 
+async function waitForTxHash(
+  client: TonClient,
+  walletContract: OpenedContract<WalletContractV5R1>,
+  prevSeqno: number,
+): Promise<string> {
+  for (let i = 0; i < 40; i++) {
+    await sleep(2000);
+    try {
+      const seqno = await walletContract.getSeqno();
+      if (seqno > prevSeqno) {
+        const txs = await client.getTransactions(walletContract.address, { limit: 1 });
+        if (txs.length > 0) return txs[0].hash().toString('hex');
+      }
+    } catch {}
+  }
+  throw new Error('Timed out waiting for transaction confirmation');
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 async function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  AdminRescue — Manual distribution');
+  console.log('  AdminRescue - Manual distribution');
   console.log('════════════════════════════════════════════════════════\n');
 
   // Validate amounts
@@ -114,8 +137,8 @@ async function main() {
 
   const balance = await retry(() => client.getBalance(walletContract.address), 'getBalance');
   console.log(`  Balance: ${Number(balance) / 1e9} TON`);
-  // Each AdminRescue needs ~0.07 TON (0.05 attached + gas)
-  const minRequired = toNano('0.1') + BigInt(WINNERS.length) * toNano('0.07');
+  // Each AdminRescue needs ~0.22 TON (0.15 jetton send value + 0.07 contract execution)
+  const minRequired = toNano('0.1') + BigInt(WINNERS.length) * toNano('0.22');
   if (balance < minRequired) {
     throw new Error(`Need at least ${Number(minRequired) / 1e9} TON, have ${Number(balance) / 1e9}`);
   }
@@ -127,21 +150,20 @@ async function main() {
   const poolContract = client.open(GramketingPool.fromAddress(contractAddr));
   const info = await retry(() => poolContract.getPoolInfo(), 'getPoolInfo');
 
-  console.log(`  status:          ${info.status} (2 = DISTRIBUTED — expected)`);
+  console.log(`  status:          ${info.status} (2 = DISTRIBUTED - expected)`);
   console.log(`  depositedAmount: ${info.depositedAmount}`);
   console.log(`  jettonWallet:    ${info.jettonWalletAddress.toString({ bounceable: true, urlSafe: true })}`);
 
+  // depositedAmount may be 0 when tokens arrived in the jetton wallet but the
+  // JettonTransferNotification was not accepted (e.g. status already DISTRIBUTED).
+  // AdminRescue instructs the jetton wallet directly and does NOT read depositedAmount,
+  // so we skip that gate here and only warn.
   if (info.depositedAmount === 0n) {
-    throw new Error(
-      'depositedAmount is still 0. The 2 tsTON have not been deposited yet.\n' +
-      `  → Send 2 tsTON from TonKeeper to contract: ${CONTRACT}\n` +
-      '  → Wait ~30s for the JettonTransferNotification to be processed\n' +
-      '  → Then re-run this script',
-    );
+    console.warn('  ⚠️  depositedAmount is 0 - AdminRescue bypasses this and acts on jetton wallet balance directly.');
   }
 
   if (info.depositedAmount < TOTAL_NANO) {
-    console.warn(`  ⚠️  depositedAmount (${info.depositedAmount}) < TOTAL_NANO (${TOTAL_NANO}) — amounts will be proportionally lower`);
+    console.warn(`  ⚠️  depositedAmount (${info.depositedAmount}) < TOTAL_NANO (${TOTAL_NANO}) - amounts will be proportionally lower`);
   }
 
   console.log('  ✓ Contract has tokens. Proceeding with AdminRescue sends.\n');
@@ -165,7 +187,7 @@ async function main() {
       messages: [
         internal({
           to: contractAddr,
-          value: toNano('0.07'), // covers AdminRescue gas + 0.05 jetton transfer + 0.01 forward
+          value: toNano('0.22'), // covers AdminRescue gas + 0.15 jetton transfer + 0.01 forward
           body: beginCell()
             .store(storeAdminRescue({
               $$type: 'AdminRescue',
@@ -180,8 +202,9 @@ async function main() {
     }), `sendRescue-${i + 1}`);
 
     console.log(`         ✓ AdminRescue sent (queryId=${i + 1})`);
-    console.log(`         Waiting 15s for confirmation…`);
-    await sleep(15000);
+    console.log(`         Waiting for confirmation…`);
+    const txHash = await waitForTxHash(client, walletContract, seqno);
+    console.log(`         tx hash: ${txHash}`);
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────

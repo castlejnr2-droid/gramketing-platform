@@ -141,7 +141,7 @@ export default function ProjectPage() {
                   <p className="font-bold text-[#0088CC]">
                     {totalRewardDistributed > 0
                       ? `${totalRewardDistributed.toLocaleString()} ${project.tokenSymbol}`
-                      : '—'}
+                      : '-'}
                   </p>
                 </div>
               </div>

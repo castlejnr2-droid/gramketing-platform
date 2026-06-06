@@ -8,7 +8,7 @@
  * ──────────────────────────────
  * 1. CONTRACT DISTRIBUTES JETTONS, NOT NATIVE TON.
  *    The GramketingPool contract sends JettonTransfer (TEP-74) messages.
- *    You must deposit a TON-backed JETTON into the escrow — not native TON.
+ *    You must deposit a TON-backed JETTON into the escrow - not native TON.
  *    Suggested mainnet jetton for testing:
  *      tsTON (Tonstakers): EQC98_qAmNEptUtPc7W6xdHh_ZHrBUFpw5Ft_IzNU20QAJav
  *    Update JETTON_MASTER_ADDRESS below to the jetton you actually hold.
@@ -16,7 +16,7 @@
  * 2. ADMIN_MNEMONIC must be set in .env before you can deploy a contract or
  *    trigger distribution from the admin panel.
  *
- * 3. ADMIN_WALLET_ADDRESS must be set in .env — the admin panel checks isAdmin()
+ * 3. ADMIN_WALLET_ADDRESS must be set in .env - the admin panel checks isAdmin()
  *    on every distribution request and returns 401 if this is missing.
  *
  * Run with:
@@ -76,7 +76,7 @@ function expectedNano(pct: number): bigint {
 
 async function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  Gramketing — Distribution Test Pool Seeder');
+  console.log('  Gramketing - Distribution Test Pool Seeder');
   console.log('════════════════════════════════════════════════════════\n');
 
   // ── Step 1: Clean up any existing test project ──────────────────────────────
@@ -87,7 +87,7 @@ async function main() {
   });
 
   if (existing) {
-    console.log(`  Found existing project "${PROJECT_NAME}" — deleting…`);
+    console.log(`  Found existing project "${PROJECT_NAME}" - deleting…`);
     for (const pool of existing.pools) {
       // Delete in dependency order
       await prisma.adminLog.deleteMany({ where: { poolId: pool.id } });
@@ -143,7 +143,7 @@ async function main() {
       startDate,
       endDate,
       status: 'ENDED',
-      // contractAddress: null — must be filled in after you deploy the escrow contract
+      // contractAddress: null - must be filled in after you deploy the escrow contract
       // See Step 5 in the checklist below.
     },
   });
@@ -179,7 +179,7 @@ async function main() {
 
   // ── Summary ─────────────────────────────────────────────────────────────────
   console.log('\n════════════════════════════════════════════════════════');
-  console.log('  SEED COMPLETE — Pool is in the database');
+  console.log('  SEED COMPLETE - Pool is in the database');
   console.log('════════════════════════════════════════════════════════');
   console.log(`\n  Pool ID:       ${pool.id}`);
   console.log(`  Project ID:    ${project.id}`);
@@ -202,7 +202,7 @@ async function main() {
   console.log('  REQUIRED STEPS BEFORE TRIGGERING DISTRIBUTION');
   console.log('════════════════════════════════════════════════════════');
   console.log(`
-  ⚠️  THE CONTRACT DISTRIBUTES JETTONS — NOT NATIVE TON
+  ⚠️  THE CONTRACT DISTRIBUTES JETTONS - NOT NATIVE TON
      You must deposit a TON-backed jetton into the escrow contract,
      not send native TON to its address. Native TON sent to the
      contract will not be distributed.

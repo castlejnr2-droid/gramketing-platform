@@ -77,7 +77,7 @@ export default function HomePage() {
         className="relative overflow-hidden"
         style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', zIndex: 1 }}
       >
-        {/* Vignette — reduced to 50% so orbs show through while text stays readable */}
+        {/* Vignette - reduced to 50% so orbs show through while text stays readable */}
         <div
           aria-hidden="true"
           style={{
@@ -131,7 +131,7 @@ export default function HomePage() {
               }}
             >
               GRAMKETING is a performance-based Web3 marketing platform on TON.
-              Promote TON projects, get rewarded for real views — not promises.
+              Promote TON projects, get rewarded for real views, not promises.
             </p>
 
             {/* Buttons */}
@@ -312,7 +312,7 @@ export default function HomePage() {
                 </h2>
                 <p className="text-white/50 leading-relaxed mb-6">
                   Refer other contributors and earn bonus points. The more tokens
-                  they hold, the bigger your multiplier boost — stacking
+                  they hold, the bigger your multiplier boost, stacking
                   additively for every referral. Token thresholds are set by
                   each pool creator and vary per pool.
                 </p>
@@ -327,11 +327,11 @@ export default function HomePage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-[#0088CC] mt-0.5">✓</span>
-                    Multiple referrals stack — the more you refer, the higher your multiplier
+                    Multiple referrals stack, the more you refer, the higher your multiplier
                   </li>
                 </ul>
                 <p className="mt-4 text-xs text-white/30 leading-relaxed">
-                  Tier thresholds are set by each pool creator — amounts vary per pool and token supply.
+                  Tier thresholds are set by each pool creator, amounts vary per pool and token supply.
                 </p>
               </div>
               <div className="space-y-3">
@@ -365,7 +365,7 @@ export default function HomePage() {
             <div className="glass-card p-6 border-[#0088CC]/30">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
-                  Phase 1 — Now
+                  Phase 1: Now
                 </span>
               </div>
               <ul className="space-y-2 text-sm text-white/60">
@@ -379,7 +379,7 @@ export default function HomePage() {
             <div className="glass-card p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                  Phase 2 — Q3
+                  Phase 2: Q3
                 </span>
               </div>
               <ul className="space-y-2 text-sm text-white/60">
@@ -393,7 +393,7 @@ export default function HomePage() {
             <div className="glass-card p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/40 border border-white/10">
-                  Phase 3 — Q4 2026
+                  Phase 3: Q4 2026
                 </span>
               </div>
               <ul className="space-y-2 text-sm text-white/60">
@@ -407,12 +407,12 @@ export default function HomePage() {
             <div className="glass-card p-6 opacity-60">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/5 text-white/25 border border-white/10">
-                  Phase 4 — 2027
+                  Phase 4: 2027
                 </span>
               </div>
               <p className="text-sm font-semibold text-white/40 mb-2">Coming Soon</p>
               <p className="text-sm text-white/30 leading-relaxed">
-                More features on the way — stay tuned.
+                More features on the way, stay tuned.
               </p>
             </div>
           </div>

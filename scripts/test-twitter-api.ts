@@ -4,7 +4,7 @@
  * Run:
  *   npx ts-node -r tsconfig-paths/register --project scripts/tsconfig.json scripts/test-twitter-api.ts
  *
- * Requires TWITTER_BEARER_TOKEN to be set in .env (it's empty locally — copy
+ * Requires TWITTER_BEARER_TOKEN to be set in .env (it's empty locally - copy
  * it from Vercel dashboard → Settings → Environment Variables).
  */
 
@@ -31,9 +31,9 @@ prismaMod.prisma = prisma;
 import { fetchTweetMetrics } from '../lib/twitter-api';
 
 const TEST_IDS = [
-  '20',                        // Jack Dorsey — first ever tweet: "just setting up my twttr"
-  '1585841080431321088',       // Elon Musk — "the bird is freed" (Twitter acquisition close)
-  '1519480761749016577',       // Elon Musk — Twitter acquisition offer announcement
+  '20',                        // Jack Dorsey - first ever tweet: "just setting up my twttr"
+  '1585841080431321088',       // Elon Musk - "the bird is freed" (Twitter acquisition close)
+  '1519480761749016577',       // Elon Musk - Twitter acquisition offer announcement
 ];
 
 async function main() {
@@ -48,7 +48,7 @@ async function main() {
       console.log(`  likes    : ${r.likes.toLocaleString()}`);
       console.log(`  retweets : ${r.retweets.toLocaleString()}`);
     } else {
-      console.log(`Tweet ${r.tweetId}: ERROR — ${(r as { error: string }).error}`);
+      console.log(`Tweet ${r.tweetId}: ERROR - ${(r as { error: string }).error}`);
     }
     console.log();
   }

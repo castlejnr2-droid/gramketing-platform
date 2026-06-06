@@ -17,7 +17,7 @@ const INFO_CARDS = [
   {
     icon: <Trophy className="w-5 h-5 text-[#0088CC]" />,
     title: 'Performance-Based',
-    desc: 'Rewards are distributed proportionally by points. Top marketers earn more — your budget works harder.',
+    desc: 'Rewards are distributed proportionally by points. Top marketers earn more - your budget works harder.',
   },
 ];
 

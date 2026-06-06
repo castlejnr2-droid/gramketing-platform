@@ -9,7 +9,7 @@ import { HeroBackground } from '@/components/HeroBackground';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'GRAMKETING — Web3 Performance Marketing on TON',
+  title: 'GRAMKETING - Web3 Performance Marketing on TON',
   description:
     'Compete to earn rewards by promoting TON projects on X and Telegram. Marketers earn based on performance, projects get real growth.',
   keywords: ['TON blockchain', 'marketing', 'crypto', 'Web3', 'GRAMKETING'],

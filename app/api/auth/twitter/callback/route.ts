@@ -52,14 +52,14 @@ export async function GET(req: NextRequest) {
   // Twitter sends ?denied=<token> when the user refuses
   const denied        = searchParams.get('denied');
 
-  // Read cookies once — needed for both origin routing and token secret
+  // Read cookies once - needed for both origin routing and token secret
   const cookieStore    = await cookies();
   const fromMiniapp    = cookieStore.get('x_oauth1_origin')?.value === 'miniapp';
   const baseUrl        = fromMiniapp ? `${origin}/miniapp/settings` : `${origin}/dashboard`;
 
   const allCookieNames = cookieStore.getAll().map((c) => c.name);
 
-  console.log('[twitter/callback] received — oauth_token:', oauthToken, '| verifier present:', !!oauthVerifier, '| denied:', denied);
+  console.log('[twitter/callback] received - oauth_token:', oauthToken, '| verifier present:', !!oauthVerifier, '| denied:', denied);
 
   if (denied) {
     console.warn('[twitter/callback] user denied access');
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
 
   const tokenSecret = cookieStore.get('x_oauth1')?.value;
   if (!tokenSecret) {
-    console.error('[twitter/callback] x_oauth1 cookie missing — cookie was not set or not sent');
+    console.error('[twitter/callback] x_oauth1 cookie missing - cookie was not set or not sent');
     return htmlPostMessage(
       { type: 'X_LINKED', success: false, reason: 'session_expired' },
       `${baseUrl}?x=error&reason=session_expired`,
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
 
   console.log('[twitter/callback] token_secret present, proceeding to access_token exchange');
 
-  // Auth check — gramketing_token cookie must survive the X redirect chain
+  // Auth check - gramketing_token cookie must survive the X redirect chain
   const walletAddress = await getAuthWallet(req);
   if (!walletAddress) {
     console.error('[twitter/callback] no wallet auth cookie');
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
   const xAccountId        = accessParams.get('user_id');
   const xHandle           = accessParams.get('screen_name');
 
-  console.log('[twitter/callback] access_token exchange ok — user_id:', xAccountId, 'screen_name:', xHandle);
+  console.log('[twitter/callback] access_token exchange ok - user_id:', xAccountId, 'screen_name:', xHandle);
 
   if (!accessToken || !accessTokenSecret || !xAccountId || !xHandle) {
     console.error('[twitter/callback] incomplete access_token response:', accessBody);
@@ -173,7 +173,7 @@ export async function GET(req: NextRequest) {
     console.warn('[twitter/callback] profile fetch threw:', e);
   }
 
-  // Store token+secret concatenated — both are needed to make signed user-auth requests later
+  // Store token+secret concatenated - both are needed to make signed user-auth requests later
   const storedToken = `${accessToken}:${accessTokenSecret}`;
 
   const result = await linkXAccount(walletAddress, xAccountId, xHandle, storedToken);
@@ -192,7 +192,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  console.log('[twitter/callback] success — linked @', xHandle, 'to', walletAddress);
+  console.log('[twitter/callback] success - linked @', xHandle, 'to', walletAddress);
   return htmlPostMessage(
     { type: 'X_LINKED', success: true },
     `${baseUrl}?x=linked`,

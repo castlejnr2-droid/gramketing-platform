@@ -546,7 +546,7 @@ export default function AdminSubmissionsPage() {
                         <td className="px-3 py-3 whitespace-nowrap">
                           {lastScraped
                             ? <span className="text-white/30">{new Date(lastScraped).toLocaleDateString()}</span>
-                            : <span className="text-white/15">—</span>}
+                            : <span className="text-white/15">-</span>}
                         </td>
 
                         {/* Actions */}

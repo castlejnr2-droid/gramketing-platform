@@ -39,7 +39,7 @@ async function retry<T>(fn: () => Promise<T>, label: string, maxAttempts = 5): P
       const is429 = String(err).includes('429');
       if (attempt === maxAttempts) throw err;
       const delay = is429 ? 3000 * attempt : 2000;
-      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} — retrying in ${delay / 1000}s…`);
+      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} - retrying in ${delay / 1000}s…`);
       await sleep(delay);
     }
   }
@@ -84,7 +84,7 @@ async function waitForSeqnoAdvance(
 
 async function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  AdminRescue — recover 1 tsTON to admin wallet');
+  console.log('  AdminRescue - recover 1 tsTON to admin wallet');
   console.log('════════════════════════════════════════════════════════\n');
   console.log(`  Contract:    ${CONTRACT}`);
   console.log(`  Destination: ${ADMIN}`);

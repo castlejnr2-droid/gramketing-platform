@@ -51,7 +51,7 @@ export async function notifyNewPool(poolName: string, projectName: string, rewar
     allPrefs.map((prefs) =>
       sendTelegramMessage(
         prefs.telegramChatId,
-        `🚀 New pool live: <b>${poolName}</b> by ${projectName} — ${reward} TON in rewards!`
+        `🚀 New pool live: <b>${poolName}</b> by ${projectName} - ${reward} TON in rewards!`
       )
     )
   );

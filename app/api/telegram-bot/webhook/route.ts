@@ -53,8 +53,8 @@ function buildNotificationKeyboard(prefs: {
 const WELCOME_TEXT =
   `👋 Welcome to Gramketing Bot! I'll keep you updated on your campaigns.\n\n` +
   `Choose which notifications you want:\n` +
-  `/notifications — manage your notification preferences\n` +
-  `/status — see your active pools`;
+  `/notifications - manage your notification preferences\n` +
+  `/status - see your active pools`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true });
       }
       const lines = participants.map(
-        (p) => `• <b>${p.pool.project.name}</b> — ${p.totalPoints.toFixed(0)} pts`
+        (p) => `• <b>${p.pool.project.name}</b> - ${p.totalPoints.toFixed(0)} pts`
       );
       await sendMessage(chatId, `📊 Your active pools:\n\n${lines.join('\n')}`);
       return NextResponse.json({ ok: true });

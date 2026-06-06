@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Terms of Service — Gramketing',
+  title: 'Terms of Service - Gramketing',
   description: 'Terms of Service for the Gramketing performance marketing platform on TON.',
 };
 

@@ -25,7 +25,7 @@ async function main() {
     const inSrc = inMsg?.info?.type === 'internal'
       ? inMsg.info.src?.toString({ bounceable: true, urlSafe: true }) ?? 'unknown'
       : 'external';
-    const inVal = inMsg?.info?.type === 'internal' ? inMsg.info.value.coins.toString() : '—';
+    const inVal = inMsg?.info?.type === 'internal' ? inMsg.info.value.coins.toString() : '-';
 
     console.log(`tx ${hash}…  ${time}`);
     console.log(`  IN  from: ${inSrc}  value: ${inVal} nanoTON`);
@@ -36,7 +36,7 @@ async function main() {
       const dest = msg?.info?.type === 'internal'
         ? msg.info.dest?.toString({ bounceable: true, urlSafe: true }) ?? 'unknown'
         : 'external';
-      const val = msg?.info?.type === 'internal' ? msg.info.value.coins.toString() : '—';
+      const val = msg?.info?.type === 'internal' ? msg.info.value.coins.toString() : '-';
       const flag = dest === CONTRACT ? '  <-- CONTRACT NOTIFICATION ✓' : '';
       console.log(`  OUT to:   ${dest}  value: ${val} nanoTON${flag}`);
     }

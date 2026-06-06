@@ -66,7 +66,7 @@ function TierBadge({ totalPoints }: { totalPoints: number }) {
 
 /** Reads OAuth return params and fires the banner callback.
  *  Must live in its own component so useSearchParams() is scoped inside
- *  a <Suspense> boundary — otherwise Next.js can't statically prerender /dashboard. */
+ *  a <Suspense> boundary - otherwise Next.js can't statically prerender /dashboard. */
 function XOAuthBanner({
   onBanner,
 }: {
@@ -82,10 +82,10 @@ function XOAuthBanner({
       const reason = searchParams.get('reason') ?? 'unknown';
       const friendly =
         reason === 'access_denied'       ? 'You cancelled the X authorisation.' :
-        reason === 'session_expired'     ? 'Session expired — please try again.' :
-        reason === 'state_mismatch'      ? 'Security check failed — please try again.' :
-        reason === 'not_authenticated'   ? 'You were signed out — please reconnect your wallet.' :
-        reason === 'token_exchange_failed' ? 'Twitter rejected the request — please try again.' :
+        reason === 'session_expired'     ? 'Session expired - please try again.' :
+        reason === 'state_mismatch'      ? 'Security check failed - please try again.' :
+        reason === 'not_authenticated'   ? 'You were signed out - please reconnect your wallet.' :
+        reason === 'token_exchange_failed' ? 'Twitter rejected the request - please try again.' :
         reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
       onBanner({ type: 'error', message: friendly });
     }
@@ -212,10 +212,10 @@ export default function DashboardPage() {
         const reason: string = e.data.reason ?? 'unknown';
         const friendly =
           reason === 'access_denied'        ? 'You cancelled the X authorisation.' :
-          reason === 'session_expired'      ? 'Session expired — please try again.' :
-          reason === 'missing_params'       ? 'OAuth params missing — please try again.' :
-          reason === 'not_authenticated'    ? 'You were signed out — please reconnect your wallet.' :
-          reason === 'token_exchange_failed'? 'Twitter rejected the request — please try again.' :
+          reason === 'session_expired'      ? 'Session expired - please try again.' :
+          reason === 'missing_params'       ? 'OAuth params missing - please try again.' :
+          reason === 'not_authenticated'    ? 'You were signed out - please reconnect your wallet.' :
+          reason === 'token_exchange_failed'? 'Twitter rejected the request - please try again.' :
           reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
         setXBanner({ type: 'error', message: friendly });
       }
@@ -336,7 +336,7 @@ export default function DashboardPage() {
 
   // While TonConnect is restoring a stored session (async bridge reconnect),
   // show the loading state so we don't flash "Connect Your Wallet" at a user
-  // who is already connected — especially after an OAuth redirect.
+  // who is already connected - especially after an OAuth redirect.
   if (!connectionRestored || loading) {
     return (
       <div className="min-h-screen pt-24 px-4 flex items-center justify-center">

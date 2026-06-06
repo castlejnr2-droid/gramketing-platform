@@ -34,9 +34,9 @@ export async function GET(req: NextRequest) {
       if (status === 401 || status === 403) {
         xError = `Token rejected by Twitter API (HTTP ${status})`;
       } else {
-        // Network error, rate limit, etc. — don't flag as expired
+        // Network error, rate limit, etc. - don't flag as expired
         xValid = true;
-        xError = `Could not verify (${status ?? 'network error'}) — token may still be valid`;
+        xError = `Could not verify (${status ?? 'network error'}) - token may still be valid`;
       }
     }
 

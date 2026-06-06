@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (!pool) return NextResponse.json({ error: 'Pool not found' }, { status: 404 });
     if (pool.status !== 'ACTIVE') {
       return NextResponse.json(
-        { error: `This pool has ${pool.status === 'ENDED' ? 'ended' : 'already distributed rewards'} — no more submissions accepted.` },
+        { error: `This pool has ${pool.status === 'ENDED' ? 'ended' : 'already distributed rewards'} - no more submissions accepted.` },
         { status: 400 }
       );
     }
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Duplicate check — same participant, same post link
+    // Duplicate check - same participant, same post link
     const existing = await prisma.poolPost.findFirst({
       where: { participantId: participant.id, postLink: postUrl },
     });
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
     if (fetchedViews !== null && fetchedViews < MIN_VIEWS) {
       return NextResponse.json(
         {
-          error: `This post doesn't qualify yet — it needs at least ${MIN_VIEWS} views. Current count: ${fetchedViews.toLocaleString()}. Try again once it grows!`,
+          error: `This post doesn't qualify yet - it needs at least ${MIN_VIEWS} views. Current count: ${fetchedViews.toLocaleString()}. Try again once it grows!`,
         },
         { status: 422 }
       );

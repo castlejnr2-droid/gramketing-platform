@@ -5,11 +5,11 @@
  *
  * Pool parameters:
  *   Jetton master:  EQA6EC52PHvxJnuJoMturYEWJG9621YxMGrncV22ekLj8Zue  (SENDIT mainnet)
- *   Total reward:   1000 SEND  (1_000_000_000_000 nano — assumes 9 decimals)
+ *   Total reward:   1000 SEND  (1_000_000_000_000 nano - assumes 9 decimals)
  *   Duration:       7 days
  *   Reward slots:   5
  *
- * Winners (for reference — passed to DistributeRewards separately, not during deploy):
+ * Winners (for reference - passed to DistributeRewards separately, not during deploy):
  *   30%  UQBT3gemp3WFCdrzZySK4qYxyqlxFAnnkw6f2zAQuW7wycpY  →  300 SEND  (3000 bps)
  *   25%  UQAVodkqGkP7tFeMkNvObvdAqpu4T4RGZAVZJ8gK_fm6i8qY  →  250 SEND  (2500 bps)
  *   20%  UQD4MGOmgi8JgC1-lmCwy7z-5ofDTG8yx8QeeDPHdd8H3PFo  →  200 SEND  (2000 bps)
@@ -54,7 +54,7 @@ const TOTAL_REWARD_NANO = 1_000_000_000_000n; // 1000 SEND at 9 decimals
 const DURATION_DAYS     = 7;
 const REWARD_SLOTS      = 5;
 
-// Winners — for reference only. Passed to DistributeRewards separately.
+// Winners - for reference only. Passed to DistributeRewards separately.
 export const WINNERS = [
   { wallet: 'UQBT3gemp3WFCdrzZySK4qYxyqlxFAnnkw6f2zAQuW7wycpY', bps: 3000, pct: 30,  send: 300  },
   { wallet: 'UQAVodkqGkP7tFeMkNvObvdAqpu4T4RGZAVZJ8gK_fm6i8qY', bps: 2500, pct: 25,  send: 250  },
@@ -77,7 +77,7 @@ async function retry<T>(fn: () => Promise<T>, label: string, maxAttempts = 5): P
       const is429 = String(err).includes('429');
       if (attempt === maxAttempts) throw err;
       const delay = is429 ? 3000 * attempt : 2000;
-      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} — retrying in ${delay / 1000}s…`);
+      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} - retrying in ${delay / 1000}s…`);
       await sleep(delay);
     }
   }
@@ -113,7 +113,7 @@ async function getAdminKeypairAndWallet(): Promise<{
 
 async function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  Deploy GramketingPool — SENDIT pool');
+  console.log('  Deploy GramketingPool - SENDIT pool');
   console.log('════════════════════════════════════════════════════════\n');
 
   // ── Step 1: Load admin wallet ────────────────────────────────────────────
@@ -179,10 +179,10 @@ async function main() {
       process.stdout.write(`  [${i + 1}/30] state=${state.state}\r`);
       if (state.state === 'active') { active = true; break; }
     }
-    if (!active) throw new Error('Deployment timed out — check admin wallet on TON Viewer');
+    if (!active) throw new Error('Deployment timed out - check admin wallet on TON Viewer');
     console.log('\n  ✓ Contract is active.');
   } else {
-    console.log('  Contract already active — skipping deploy.');
+    console.log('  Contract already active - skipping deploy.');
   }
 
   // ── Step 4: Derive SENDIT jetton wallet for this contract ────────────────
@@ -236,13 +236,13 @@ async function main() {
     console.log(`  startTime after: ${info2.startTime}  status: ${info2.status}`);
     const storedWallet = info2.jettonWalletAddress.toString({ bounceable: true, urlSafe: true });
     console.log(`  jettonWalletAddress: ${storedWallet}`);
-    if (info2.startTime === 0n) throw new Error('CreatePool was not processed — check TON Viewer');
+    if (info2.startTime === 0n) throw new Error('CreatePool was not processed - check TON Viewer');
     if (storedWallet !== poolJettonWalletStr) {
       throw new Error(`Jetton wallet mismatch! Stored: ${storedWallet}, Expected: ${poolJettonWalletStr}`);
     }
     console.log('  ✓ Pool initialized with correct SENDIT jetton wallet.');
   } else {
-    console.log('  Pool already initialized — skipping CreatePool.');
+    console.log('  Pool already initialized - skipping CreatePool.');
   }
 
   // ── Step 6: Send endPool ─────────────────────────────────────────────────
@@ -275,10 +275,10 @@ async function main() {
     await sleep(15000);
     const info3 = await retry(() => openPool.getPoolInfo(), 'getPoolInfo3');
     console.log(`  Status after endPool: ${info3.status} (expected 1 = ENDED)`);
-    if (info3.status !== 1n) throw new Error(`endPool did not take effect — status=${info3.status}`);
+    if (info3.status !== 1n) throw new Error(`endPool did not take effect - status=${info3.status}`);
     console.log('  ✓ Pool ended on-chain.');
   } else {
-    console.log(`  Status already ${infoForEnd.status} — skipping endPool.`);
+    console.log(`  Status already ${infoForEnd.status} - skipping endPool.`);
   }
 
   // ── Summary ─────────────────────────────────────────────────────────────

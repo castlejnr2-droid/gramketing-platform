@@ -24,7 +24,7 @@ const TOTAL_BPS = WINNERS.reduce((s, w) => s + w.shareBasisPoints, 0);
 
 async function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  DistributeRewards — SENDIT pool');
+  console.log('  DistributeRewards - SENDIT pool');
   console.log('════════════════════════════════════════════════════════\n');
   console.log(`  Contract: ${CONTRACT}`);
   console.log(`  Winners:  ${WINNERS.length}  |  Total bps: ${TOTAL_BPS} (must be 10000)\n`);
@@ -37,7 +37,7 @@ async function main() {
   console.log(`  depositedAmount: ${info.depositedAmount.toString()} nano`);
   console.log(`  status:          ${info.status.toString()} (1=ENDED required)`);
 
-  if (info.depositedAmount === 0n) throw new Error('depositedAmount is 0 — deposit tokens first');
+  if (info.depositedAmount === 0n) throw new Error('depositedAmount is 0 - deposit tokens first');
   if (info.status === 2n)          throw new Error('Already distributed');
   if (info.status !== 1n)          throw new Error(`Status must be ENDED (1), got ${info.status}`);
 

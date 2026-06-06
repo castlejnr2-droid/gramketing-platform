@@ -32,10 +32,10 @@ function XOAuthBanner({
       const reason = searchParams.get('reason') ?? 'unknown';
       const friendly =
         reason === 'access_denied'        ? 'You cancelled the X authorisation.' :
-        reason === 'session_expired'      ? 'Session expired — please try again.' :
-        reason === 'state_mismatch'       ? 'Security check failed — please try again.' :
-        reason === 'not_authenticated'    ? 'You were signed out — please reconnect your wallet.' :
-        reason === 'token_exchange_failed'? 'Twitter rejected the request — please try again.' :
+        reason === 'session_expired'      ? 'Session expired - please try again.' :
+        reason === 'state_mismatch'       ? 'Security check failed - please try again.' :
+        reason === 'not_authenticated'    ? 'You were signed out - please reconnect your wallet.' :
+        reason === 'token_exchange_failed'? 'Twitter rejected the request - please try again.' :
         reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
       onBanner({ type: 'error', message: friendly });
     }
@@ -94,10 +94,10 @@ export default function MiniAppSettingsPage() {
         const reason: string = e.data.reason ?? 'unknown';
         const friendly =
           reason === 'access_denied'        ? 'You cancelled the X authorisation.' :
-          reason === 'session_expired'      ? 'Session expired — please try again.' :
-          reason === 'missing_params'       ? 'OAuth params missing — please try again.' :
-          reason === 'not_authenticated'    ? 'You were signed out — please reconnect your wallet.' :
-          reason === 'token_exchange_failed'? 'Twitter rejected the request — please try again.' :
+          reason === 'session_expired'      ? 'Session expired - please try again.' :
+          reason === 'missing_params'       ? 'OAuth params missing - please try again.' :
+          reason === 'not_authenticated'    ? 'You were signed out - please reconnect your wallet.' :
+          reason === 'token_exchange_failed'? 'Twitter rejected the request - please try again.' :
           reason.length > 60 ? reason.slice(0, 60) + '…' : reason;
         setXBanner({ type: 'error', message: friendly });
       }

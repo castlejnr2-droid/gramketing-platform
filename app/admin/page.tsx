@@ -558,7 +558,7 @@ export default function AdminPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-white/25 pt-3 border-t border-white/8">No $mGRAM revenue yet — token not launched.</p>
+                <p className="text-xs text-white/25 pt-3 border-t border-white/8">No $mGRAM revenue yet - token not launched.</p>
               )}
             </div>
           </div>
@@ -690,16 +690,16 @@ export default function AdminPage() {
                       {bannedList.map((b) => (
                         <tr key={b.id} className="hover:bg-white/[0.02]">
                           <td className="px-4 py-2.5 font-mono text-red-400/70">{shortAddr(b.walletAddress)}</td>
-                          <td className="px-4 py-2.5 text-white/45">{b.reason ?? '—'}</td>
+                          <td className="px-4 py-2.5 text-white/45">{b.reason ?? '-'}</td>
                           <td className="px-4 py-2.5">
                             {b.telegramChannel
                               ? <a href={b.telegramChannel} target="_blank" rel="noopener noreferrer" className="text-[#0088CC] hover:underline">{b.telegramChannel.replace('https://', '')}</a>
-                              : <span className="text-white/20">—</span>}
+                              : <span className="text-white/20">-</span>}
                           </td>
                           <td className="px-4 py-2.5">
                             {b.xLink
                               ? <a href={b.xLink} target="_blank" rel="noopener noreferrer" className="text-white/50 hover:underline">{b.xLink.replace('https://', '')}</a>
-                              : <span className="text-white/20">—</span>}
+                              : <span className="text-white/20">-</span>}
                           </td>
                           <td className="px-4 py-2.5 text-white/25 whitespace-nowrap">{new Date(b.bannedAt).toLocaleDateString()}</td>
                         </tr>

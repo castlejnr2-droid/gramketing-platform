@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
           message: `On-chain endPool message failed (pool will still be marked ENDED in DB): ${errMsg}`,
           details: { error: errMsg, contractAddress: pool.contractAddress },
         });
-        // Continue — DB status is the source of truth for admin actions.
+        // Continue - DB status is the source of truth for admin actions.
         // Distribution message works regardless of on-chain pool state.
       }
     } else {
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         action: 'END_POOL',
         level: 'warn',
         poolId,
-        message: 'Pool ended without a deployed contract — no on-chain state change sent',
+        message: 'Pool ended without a deployed contract - no on-chain state change sent',
       });
     }
 

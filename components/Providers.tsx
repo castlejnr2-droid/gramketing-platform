@@ -16,7 +16,7 @@ function AuthListener() {
     const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
       if (!wallet) {
         if (!seenConnected) {
-          // TonConnect is still restoring — don't logout yet.
+          // TonConnect is still restoring - don't logout yet.
           return;
         }
         // Genuine disconnect (user disconnected or bridge dropped after connection)
@@ -26,7 +26,7 @@ function AuthListener() {
 
       seenConnected = true;
 
-      // Wallet connected — authenticate with the server
+      // Wallet connected - authenticate with the server
       const walletAddress = wallet.account.address;
       const message = `gramketing-auth:${walletAddress}:${Date.now()}`;
 
@@ -50,7 +50,7 @@ function AuthListener() {
           }),
         });
       } catch {
-        // ignore — user can retry by reconnecting
+        // ignore - user can retry by reconnecting
       }
     });
 

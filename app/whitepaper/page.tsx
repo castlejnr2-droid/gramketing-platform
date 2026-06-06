@@ -6,13 +6,13 @@ const SECTIONS = [
   { num: '02', title: 'Introduction', desc: 'Background on the Web3 marketing landscape and why existing solutions fall short for TON-native projects.' },
   { num: '03', title: 'Platform Overview', desc: 'End-to-end walkthrough of how the platform connects projects with marketers through transparent, on-chain incentives.' },
   { num: '04', title: 'User Roles', desc: 'Definitions and responsibilities of the three participant tiers: Contributors, Promoters, and Marketers.' },
-  { num: '05', title: 'Pool Lifecycle', desc: 'The complete state machine of a reward pool — creation, funding, active period, end, and distribution.' },
+  { num: '05', title: 'Pool Lifecycle', desc: 'The complete state machine of a reward pool - creation, funding, active period, end, and distribution.' },
   { num: '06', title: 'Scoring System', desc: 'How X and Telegram post metrics (views, likes, reposts, reactions) are weighted and aggregated into points.' },
-  { num: '07', title: 'Boost Mechanics', desc: 'Proportional holder boost (1.0×–2.0×) and referral boost (1.0×–2.0×) — formulas, ranges, and recalculation cadence.' },
+  { num: '07', title: 'Boost Mechanics', desc: 'Proportional holder boost (1.0×–2.0×) and referral boost (1.0×–2.0×) - formulas, ranges, and recalculation cadence.' },
   { num: '08', title: 'Reward Distribution', desc: 'Pro-rata distribution math, the role of the escrow smart contract, and the cancellation policy.' },
-  { num: '09', title: 'Smart Contract Architecture', desc: 'Technical deep-dive into GramketingPool.tact — state machine, message handlers, TEP-74 jetton integration.' },
+  { num: '09', title: 'Smart Contract Architecture', desc: 'Technical deep-dive into GramketingPool.tact - state machine, message handlers, TEP-74 jetton integration.' },
   { num: '10', title: 'Access Fee Model', desc: 'Dollar-pegged fee structure, TON and $mGRAM payment options, and treasury wallet flow.' },
-  { num: '11', title: 'Token Mechanics — $mGRAM', desc: 'Utility, supply, distribution, and the planned governance role of the native $mGRAM token.' },
+  { num: '11', title: 'Token Mechanics - $mGRAM', desc: 'Utility, supply, distribution, and the planned governance role of the native $mGRAM token.' },
   { num: '12', title: 'Security & Anti-Abuse', desc: 'Bot detection, rate limiting, wallet linking rules, unique-post enforcement, and cooldown mechanics.' },
   { num: '13', title: 'Technical Stack', desc: 'Next.js 14, Prisma + PostgreSQL, TON Connect 2.0, Tact smart contracts, and the scraper infrastructure.' },
   { num: '14', title: 'Roadmap', desc: 'Phase-by-phase development plan from MVP through DAO governance, covering milestones and timelines.' },
@@ -41,7 +41,7 @@ export default function WhitepaperPage() {
           {/* Version badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0088CC]/10 border border-[#0088CC]/25 text-[#0088CC] text-xs font-semibold mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-[#0088CC]" />
-            Version 1.0 — June 2026
+            Version 1.0 - June 2026
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 leading-tight">
@@ -87,7 +87,7 @@ export default function WhitepaperPage() {
           {/* Section list */}
           <div className="border-t border-white/8 pt-6">
             <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">
-              Contents — {SECTIONS.length} Sections
+              Contents - {SECTIONS.length} Sections
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-white/5 rounded-xl overflow-hidden border border-white/8">
               {SECTIONS.map((s) => (

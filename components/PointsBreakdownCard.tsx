@@ -100,7 +100,7 @@ export function PointsBreakdownCard({
         </div>
       ) : (
         <div className="h-32 flex items-center justify-center text-white/30 text-sm mb-6">
-          No points yet — submit posts to earn!
+          No points yet - submit posts to earn!
         </div>
       )}
 

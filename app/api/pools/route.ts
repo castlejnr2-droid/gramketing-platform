@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
         totalReward: String(totalReward),
         durationDays,
         rewardSlots,
-        nonce: BigInt(pool.createdAt.getTime()), // unique per pool — ms timestamp from DB
+        nonce: BigInt(pool.createdAt.getTime()), // unique per pool - ms timestamp from DB
       });
 
       await prisma.pool.update({
@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
         action: 'DEPLOY_CONTRACT',
         level: 'error',
         poolId: pool.id,
-        message: `Contract deployment failed — pool exists in DB but has no escrow contract. ${errMsg}`,
+        message: `Contract deployment failed - pool exists in DB but has no escrow contract. ${errMsg}`,
         details: { error: errMsg },
       });
       // Pool is still created in DB; creator can retry deposit later via admin action

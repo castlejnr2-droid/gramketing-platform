@@ -94,7 +94,7 @@ export async function getJettonDecimals(jettonMasterAddress: string): Promise<nu
         }
       }
     } else if (prefix === 0x01) {
-      // Off-chain URL metadata — fetch JSON and read `decimals` field
+      // Off-chain URL metadata - fetch JSON and read `decimals` field
       const url = normalizeMetadataUrl(slice.loadStringTail().trim());
       if (url) {
         const n = await fetchOffChainDecimals(url);
@@ -241,10 +241,10 @@ export async function deployAndInitPool(params: {
   ownerAddress: string;
   adminAddress: string;
   jettonMasterAddress: string;
-  totalReward: string;  // display amount (stored in DB) — informational in contract
+  totalReward: string;  // display amount (stored in DB) - informational in contract
   durationDays: number;
   rewardSlots: number;
-  nonce: bigint;        // unique salt — use Date.now() or a DB pool ID hash
+  nonce: bigint;        // unique salt - use Date.now() or a DB pool ID hash
 }): Promise<{ contractAddress: string; poolJettonWalletAddress: string }> {
   const { keyPair, contract: walletContract, client } = await getAdminWallet();
 
@@ -291,7 +291,7 @@ export async function deployAndInitPool(params: {
       const state = await client.getContractState(contractAddress);
       if (state.state === 'active') { active = true; break; }
     }
-    if (!active) throw new Error('Contract deployment timed out — check admin wallet balance');
+    if (!active) throw new Error('Contract deployment timed out - check admin wallet balance');
   }
 
   // ── Step 4: Derive pool's jetton wallet address ─────────────────────────────
@@ -306,7 +306,7 @@ export async function deployAndInitPool(params: {
   const info = await openPool.getPoolInfo();
 
   if (info.startTime === 0n) {
-    // Not yet initialized — send CreatePool
+    // Not yet initialized - send CreatePool
     // Fetch decimals so totalReward is stored in the contract in nano-token units
     // (the contract declares totalReward as `coins`, i.e. a nano-denomination integer).
     const decimals = await getJettonDecimals(params.jettonMasterAddress);
@@ -335,7 +335,7 @@ export async function deployAndInitPool(params: {
       ],
       sendMode: SendMode.PAY_GAS_SEPARATELY,
     });
-    // Fire-and-forget — will be processed within seconds
+    // Fire-and-forget - will be processed within seconds
   }
 
   return { contractAddress: contractAddrStr, poolJettonWalletAddress };
@@ -381,12 +381,12 @@ export async function sendDistributeRewards(
     try {
       addr = Address.parse(w.walletAddress);
     } catch (e) {
-      throw new Error(`Invalid TON address for winner: "${w.walletAddress}" — ${String(e)}`);
+      throw new Error(`Invalid TON address for winner: "${w.walletAddress}" - ${String(e)}`);
     }
     return { addr, shareBasisPoints: w.shareBasisPoints };
   });
 
-  // Detect duplicates — bounceable and non-bounceable forms of the same wallet
+  // Detect duplicates - bounceable and non-bounceable forms of the same wallet
   // normalise to the same key in the dictionary and silently overwrite each other.
   const seen = new Map<string, string>();
   for (const w of parsedWinners) {
@@ -394,7 +394,7 @@ export async function sendDistributeRewards(
     if (seen.has(canonical)) {
       throw new Error(
         `Duplicate TON address in winners list: "${w.addr.toString()}" maps to the same ` +
-        `on-chain key as "${seen.get(canonical)}" — fix the winners array before distributing`,
+        `on-chain key as "${seen.get(canonical)}" - fix the winners array before distributing`,
       );
     }
     seen.set(canonical, w.addr.toString());
@@ -633,7 +633,7 @@ export async function buildDepositTransaction(params: {
     .storeAddress(poolContractAddr) // destination = pool contract
     .storeAddress(creatorAddr)      // response_destination = creator (excess TON back)
     .storeBit(false)                // no custom_payload
-    .storeCoins(toNano('0.15'))     // forward_ton_amount (for notification gas — must be enough for contract execution)
+    .storeCoins(toNano('0.15'))     // forward_ton_amount (for notification gas - must be enough for contract execution)
     .storeBit(false)                // forward_payload = empty slice (inline)
     .endCell();
 

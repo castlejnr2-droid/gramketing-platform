@@ -1,7 +1,7 @@
 /**
  * Centralised admin event logger.
  * Writes to the AdminLog DB table so failures are visible in the admin panel.
- * All writes are wrapped in try-catch — logging must never crash the caller.
+ * All writes are wrapped in try-catch - logging must never crash the caller.
  */
 
 import { prisma } from './prisma';
@@ -37,7 +37,7 @@ export async function logAdminEvent(opts: {
       },
     });
   } catch (err) {
-    // Never propagate — logging must not break callers
+    // Never propagate - logging must not break callers
     console.error('[AdminLog write failed]', err);
   }
 }

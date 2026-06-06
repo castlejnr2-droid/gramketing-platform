@@ -40,7 +40,7 @@ async function retry<T>(fn: () => Promise<T>, label: string, maxAttempts = 5): P
       const is429 = String(err).includes('429');
       if (attempt === maxAttempts) throw err;
       const delay = is429 ? 3000 * attempt : 2000;
-      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} — retrying in ${delay / 1000}s…`);
+      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} - retrying in ${delay / 1000}s…`);
       await sleep(delay);
     }
   }
@@ -147,11 +147,11 @@ async function main() {
   console.log(`  status:          ${info.status.toString()} (0=ACTIVE 1=ENDED 2=DISTRIBUTED)`);
 
   if (info.depositedAmount === AMOUNT) {
-    console.log('\n  ✓ SUCCESS — depositedAmount = 1000000000000. Ready to distribute.');
+    console.log('\n  ✓ SUCCESS - depositedAmount = 1000000000000. Ready to distribute.');
   } else if (info.depositedAmount === 0n) {
-    console.log('\n  ✗ depositedAmount still 0 — notification may not have arrived yet. Re-check in a few seconds.');
+    console.log('\n  ✗ depositedAmount still 0 - notification may not have arrived yet. Re-check in a few seconds.');
   } else {
-    console.log(`\n  ⚠ depositedAmount = ${info.depositedAmount} — partial deposit recorded.`);
+    console.log(`\n  ⚠ depositedAmount = ${info.depositedAmount} - partial deposit recorded.`);
   }
 
   console.log('\n════════════════════════════════════════════════════════');

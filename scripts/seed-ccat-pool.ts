@@ -82,7 +82,7 @@ async function retry<T>(fn: () => Promise<T>, label: string, maxAttempts = 5): P
       const is429 = String(err).includes('429');
       if (attempt === maxAttempts) throw err;
       const delay = is429 ? 3000 * attempt : 2000;
-      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} — retrying in ${delay / 1000}s…`);
+      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} - retrying in ${delay / 1000}s…`);
       await sleep(delay);
     }
   }
@@ -112,7 +112,7 @@ async function getAdminWallet(): Promise<{
 
 async function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  Gramketing — CCAT Pool Seed + Contract Deploy');
+  console.log('  Gramketing - CCAT Pool Seed + Contract Deploy');
   console.log('════════════════════════════════════════════════════════\n');
 
   // Validate bps sum
@@ -153,7 +153,7 @@ async function main() {
     include: { pools: { include: { participants: true, poolPosts: true, adminLogs: true, platformRevenue: true } } },
   });
   if (existing) {
-    console.log(`  Found existing "${TOKEN_NAME}" project — removing…`);
+    console.log(`  Found existing "${TOKEN_NAME}" project - removing…`);
     for (const pool of existing.pools) {
       await prisma.adminLog.deleteMany({ where: { poolId: pool.id } });
       await prisma.poolPost.deleteMany({ where: { poolId: pool.id } });
@@ -185,7 +185,7 @@ async function main() {
   });
   console.log(`  ✓ Project: ${project.id}`);
 
-  // Pool — set to ENDED (7 days ago → 1 min ago)
+  // Pool - set to ENDED (7 days ago → 1 min ago)
   const now       = new Date();
   const startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const endDate   = new Date(now.getTime() - 60 * 1000);
@@ -193,7 +193,7 @@ async function main() {
   const pool = await prisma.pool.create({
     data: {
       projectId:           project.id,
-      totalReward:         TOTAL_REWARD_DISPLAY, // display units — UI shows "1,000 CCAT"
+      totalReward:         TOTAL_REWARD_DISPLAY, // display units - UI shows "1,000 CCAT"
       tokenSymbol:         TOKEN_SYMBOL,
       jettonMasterAddress: JETTON_MASTER,
       durationDays:        DURATION_DAYS,
@@ -203,7 +203,7 @@ async function main() {
       startDate,
       endDate,
       status:              'ENDED',
-      contractAddress:     poolAddrBounceable,  // set immediately — we know the address
+      contractAddress:     poolAddrBounceable,  // set immediately - we know the address
     },
   });
   console.log(`  ✓ Pool:    ${pool.id}  (status=ENDED)`);
@@ -257,10 +257,10 @@ async function main() {
       process.stdout.write(`  [${i + 1}/30] state=${st.state}\r`);
       if (st.state === 'active') { active = true; break; }
     }
-    if (!active) throw new Error('Deployment timed out — check admin wallet TON balance');
+    if (!active) throw new Error('Deployment timed out - check admin wallet TON balance');
     console.log('\n  ✓ Contract active.');
   } else {
-    console.log('  Already active — skipping deploy.');
+    console.log('  Already active - skipping deploy.');
   }
 
   // ── Step 3: CreatePool ───────────────────────────────────────────────────────
@@ -291,10 +291,10 @@ async function main() {
     console.log('  Waiting 15s for CreatePool…');
     await sleep(15000);
     const info2 = await retry(() => openPool.getPoolInfo(), 'getPoolInfo2');
-    if (info2.startTime === 0n) throw new Error('CreatePool was not processed — check contract logs');
+    if (info2.startTime === 0n) throw new Error('CreatePool was not processed - check contract logs');
     console.log(`  ✓ Pool initialized. startTime=${info2.startTime}`);
   } else {
-    console.log('  Already initialized — skipping CreatePool.');
+    console.log('  Already initialized - skipping CreatePool.');
   }
 
   // ── Step 4: EndPool ──────────────────────────────────────────────────────────
@@ -318,12 +318,12 @@ async function main() {
     console.log('  Waiting 15s for endPool…');
     await sleep(15000);
     const info3 = await retry(() => openPool.getPoolInfo(), 'getPoolInfo3');
-    if (info3.status !== 1n) throw new Error(`endPool failed — on-chain status=${info3.status}`);
+    if (info3.status !== 1n) throw new Error(`endPool failed - on-chain status=${info3.status}`);
     console.log('  ✓ Contract is ENDED (status=1).');
   } else if (infoEnd.status === 1n) {
-    console.log('  Already ENDED — skipping.');
+    console.log('  Already ENDED - skipping.');
   } else {
-    throw new Error(`Unexpected on-chain status ${infoEnd.status} — cannot end pool`);
+    throw new Error(`Unexpected on-chain status ${infoEnd.status} - cannot end pool`);
   }
 
   // ── Log deployment in DB ─────────────────────────────────────────────────────
@@ -371,7 +371,7 @@ async function main() {
     Amount:      1 000 CCAT
     Gas:         attach 0.35 TON (TonKeeper adds automatically)
 
-  ⚠️  Send to the CONTRACT address above — the wallet app
+  ⚠️  Send to the CONTRACT address above - the wallet app
       routes the jetton transfer through your CCAT jetton
       wallet automatically. Do NOT send native TON.
 

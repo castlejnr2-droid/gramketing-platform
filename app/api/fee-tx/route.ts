@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const treasuryAddress = process.env.TREASURY_WALLET_ADDRESS;
     if (!treasuryAddress) {
       return NextResponse.json(
-        { error: 'TREASURY_WALLET_ADDRESS is not configured — contact support' },
+        { error: 'TREASURY_WALLET_ADDRESS is not configured - contact support' },
         { status: 500 },
       );
     }

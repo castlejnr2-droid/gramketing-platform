@@ -174,7 +174,7 @@ export default function AdminPoolsPage() {
       setIsAdmin(true);
       setPools(d.pools ?? []);
     } catch {
-      // network error — keep existing list
+      // network error - keep existing list
     } finally {
       setLoading(false);
     }
@@ -297,7 +297,7 @@ export default function AdminPoolsPage() {
       <div className="min-h-screen pt-24 px-4 flex items-center justify-center">
         <div className="glass-card p-10 text-center max-w-sm">
           <Shield className="w-10 h-10 mx-auto text-[#0088CC]/50 mb-4" />
-          <h1 className="text-xl font-bold text-white mb-3">Admin — Pools</h1>
+          <h1 className="text-xl font-bold text-white mb-3">Admin - Pools</h1>
           <p className="text-white/50 text-sm mb-6">Connect your admin wallet to continue.</p>
           <TonConnectButton />
         </div>
@@ -496,7 +496,7 @@ export default function AdminPoolsPage() {
                             <ExternalLink className="w-2.5 h-2.5 shrink-0" />
                           </a>
                         ) : (
-                          <span className="text-white/20 text-xs">—</span>
+                          <span className="text-white/20 text-xs">-</span>
                         )}
                       </td>
 

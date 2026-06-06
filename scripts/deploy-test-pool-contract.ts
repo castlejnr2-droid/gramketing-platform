@@ -4,7 +4,7 @@
  * Deploys the GramketingPool escrow contract for the test pool and saves the
  * contractAddress back to the database.
  *
- * Design note — owner = admin wallet for this test:
+ * Design note - owner = admin wallet for this test:
  *   The contract's CreatePool message requires sender() == self.owner.
  *   Since the admin wallet signs all transactions, we set owner = admin for
  *   the test so the admin can initialize the pool. Dust from distribution
@@ -54,7 +54,7 @@ async function retry<T>(fn: () => Promise<T>, label: string, maxAttempts = 5): P
       const isRateLimit = status === 429 || String(err).includes('429');
       if (attempt === maxAttempts) throw err;
       const delay = isRateLimit ? 3000 * attempt : 2000;
-      console.log(`  [${label}] attempt ${attempt} failed (${isRateLimit ? '429 rate limit' : 'error'}) — retrying in ${delay / 1000}s…`);
+      console.log(`  [${label}] attempt ${attempt} failed (${isRateLimit ? '429 rate limit' : 'error'}) - retrying in ${delay / 1000}s…`);
       await sleep(delay);
     }
   }
@@ -92,7 +92,7 @@ async function getAdminKeypairAndWallet(): Promise<{
 
 async function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  Deploy GramketingPool escrow — test pool (v2)');
+  console.log('  Deploy GramketingPool escrow - test pool (v2)');
   console.log('════════════════════════════════════════════════════════\n');
 
   // ── Step 1: Load admin wallet ────────────────────────────────────────────
@@ -103,7 +103,7 @@ async function main() {
   const balance = await retry(() => client.getBalance(walletContract.address), 'getBalance');
   console.log(`  Balance: ${Number(balance) / 1e9} TON`);
   if (balance < toNano('0.3')) {
-    throw new Error(`Insufficient balance — need at least 0.3 TON, have ${Number(balance) / 1e9} TON`);
+    throw new Error(`Insufficient balance - need at least 0.3 TON, have ${Number(balance) / 1e9} TON`);
   }
 
   // ── Step 2: Compute contract address ────────────────────────────────────
@@ -155,10 +155,10 @@ async function main() {
       process.stdout.write(`  [${i + 1}/30] state=${state.state}\r`);
       if (state.state === 'active') { active = true; break; }
     }
-    if (!active) throw new Error('Contract deployment timed out — check admin wallet balance on TON Viewer');
+    if (!active) throw new Error('Contract deployment timed out - check admin wallet balance on TON Viewer');
     console.log('\n  ✓ Contract is active.');
   } else {
-    console.log('  Contract already active — skipping deploy.');
+    console.log('  Contract already active - skipping deploy.');
   }
 
   // ── Step 4: Derive real tsTON jetton wallet address for this contract ───
@@ -213,7 +213,7 @@ async function main() {
     console.log(`  startTime after: ${info2.startTime}  status: ${info2.status}`);
     console.log(`  jettonWalletAddress: ${info2.jettonWalletAddress.toString({ bounceable: true, urlSafe: true })}`);
     if (info2.startTime === 0n) {
-      throw new Error('CreatePool was not processed — check TON Viewer for the contract');
+      throw new Error('CreatePool was not processed - check TON Viewer for the contract');
     }
     // Verify jetton wallet was set correctly
     const storedJettonWallet = info2.jettonWalletAddress.toString({ bounceable: true, urlSafe: true });
@@ -222,7 +222,7 @@ async function main() {
     }
     console.log('  ✓ Pool initialized on-chain with correct tsTON jetton wallet.');
   } else {
-    console.log('  Pool already initialized — verifying jetton wallet address…');
+    console.log('  Pool already initialized - verifying jetton wallet address…');
     const stored = info.jettonWalletAddress.toString({ bounceable: true, urlSafe: true });
     if (stored !== poolJettonWalletStr) {
       console.log(`  ⚠️  Stored jetton wallet (${stored}) != expected (${poolJettonWalletStr})`);
@@ -291,11 +291,11 @@ async function main() {
     const info3 = await retry(() => openPool.getPoolInfo(), 'getPoolInfo3');
     console.log(`  Contract status after endPool: ${info3.status} (expected 1 = ENDED)`);
     if (info3.status !== 1n) {
-      throw new Error(`endPool did not take effect — status is ${info3.status}`);
+      throw new Error(`endPool did not take effect - status is ${info3.status}`);
     }
     console.log('  ✓ Pool ended on-chain.');
   } else {
-    console.log(`  Contract already in status ${infoForEnd.status} — skipping endPool.`);
+    console.log(`  Contract already in status ${infoForEnd.status} - skipping endPool.`);
   }
 
   // ── Step 7: Save contractAddress to DB ──────────────────────────────────
@@ -326,7 +326,7 @@ async function main() {
 
   After depositing, verify on TON Viewer:
     1. Check the pool contract's tsTON jetton wallet balance = 2 tsTON
-    2. Call getPoolInfo — depositedAmount should = 2000000000
+    2. Call getPoolInfo - depositedAmount should = 2000000000
   Then trigger distribution from the admin panel at /admin/pools.
   ────────────────────────────────────────────────────────`);
 }

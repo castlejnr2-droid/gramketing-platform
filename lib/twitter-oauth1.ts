@@ -24,13 +24,13 @@ function pct(str: string): string {
  * timestamp, signing, and header serialisation.
  *
  * @param method         HTTP method (GET | POST)
- * @param url            Request URL — no query string
+ * @param url            Request URL - no query string
  * @param consumerKey    App consumer key (TWITTER_CONSUMER_KEY)
  * @param consumerSecret App consumer secret (TWITTER_CONSUMER_SECRET)
  * @param oauthToken     Per-request or per-user token (omit when requesting a request_token)
  * @param tokenSecret    Secret matching oauthToken (omit when requesting a request_token)
- * @param oauthCallback  Callback URL — include only in the request_token call
- * @param oauthVerifier  Verifier — include only in the access_token call
+ * @param oauthCallback  Callback URL - include only in the request_token call
+ * @param oauthVerifier  Verifier - include only in the access_token call
  */
 export function buildOAuth1Header({
   method,

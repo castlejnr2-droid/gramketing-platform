@@ -41,7 +41,7 @@ async function retry<T>(fn: () => Promise<T>, label: string, maxAttempts = 5): P
       const is429 = String(err).includes('429');
       if (attempt === maxAttempts) throw err;
       const delay = is429 ? 3000 * attempt : 2000;
-      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} — retrying in ${delay / 1000}s…`);
+      console.log(`  [${label}] attempt ${attempt} failed${is429 ? ' (429)' : ''} - retrying in ${delay / 1000}s…`);
       await sleep(delay);
     }
   }
@@ -138,9 +138,9 @@ async function main() {
   console.log(`  stored now: ${stored}`);
 
   if (stored === NEW_JETTON_WALLET) {
-    console.log('\n  ✓ SUCCESS — jettonWalletAddress updated correctly.');
+    console.log('\n  ✓ SUCCESS - jettonWalletAddress updated correctly.');
   } else {
-    console.error(`\n  ✗ MISMATCH — expected ${NEW_JETTON_WALLET}, got ${stored}`);
+    console.error(`\n  ✗ MISMATCH - expected ${NEW_JETTON_WALLET}, got ${stored}`);
     process.exit(1);
   }
 

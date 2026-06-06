@@ -24,7 +24,7 @@ interface PriceData {
 interface FeeTxData {
   to: string;
   amount: string;      // nanoTON as string
-  payload?: string;    // base64 BOC — only present for jetton (mGRAM) payments
+  payload?: string;    // base64 BOC - only present for jetton (mGRAM) payments
   expectedFee: {
     usdAmount: number;
     tokenAmount: number;
@@ -89,7 +89,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const [tier2Threshold, setTier2Threshold] = useState('');
   const [tier3Threshold, setTier3Threshold] = useState('');
 
-  // Step 3 — payment
+  // Step 3 - payment
   const [feeCurrency, setFeeCurrency] = useState<FeeCurrency>('TON');
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   const [feeTxData, setFeeTxData] = useState<FeeTxData | null>(null);
@@ -97,7 +97,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const [feeTxError, setFeeTxError] = useState<string | null>(null);
   const [paymentTxHash, setPaymentTxHash] = useState('');
 
-  // Step 4 — deposit
+  // Step 4 - deposit
   const [createdPoolId, setCreatedPoolId] = useState('');
   const [contractAddress, setContractAddress] = useState('');
   const [depositDone, setDepositDone] = useState(false);
@@ -154,7 +154,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
 
   // Pre-fetch deposit transaction params as soon as the pool is created.
   // Triggered by createdPoolId becoming non-empty so the Deposit button is
-  // ready the moment it appears — no latency on click.
+  // ready the moment it appears - no latency on click.
   useEffect(() => {
     if (!createdPoolId) return;
     let cancelled = false;
@@ -338,7 +338,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
         }],
       });
 
-      // Transaction sent — start polling for on-chain confirmation
+      // Transaction sent - start polling for on-chain confirmation
       startDepositPolling(createdPoolId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Deposit cancelled or failed');
@@ -456,7 +456,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
               Project Information
             </h2>
 
-            {/* Jetton Master Address — first field; triggers metadata auto-fill */}
+            {/* Jetton Master Address - first field; triggers metadata auto-fill */}
             <div>
               <label className="block text-sm text-white/60 mb-1.5">
                 Jetton Master Address *
@@ -485,7 +485,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                 )}
               </div>
               {jettonFetchStatus === 'success' && (
-                <p className="mt-1.5 text-xs text-green-400/80">Token metadata loaded — fields below have been auto-filled.</p>
+                <p className="mt-1.5 text-xs text-green-400/80">Token metadata loaded - fields below have been auto-filled.</p>
               )}
               {jettonFetchStatus === 'error' && jettonFetchError && (
                 <p className="mt-1.5 text-xs text-red-400">{jettonFetchError}</p>
@@ -834,7 +834,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
               {feeTxLoading
                 ? 'Loading fee…'
                 : feeTxError
-                ? 'Fee unavailable — retry'
+                ? 'Fee unavailable - retry'
                 : feeTxData
                 ? feeCurrency === 'TON'
                   ? `Pay ${feeTxData.expectedFee.tokenAmount.toFixed(6)} TON`
@@ -903,7 +903,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                   <div>
                     <p className="text-sm font-medium text-red-400">Confirmation timed out</p>
                     <p className="text-xs text-white/40 mt-0.5">
-                      The deposit was not detected after 5 minutes. Your transaction may still confirm — check TONScan,
+                      The deposit was not detected after 5 minutes. Your transaction may still confirm - check TONScan,
                       or retry below.
                     </p>
                   </div>

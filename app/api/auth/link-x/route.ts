@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const fromMiniapp = req.nextUrl.searchParams.get('from') === 'miniapp';
 
-  // Step 1: request_token — oauth_callback must be in the Authorization header
+  // Step 1: request_token - oauth_callback must be in the Authorization header
   const requestTokenUrl = 'https://api.twitter.com/oauth/request_token';
   const authHeader = buildOAuth1Header({
     method:         'POST',
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
   const oauthTokenSecret = tokenParams.get('oauth_token_secret');
   const callbackConfirmed = tokenParams.get('oauth_callback_confirmed');
 
-  console.log('[link-x] request_token ok — callback_confirmed:', callbackConfirmed, 'token present:', !!oauthToken);
+  console.log('[link-x] request_token ok - callback_confirmed:', callbackConfirmed, 'token present:', !!oauthToken);
 
   if (!oauthToken || !oauthTokenSecret) {
     console.error('[link-x] missing oauth_token or oauth_token_secret in response');
@@ -74,11 +74,11 @@ export async function GET(req: NextRequest) {
   }
 
   // Step 2: redirect user to X authorization page
-  // oauth/authenticate is preferred — skips the prompt if user already authorised the app.
+  // oauth/authenticate is preferred - skips the prompt if user already authorised the app.
   const authorizeUrl = `https://api.twitter.com/oauth/authenticate?oauth_token=${oauthToken}`;
   console.log('[link-x] redirecting to:', authorizeUrl);
 
-  // Set cookie directly on the redirect response — cookies().set() from next/headers
+  // Set cookie directly on the redirect response - cookies().set() from next/headers
   // does NOT attach Set-Cookie to a NextResponse.redirect() in the same handler.
   const response = NextResponse.redirect(authorizeUrl);
   const cookieOpts = {
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * Internal helper — links a verified X account to a wallet address.
+ * Internal helper - links a verified X account to a wallet address.
  * Enforces a 7-day re-link cooldown and uniqueness of xAccountId.
  */
 export async function linkXAccount(

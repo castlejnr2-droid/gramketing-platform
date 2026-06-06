@@ -60,7 +60,7 @@ async function main() {
     Send AdminRescue from the admin wallet to pull them out to any address,
     then re-deposit correctly so the notification is accepted.
 
-  TON Viewer — check the contract's jetton wallet balance:
+  TON Viewer - check the contract's jetton wallet balance:
     https://tonviewer.com/${EXPECTED_JETTON_WALLET}
 `);
   }

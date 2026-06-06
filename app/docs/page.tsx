@@ -318,7 +318,7 @@ Carol: 2,000 pts  → 20% share → 200,000 tokens`}</CodeBlock>
                   </div>
                   <p className="mt-4">
                     Tier badges are shown on the leaderboard, your public stats page, and your dashboard.
-                    They reflect your <strong>total lifetime points</strong> across all pools — not just one pool.
+                    They reflect your <strong>total lifetime points</strong> across all pools - not just one pool.
                   </p>
                 </Section>
 
@@ -538,9 +538,9 @@ Examples (pool top referrer's total = 200,000 tokens):
                     <li>
                       Choose your <strong className="text-white">Campaign Type</strong>:
                       <ul className="list-disc list-inside ml-4 mt-1 space-y-1 text-white/50">
-                        <li><strong className="text-white/70">X + Telegram</strong> — both platforms count, 50/50 split</li>
-                        <li><strong className="text-white/70">X Only</strong> — only X posts are scored</li>
-                        <li><strong className="text-white/70">Telegram Only</strong> — only Telegram posts are scored</li>
+                        <li><strong className="text-white/70">X + Telegram</strong> - both platforms count, 50/50 split</li>
+                        <li><strong className="text-white/70">X Only</strong> - only X posts are scored</li>
+                        <li><strong className="text-white/70">Telegram Only</strong> - only Telegram posts are scored</li>
                       </ul>
                     </li>
                     <li>Optionally link a specific post to promote (e.g. an announcement tweet or Telegram channel post)</li>
