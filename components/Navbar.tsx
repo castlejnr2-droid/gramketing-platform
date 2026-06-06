@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
@@ -83,11 +84,15 @@ export function Navbar() {
       <div style={{ padding: '1.2rem 2rem 1.2rem 1.5rem' }}>
         <div className="flex items-center justify-between">
           {/* Brand */}
-          <Link
-            href="/"
-            className="text-xl font-bold text-[#0088CC] hover:text-[#00AAFF] transition-colors tracking-wide"
-          >
-            GRAMKETING
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/gramketing-logo.png"
+              alt="Gramketing"
+              width={150}
+              height={36}
+              style={{ objectFit: 'contain' }}
+              priority
+            />
           </Link>
 
           {/* Desktop Nav Links */}
