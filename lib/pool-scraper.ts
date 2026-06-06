@@ -6,9 +6,11 @@ import { fetchTweetMetrics, extractTweetId } from '@/lib/twitter-api';
 
 // ── X / Twitter scraping ──────────────────────────────────────────────────────
 
+export type XScrapeError = 'NOT_FOUND' | 'TOKEN_EXPIRED' | 'UNKNOWN';
+
 export type XScrapeResult =
-  | { ok: true; views: number; likes: number; reposts: number }
-  | { ok: false; error: 'TOKEN_EXPIRED' | 'NOT_FOUND' | 'UNKNOWN'; views: number; likes: number; reposts: number };
+  | { ok: true; views: number; likes: number; reposts: number; error?: XScrapeError }
+  | { ok: false; error: XScrapeError; views: number; likes: number; reposts: number };
 
 /**
  * Fetches metrics for a single X post URL.
@@ -32,7 +34,7 @@ export async function fetchXPostMetrics(
     return { ok: true, views: result.views, likes: result.likes, reposts: result.retweets };
   }
 
-  const error: XScrapeResult['error'] =
+  const error: XScrapeError =
     result.error === 'NOT_FOUND' ? 'NOT_FOUND' :
     result.error === 'TOKEN_EXPIRED' ? 'TOKEN_EXPIRED' :
     'UNKNOWN';
