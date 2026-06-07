@@ -60,11 +60,48 @@ const phases = [
   },
   {
     number: 'Phase 4',
-    title: 'Coming Soon',
-    period: '2027',
+    title: 'Social Expansion',
+    period: 'Q4 2026',
+    status: 'upcoming' as const,
+    items: [
+      { done: false, text: 'TikTok post submissions and view tracking' },
+      { done: false, text: 'Instagram post submissions and view tracking' },
+      { done: false, text: 'WhatsApp Channel post submissions and view tracking' },
+      { done: false, text: 'Expanded scoring engine supporting all major social platforms' },
+      { done: false, text: 'Contributors earn rewards across 5 platforms simultaneously' },
+    ],
+  },
+  {
+    number: 'Phase 5',
+    title: 'Real World Products and Projects',
+    period: 'Q1 2027',
     status: 'future' as const,
     items: [
-      { done: false, text: 'More features on the way, stay tuned.' },
+      { done: false, text: 'Pools open to real world brands, e-commerce stores, startups and content creators' },
+      { done: false, text: 'Pool rewards payable in any token, stablecoin or dollar pegged currency of the project\'s choice' },
+      { done: false, text: 'Gramketing becomes a universal performance marketing platform beyond Web3' },
+    ],
+  },
+  {
+    number: 'Phase 6',
+    title: 'IRL Presence',
+    period: 'Q2 2027',
+    status: 'future' as const,
+    items: [
+      { done: false, text: 'First Gramketing physical headquarters launched, city TBA' },
+      { done: false, text: 'Official company registration and legal structure established' },
+      { done: false, text: 'In person community events, meetups and partner onboarding' },
+    ],
+  },
+  {
+    number: 'Phase 7',
+    title: 'Global Expansion',
+    period: 'Q3 2027 onwards',
+    status: 'future' as const,
+    items: [
+      { done: false, text: 'Regional offices opened in top cities based on platform usage data' },
+      { done: false, text: 'Local teams serving high volume markets' },
+      { done: false, text: 'Gramketing establishes a global footprint in performance marketing' },
     ],
   },
 ];
@@ -133,7 +170,7 @@ export default function RoadmapPage() {
 
                   {/* Card */}
                   <div
-                    className={`glass-card p-7 border ${config.border} hover:bg-white/[0.06] transition-all duration-300${phase.number === 'Phase 4' ? ' opacity-60' : ''}`}
+                    className={`glass-card p-7 border ${config.border} hover:bg-white/[0.06] transition-all duration-300${phase.status === 'future' ? ' opacity-60' : ''}`}
                   >
                     <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
                       <div>

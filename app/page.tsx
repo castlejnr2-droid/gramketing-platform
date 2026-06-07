@@ -364,12 +364,14 @@ export default function HomePage() {
             <p className="text-white/40">What&apos;s built and what&apos;s coming</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Phase 1 */}
             <div className="glass-card p-6 border-[#0088CC]/30">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
                   Phase 1: Now
                 </span>
               </div>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Web Platform Launch</p>
               <ul className="space-y-2 text-sm text-white/60">
                 {['Pool creation & escrow', 'X & Telegram verification', 'Live leaderboard', 'Referral system', 'Reward distribution', '$mGRAM token launch'].map((item) => (
                   <li key={item} className="flex items-center gap-2">
@@ -378,44 +380,101 @@ export default function HomePage() {
                 ))}
               </ul>
             </div>
+            {/* Phase 2 */}
             <div className="glass-card p-6">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                  Phase 2: Q3
+                  Phase 2: Q3 2026
                 </span>
               </div>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Telegram Mini App & Staking</p>
               <ul className="space-y-2 text-sm text-white/60">
-                {['Telegram Bot alerts', 'Telegram Mini App', 'Advanced analytics'].map((item) => (
+                {['Telegram Bot alerts', 'Telegram Mini App', '$mGRAM staking and governance'].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="text-[#0088CC]">🔜</span> {item}
                   </li>
                 ))}
               </ul>
             </div>
+            {/* Phase 3 */}
             <div className="glass-card p-6">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/40 border border-white/10">
                   Phase 3: Q4 2026
                 </span>
               </div>
-              <ul className="space-y-2 text-sm text-white/60">
-                {['Mobile App (iOS + Android)'].map((item) => (
+              <p className="text-xs font-semibold text-white/30 uppercase tracking-wider mb-3">Mobile App</p>
+              <ul className="space-y-2 text-sm text-white/40">
+                {['Mobile App: iOS', 'Mobile App: Android'].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="text-white/30">🔜</span> {item}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="glass-card p-6 opacity-60">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/5 text-white/25 border border-white/10">
-                  Phase 4: 2027
+            {/* Phase 4 */}
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  Phase 4: Q4 2026
                 </span>
               </div>
-              <p className="text-sm font-semibold text-white/40 mb-2">Coming Soon</p>
-              <p className="text-sm text-white/30 leading-relaxed">
-                More features on the way, stay tuned.
-              </p>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Social Expansion</p>
+              <ul className="space-y-2 text-sm text-white/60">
+                {['TikTok post submissions and view tracking', 'Instagram post submissions and view tracking', 'WhatsApp Channel post submissions and view tracking', 'Expanded scoring engine supporting all major social platforms', 'Contributors earn rewards across 5 platforms simultaneously'].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="text-[#0088CC]">🔜</span> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Phase 5 */}
+            <div className="glass-card p-6 opacity-60">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/5 text-white/25 border border-white/10">
+                  Phase 5: Q1 2027
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-white/25 uppercase tracking-wider mb-3">Real World Products and Projects</p>
+              <ul className="space-y-2 text-sm text-white/30">
+                {['Pools open to real world brands, e-commerce stores, startups and content creators', 'Pool rewards payable in any token, stablecoin or dollar pegged currency', 'Gramketing becomes a universal performance marketing platform beyond Web3'].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="text-white/20">🔜</span> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Phase 6 */}
+            <div className="glass-card p-6 opacity-60">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/5 text-white/25 border border-white/10">
+                  Phase 6: Q2 2027
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-white/25 uppercase tracking-wider mb-3">IRL Presence</p>
+              <ul className="space-y-2 text-sm text-white/30">
+                {['First Gramketing physical headquarters launched, city TBA', 'Official company registration and legal structure established', 'In person community events, meetups and partner onboarding'].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="text-white/20">🔜</span> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Phase 7 */}
+            <div className="glass-card p-6 opacity-60">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/5 text-white/25 border border-white/10">
+                  Phase 7: Q3 2027 onwards
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-white/25 uppercase tracking-wider mb-3">Global Expansion</p>
+              <ul className="space-y-2 text-sm text-white/30">
+                {['Regional offices opened in top cities based on platform usage data', 'Local teams serving high volume markets', 'Gramketing establishes a global footprint in performance marketing'].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="text-white/20">🔜</span> {item}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
           <div className="text-center mt-8">
