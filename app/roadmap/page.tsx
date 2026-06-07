@@ -202,7 +202,11 @@ export default function RoadmapPage() {
                           className="flex items-start gap-3 text-sm"
                         >
                           <span className="mt-0.5 flex-shrink-0">
-                            {item.done ? '✅' : config.futureIcon}
+                            {item.done
+                              ? '✅'
+                              : phase.number === 'Phase 2'
+                              ? '🔜'
+                              : <span className="text-white/25 text-sm leading-none">○</span>}
                           </span>
                           <span
                             className={

@@ -165,7 +165,11 @@ export default function MiniAppRoadmapPage() {
                 {phase.items.map((item) => (
                   <li key={item.text} className="flex items-start gap-2.5 text-sm">
                     <span className="mt-0.5 flex-shrink-0 text-xs">
-                      {item.done ? '✅' : '🔜'}
+                      {item.done
+                        ? '✅'
+                        : phase.number === 'Phase 2'
+                        ? '🔜'
+                        : <span className="text-white/25 text-sm leading-none">○</span>}
                     </span>
                     <span className={item.done ? 'text-white/70' : 'text-white/40'}>
                       {item.text}
