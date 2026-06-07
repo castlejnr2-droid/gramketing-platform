@@ -63,7 +63,7 @@ const phases = [
     number: 'Phase 4',
     title: 'Social Expansion',
     period: 'Q4 2026',
-    status: 'upcoming' as const,
+    status: 'future' as const,
     items: [
       { done: false, text: 'TikTok post submissions and view tracking' },
       { done: false, text: 'Instagram post submissions and view tracking' },

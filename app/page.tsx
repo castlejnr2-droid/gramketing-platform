@@ -413,17 +413,17 @@ export default function HomePage() {
               </ul>
             </div>
             {/* Phase 4 */}
-            <div className="glass-card p-6">
+            <div className="glass-card p-6 opacity-60">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/5 text-white/25 border border-white/10">
                   Phase 4: Q4 2026
                 </span>
               </div>
-              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Social Expansion</p>
-              <ul className="space-y-2 text-sm text-white/60">
+              <p className="text-xs font-semibold text-white/25 uppercase tracking-wider mb-3">Social Expansion</p>
+              <ul className="space-y-2 text-sm text-white/30">
                 {['TikTok post submissions and view tracking', 'Instagram post submissions and view tracking', 'WhatsApp Channel post submissions and view tracking', 'Expanded scoring engine supporting all major social platforms', 'Contributors earn rewards across 5 platforms simultaneously'].map((item) => (
                   <li key={item} className="flex items-center gap-2">
-                    <span className="text-[#0088CC]">🔜</span> {item}
+                    <span className="text-white/20">○</span> {item}
                   </li>
                 ))}
               </ul>
