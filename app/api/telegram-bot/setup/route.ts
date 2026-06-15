@@ -14,9 +14,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN not configured' }, { status: 500 });
     }
 
-    const webhookUrl = 'https://gramketing-platform.vercel.app/api/telegram-bot/webhook';
+    const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      return NextResponse.json({ error: 'TELEGRAM_WEBHOOK_SECRET not configured' }, { status: 500 });
+    }
+
+    const webhookUrl = 'https://www.gramketing.com/api/telegram-bot/webhook';
     const res = await axios.post(`https://api.telegram.org/bot${token}/setWebhook`, {
-      url: webhookUrl,
+      url:          webhookUrl,
+      secret_token: webhookSecret,
     });
 
     return NextResponse.json({ success: true, result: res.data });

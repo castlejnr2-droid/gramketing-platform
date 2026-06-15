@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 
 function generateLinkCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let suffix = '';
-  for (let i = 0; i < 6; i++) {
-    suffix += chars[Math.floor(Math.random() * chars.length)];
-  }
+  // Use cryptographically secure random bytes; modulo bias is negligible for 36-char alphabet
+  const bytes = randomBytes(6);
+  const suffix = Array.from(bytes, (b) => chars[b % chars.length]).join('');
   return `LINK-${suffix}`;
 }
 

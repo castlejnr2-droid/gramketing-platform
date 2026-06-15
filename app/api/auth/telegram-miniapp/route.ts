@@ -1,23 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { signJwt } from '@/lib/auth';
+import { validateTelegramInitData, extractTelegramUserId } from '@/lib/telegram';
 
 /**
- * Called by the Mini App on load with the Telegram user ID from initDataUnsafe.
- * If a user has already linked their account via the LINK-XXXXXX flow
- * (User.telegramChatId is set), this confirms the pairing is live AND issues
- * a JWT cookie so the user can join pools and submit posts without reconnecting
- * their wallet manually every session.
+ * Called by the Mini App on load with the raw Telegram WebApp.initData string.
+ * Validates the HMAC-SHA256 signature per the official Telegram spec before
+ * trusting any identity claim. If a user has already linked their account via
+ * the LINK-XXXXXX flow (User.telegramChatId is set), issues a JWT cookie so
+ * the user can join pools and submit posts without reconnecting TonConnect.
  */
 export async function POST(req: NextRequest) {
   try {
-    const { telegramUserId } = await req.json();
+    const body = await req.json();
+    const initData: unknown = body.initData;
+
+    if (!initData || typeof initData !== 'string') {
+      return NextResponse.json(
+        { linked: false, error: 'initData string required' },
+        { status: 400 },
+      );
+    }
+
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      return NextResponse.json(
+        { linked: false, error: 'Bot not configured' },
+        { status: 500 },
+      );
+    }
+
+    // Validate HMAC and auth_date freshness — returns null on any failure
+    const params = validateTelegramInitData(initData, botToken);
+    if (!params) {
+      return NextResponse.json(
+        { linked: false, error: 'Invalid or expired initData' },
+        { status: 401 },
+      );
+    }
+
+    // Extract user id from the validated (server-side verified) params
+    const telegramUserId = extractTelegramUserId(params);
     if (!telegramUserId) {
-      return NextResponse.json({ linked: false });
+      return NextResponse.json(
+        { linked: false, error: 'No user in initData' },
+        { status: 400 },
+      );
     }
 
     const user = await prisma.user.findFirst({
-      where: { telegramChatId: String(telegramUserId) },
+      where: { telegramChatId: telegramUserId },
       select: { walletAddress: true, username: true, telegramHandle: true },
     });
 
@@ -37,15 +69,15 @@ export async function POST(req: NextRequest) {
 
     response.cookies.set('gramketing_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure:   process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/',
+      maxAge:   7 * 24 * 60 * 60, // 7 days
+      path:     '/',
     });
 
     return response;
   } catch (err) {
     console.error('POST /api/auth/telegram-miniapp error:', err);
-    return NextResponse.json({ linked: false });
+    return NextResponse.json({ linked: false }, { status: 500 });
   }
 }

@@ -111,3 +111,86 @@ export function extractTelegramChannel(url: string): string | null {
   const match = url.trim().match(/t\.me\/([a-zA-Z][a-zA-Z0-9_]*)/);
   return match ? match[1].toLowerCase() : null;
 }
+
+// ── Mini App initData validation ──────────────────────────────────────────────
+// Spec: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+
+import { createHmac, timingSafeEqual } from 'crypto';
+
+const INIT_DATA_TTL_SECONDS = 3600; // 1 hour
+
+/**
+ * Validates Telegram Mini App initData per the official spec.
+ *
+ * Steps (exact order from Telegram docs):
+ *   1. secret_key        = HMAC-SHA256(key="WebAppData", data=botToken)
+ *   2. data_check_string = URL-decoded key=value pairs (excluding "hash"),
+ *                          sorted alphabetically by key, joined with "\n"
+ *   3. computed_hash     = HMAC-SHA256(key=secret_key, data=data_check_string) → hex
+ *   4. constant-time compare computed_hash vs provided hash
+ *   5. reject if auth_date older than INIT_DATA_TTL_SECONDS
+ *
+ * Returns all parsed params as a plain object on success, null on any failure.
+ */
+export function validateTelegramInitData(
+  initData: string,
+  botToken: string,
+): Record<string, string> | null {
+  try {
+    const params = new URLSearchParams(initData);
+
+    const providedHash = params.get('hash');
+    if (!providedHash) return null;
+
+    // Build sorted data_check_string (all pairs except hash)
+    const pairs: string[] = [];
+    for (const [key, value] of params.entries()) {
+      if (key !== 'hash') pairs.push(`${key}=${value}`);
+    }
+    pairs.sort();
+    const dataCheckString = pairs.join('\n');
+
+    // Step 1: secret_key = HMAC-SHA256(key="WebAppData", data=botToken)
+    const secretKey = createHmac('sha256', 'WebAppData').update(botToken).digest();
+
+    // Step 2: computed hash
+    const computedHashBuf = createHmac('sha256', secretKey).update(dataCheckString).digest();
+
+    // Step 3: constant-time compare
+    const providedHashBuf = Buffer.from(providedHash, 'hex');
+    if (
+      computedHashBuf.length !== providedHashBuf.length ||
+      !timingSafeEqual(computedHashBuf, providedHashBuf)
+    ) {
+      return null;
+    }
+
+    // Step 4: auth_date freshness
+    const authDate = Number(params.get('auth_date') ?? '0');
+    const now = Math.floor(Date.now() / 1000);
+    if (!authDate || now - authDate > INIT_DATA_TTL_SECONDS) {
+      return null;
+    }
+
+    const result: Record<string, string> = {};
+    for (const [key, value] of params.entries()) {
+      result[key] = value;
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extracts the Telegram user ID string from a validated initData param map.
+ * The 'user' field is a JSON-encoded object: { "id": 123, "first_name": "..." }
+ */
+export function extractTelegramUserId(params: Record<string, string>): string | null {
+  try {
+    const userObj = JSON.parse(params['user'] ?? '');
+    return userObj?.id != null ? String(userObj.id) : null;
+  } catch {
+    return null;
+  }
+}

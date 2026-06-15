@@ -57,6 +57,14 @@ const WELCOME_TEXT =
   `/status - see your active pools`;
 
 export async function POST(req: NextRequest) {
+  // ── Authenticate webhook request ────────────────────────────────────────
+  // Telegram sends X-Telegram-Bot-Api-Secret-Token on every update when a
+  // secret_token was supplied to setWebhook. Reject anything without it.
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!webhookSecret || req.headers.get('x-telegram-bot-api-secret-token') !== webhookSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
 

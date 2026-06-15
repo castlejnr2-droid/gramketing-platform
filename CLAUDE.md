@@ -34,13 +34,13 @@ Ground rules:
 
 Status legend: [ ] TODO  ·  [~] IN PROGRESS (awaiting user validation)  ·  [x] VERIFIED (user-approved)
 
-1. [~] Real TonProof signature verification — CRITICAL
+1. [x] Real TonProof signature verification — CRITICAL
    Files: lib/tonConnect.ts, app/api/auth/verify/route.ts, client connect flow, payload nonce
    Problem: verifyTonWalletSignature is a stub returning true for any non-empty input — total auth bypass.
    Fix: real ton_proof Ed25519 verification (domain + timestamp + single-use payload nonce + key/address binding); client sends a genuine ton_proof.
    Changed: lib/tonConnect.ts (rewritten), app/api/auth/verify/route.ts (new proof body), app/api/auth/challenge/route.ts (new), prisma/schema.prisma (TonProofChallenge model), components/Providers.tsx (real ton_proof flow), lib/__tests__/tonConnect.test.ts (9 unit tests)
-   Hotfix (2026-06-15): aligned canonical host to www.gramketing.com — manifest url+iconUrl updated, manifestUrl in Providers.tsx updated, TON_PROOF_DOMAIN set to www.gramketing.com in Vercel Production. Apex gramketing.com already 308-redirects to www (confirmed). icon.png absent — using gramketing-logo.png for iconUrl (user to confirm it is square).
-   Verified: 9/9 unit tests pass; tsc --noEmit clean; old bypass body returns 400 (missing fields); DB migration applied; domain hotfix pending deploy + user approval
+   Hotfix (2026-06-15) RESOLVED: canonical host aligned to www.gramketing.com — manifest url+iconUrl, manifestUrl in Providers.tsx, TON_PROOF_DOMAIN all set to www.gramketing.com. Apex 308-redirects to www. Deployed commit 692c019.
+   Verified: 9/9 unit tests pass; tsc --noEmit clean; old bypass body returns 400 (missing fields); DB migration applied; real-wallet login on prod (www.gramketing.com) works, no phishing, ton_proof verified end-to-end
    Date: 2026-06-15
 
 2. [ ] Telegram identity chain: Mini App auth + webhook — CRITICAL
@@ -90,6 +90,6 @@ Cleared (no action): config tier (all required env vars present/scoped); contrac
 Operational (not code): single immutable admin key, no rotation — treat ADMIN_MNEMONIC as hardware-wallet/secrets-manager grade; AdminRescue + SetJettonWallet widen blast radius if it leaks.
 
 Change log:
-- (append: date — item # — short note, per completed fix)
+- 2026-06-15 — Fix #1 — real TonProof Ed25519 verification + single-use nonce; domain hotfix to www.gramketing.com; prod login verified
 
 ================= END SECURITY FIX TRACKER =================

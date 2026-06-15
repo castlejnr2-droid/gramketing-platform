@@ -10,6 +10,7 @@ declare global {
       WebApp?: {
         ready: () => void;
         expand: () => void;
+        initData: string;
         initDataUnsafe?: {
           user?: { id: number; first_name?: string; username?: string };
         };
@@ -39,13 +40,12 @@ export function MiniAppShell({ children }: { children: React.ReactNode }) {
     // Auto-link if the Telegram user has already done the LINK-XXXXXX flow.
     // If linked, the server issues a JWT cookie so the user has a session
     // without needing to manually reconnect TonConnect.
-    const tgUser = tg.initDataUnsafe?.user;
-    if (tgUser?.id) {
+    if (tg.initData) {
       fetch('/api/auth/telegram-miniapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ telegramUserId: String(tgUser.id) }),
+        body: JSON.stringify({ initData: tg.initData }),
       })
         .then((r) => r.json())
         .then((data: { linked: boolean; walletAddress?: string }) => {
