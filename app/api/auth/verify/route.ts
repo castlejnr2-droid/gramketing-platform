@@ -1,57 +1,97 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Address } from '@ton/core';
 import { prisma } from '@/lib/prisma';
 import { signJwt } from '@/lib/auth';
-import { verifyTonWalletSignature } from '@/lib/tonConnect';
+import { verifyTonProof, TonProofAccount, TonProofData } from '@/lib/tonConnect';
+
+// The expected domain must match what the wallet signed.
+// Set TON_PROOF_DOMAIN in Vercel env to match your production hostname.
+// Defaults to the current Vercel deployment domain.
+const EXPECTED_DOMAIN =
+  process.env.TON_PROOF_DOMAIN ?? 'gramketing-platform.vercel.app';
 
 export async function POST(req: NextRequest) {
   try {
-    const { walletAddress, signature, message, telegramUserId } = await req.json();
+    const body = await req.json();
 
-    if (!walletAddress || !signature || !message) {
+    const account: TonProofAccount | undefined = body.account;
+    const proof:   TonProofData    | undefined = body.proof;
+    const telegramUserId: string | number | undefined = body.telegramUserId;
+
+    // Validate required proof fields are present
+    if (
+      !account?.address ||
+      !account?.walletStateInit ||
+      !account?.publicKey ||
+      !proof?.timestamp ||
+      !proof?.domain?.value ||
+      !proof?.payload ||
+      !proof?.signature
+    ) {
       return NextResponse.json(
-        { error: 'Missing walletAddress, signature, or message' },
-        { status: 400 }
+        { error: 'Missing or incomplete proof fields. Expected: account.{address,walletStateInit,publicKey} + proof.{timestamp,domain,payload,signature}' },
+        { status: 400 },
       );
     }
 
-    // Verify TON wallet signature
-    const valid = verifyTonWalletSignature(walletAddress, signature, message);
+    // Consume the challenge nonce — single-use, must exist and not be expired
+    const challenge = await prisma.tonProofChallenge.findUnique({
+      where: { payload: proof.payload },
+    });
+
+    if (!challenge || challenge.used || challenge.expiresAt < new Date()) {
+      return NextResponse.json(
+        { error: 'Invalid or expired challenge payload' },
+        { status: 401 },
+      );
+    }
+
+    // Mark as used immediately before verification to prevent race-condition reuse
+    await prisma.tonProofChallenge.update({
+      where: { payload: proof.payload },
+      data:  { used: true },
+    });
+
+    // Verify the ton_proof cryptographically
+    const valid = await verifyTonProof(account, proof, EXPECTED_DOMAIN);
     if (!valid) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
+    // Derive canonical wallet address (raw 0:hash format, consistent with DB)
+    const walletAddress = Address.parse(account.address).toString();
+
     // Find or create user
     const user = await prisma.user.upsert({
-      where: { walletAddress },
+      where:  { walletAddress },
       update: {},
       create: { walletAddress },
     });
 
-    // If a Telegram user ID was supplied (miniapp context) and not yet saved, persist it.
-    // Only update if the field is currently empty to avoid overwriting a verified link.
+    // Persist Telegram user ID if supplied from Mini App context and not yet saved.
+    // Only write if the field is currently empty to avoid overwriting a verified link.
     if (telegramUserId && !user.telegramChatId) {
       await prisma.user.update({
         where: { walletAddress },
-        data: { telegramChatId: String(telegramUserId) },
+        data:  { telegramChatId: String(telegramUserId) },
       });
     }
 
-    // Sign JWT
+    // Sign JWT and set httpOnly cookie
     const token = await signJwt({ walletAddress });
 
-    // Set httpOnly cookie
     const response = NextResponse.json({
-      success: true,
+      success:       true,
       walletAddress,
-      userId: user.id,
+      userId:        user.id,
     });
 
     response.cookies.set('gramketing_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure:   process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/',
+      maxAge:   7 * 24 * 60 * 60, // 7 days
+      path:     '/',
     });
 
     return response;

@@ -227,6 +227,18 @@ model AdminLog {
   createdAt DateTime @default(now())
 }
 
+/// Single-use nonces for TON Connect ton_proof authentication.
+/// Created by GET /api/auth/challenge, consumed by POST /api/auth/verify.
+model TonProofChallenge {
+  id        String   @id @default(cuid())
+  payload   String   @unique            // 64-char hex nonce
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
 /// Cache for Twitter API v2 tweet public_metrics responses.
 /// Each row stores metrics for one tweet ID for one UTC calendar day.
 /// The scraper checks this before calling the API to avoid duplicate charges
