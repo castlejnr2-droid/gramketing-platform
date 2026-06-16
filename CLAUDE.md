@@ -87,11 +87,16 @@ Status legend: [ ] TODO  ·  [~] IN PROGRESS (awaiting user validation)  ·  [x]
    Verified: 31/31 tests; tsc --noEmit clean; prod dup check 0 rows; prisma generate clean
    Date: 2026-06-15
 
-7. [ ] Production scraper / scheduling — CRITICAL
+7. [~] Production scraper / scheduling — CRITICAL
    Files: jobs/scraper.ts, lib/pool-scraper.ts, app/api/admin/rescrape/route.ts, infra
    Problem: no prod scheduler (jobs/scraper.ts never runs on Vercel) → metrics/points frozen at submission, payouts on stale data, pools never auto-end; synchronous rescrape times out → partial DB writes.
    Fix: run scraper as a Railway worker/cron on the 30-min cycle vs the same Neon DB; admin rescrape hands off to worker; wrap/chunk writes so a timeout can't leave partial state.
-   Changed: __  Verified: __  Date: __
+   Phase A: worker prepared, not live; awaiting cutover.
+   Changed (Phase A): lib/pool-scraper.ts (PENDING→ACTIVE backstop in scrapeAllActivePools; per-participant prisma.$transaction in Phase 3 referralBoost writes + Phase 5 PoolPost+PoolParticipant writes), railway.json (new; NIXPACKS build + ts-node start command), Railway project "gramketing-scraper" service "scraper" created with env vars set.
+   Railway: project gramketing-scraper / service scraper / env vars: DATABASE_URL (prod Neon), TON_ENDPOINT, TWITTER_BEARER_TOKEN, TELEGRAM_BOT_TOKEN, TREASURY_WALLET_ADDRESS, MGRAM_JETTON_MASTER_ADDRESS. TON_FALLBACK_ENDPOINT empty locally (Fix #8 to address).
+   DB host (masked): ep-billowing-recipe-aqr7oomu.c-8.us-east-1.aws.neon.tech (same as Vercel prod).
+   CONFIRM NEEDED: TON_ENDPOINT set to https://tonapi.io (inferred from /v2/jetton/… URL pattern; local .env has toncenter JSON-RPC fallback) — user must confirm this is the correct prod TonAPI endpoint.
+   Verified: __  Date: __
 
 8. [ ] Hardening (after criticals) — LOW
    - Add explicit OAuth state nonce to link-x / twitter/callback.
