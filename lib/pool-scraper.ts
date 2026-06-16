@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { prisma } from '@/lib/prisma';
-import { calculateTotalPoints, CampaignType } from '@/lib/points';
+import { calculateTotalPoints, CampaignType, REFERRAL_BASE_BONUS } from '@/lib/points';
 import { fetchTelegramPostMetrics } from '@/lib/telegram';
 import { logAdminEvent } from '@/lib/admin-log';
 import { fetchTweetMetrics, extractTweetId } from '@/lib/twitter-api';
@@ -131,8 +131,25 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
     holderBoostMap.set(participant.userId, boost);
   }
 
-  // ── Phase 3: Update referral holdings & tally referred totals ──────────────
+  // ── Phase 3: Update referral holdings, qualify referrals, tally totals ───────
+  //
+  // A referral QUALIFIES (contributes to bonus points and the multiplier) only
+  // when BOTH conditions hold — re-evaluated every cycle so awards can be revoked:
+  //   (1) referred wallet holds >= pool's holder-boost minimum (tier1Threshold);
+  //       when tier1Threshold is unset (0), any positive holding (>= 1 token unit)
+  //       qualifies — avoids a trivially-true ">= 0" check on a BigInt.
+  //   (2) referred wallet has submitted >= 1 author-verified PoolPost in this pool.
+  //
+  // referralBonusPoints = qualifyingCount × 500  (RECOMPUTED, not incremented)
+  // referredTotal for multiplier = sum of holdings of qualifying referrals only.
+  //
+  // All referralBoost writes for a given referrer are grouped into a single
+  // Prisma transaction so a crash mid-participant leaves no partial state.
+  const minHolding = pool.tier1Threshold > 0n ? pool.tier1Threshold : 1n;
+
   const referredTotalMap = new Map<string, bigint>();
+  const referralBonusMap = new Map<string, number>(); // referrerId → bonus points this cycle
+
   for (const participant of pool.participants) {
     const referralBoosts = await prisma.referralBoost.findMany({
       where: { referrerId: participant.userId, poolId: pool.id },
@@ -140,18 +157,46 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
     });
 
     let referredTotal = 0n;
+    let qualifyingCount = 0;
+    // Collect all referralBoost writes for this participant before committing
+    const boostWrites: ReturnType<typeof prisma.referralBoost.update>[] = [];
+
     for (const boost of referralBoosts) {
       const holding = await checkTokenBalance(
         boost.referred.walletAddress,
-        pool.jettonMasterAddress
+        pool.jettonMasterAddress,
       );
-      await prisma.referralBoost.update({
-        where: { id: boost.id },
-        data: { referredHolding: holding, updatedAt: now },
+
+      // Condition (2): referred has >= 1 PoolPost in this pool
+      const postCount = await prisma.poolPost.count({
+        where: {
+          poolId: pool.id,
+          participant: { userId: boost.referredUserId },
+        },
       });
-      if (holding > 0n) referredTotal += holding;
+
+      const qualifies = holding >= minHolding && postCount >= 1;
+
+      boostWrites.push(
+        prisma.referralBoost.update({
+          where: { id: boost.id },
+          data: { referredHolding: holding, updatedAt: now },
+        }),
+      );
+
+      if (qualifies) {
+        referredTotal += holding;
+        qualifyingCount++;
+      }
     }
+
+    // Commit all referralBoost updates for this participant atomically
+    if (boostWrites.length > 0) {
+      await prisma.$transaction(boostWrites);
+    }
+
     referredTotalMap.set(participant.userId, referredTotal);
+    referralBonusMap.set(participant.userId, qualifyingCount * REFERRAL_BASE_BONUS);
   }
 
   // ── Phase 4: Pool-wide referral boost (1.0x – 2.0x proportional) ───────────
@@ -219,6 +264,11 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
 
     const posts = postsByUser.get(userId) ?? [];
 
+    // Collect all DB writes for this participant before committing.
+    // Executed atomically at the end of the participant loop so a timeout or
+    // crash cannot leave this participant in a partially-updated state.
+    const participantWrites: ReturnType<typeof prisma.poolPost.update | typeof prisma.poolParticipant.update>[] = [];
+
     for (const post of posts) {
       if (post.platform === 'X') {
         const tweetId = tweetIdByPostId.get(post.id);
@@ -226,10 +276,12 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
 
         if (!result) {
           // Could not extract a tweet ID from the URL - malformed link
-          await prisma.poolPost.update({
-            where: { id: post.id },
-            data: { scrapeError: 'UNKNOWN: could not parse tweet ID from URL', lastScrapedAt: now },
-          });
+          participantWrites.push(
+            prisma.poolPost.update({
+              where: { id: post.id },
+              data: { scrapeError: 'UNKNOWN: could not parse tweet ID from URL', lastScrapedAt: now },
+            }),
+          );
           errors.push(`Cannot parse tweet ID from: ${post.postLink}`);
           xPoints += post.points;
           continue;
@@ -237,13 +289,15 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
 
         if (!result.ok && result.error === 'TOKEN_EXPIRED') {
           // Do not overwrite metrics; mark scrape error and keep existing points
-          await prisma.poolPost.update({
-            where: { id: post.id },
-            data: {
-              scrapeError: 'TOKEN_EXPIRED: Twitter bearer token rejected (401/403)',
-              lastScrapedAt: now,
-            },
-          });
+          participantWrites.push(
+            prisma.poolPost.update({
+              where: { id: post.id },
+              data: {
+                scrapeError: 'TOKEN_EXPIRED: Twitter bearer token rejected (401/403)',
+                lastScrapedAt: now,
+              },
+            }),
+          );
           errors.push(`X token expired for post ${post.id} (${post.postLink})`);
           xTokenExpired = true;
           xPoints += post.points;
@@ -251,10 +305,12 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
         }
 
         if (!result.ok && result.error === 'NOT_FOUND') {
-          await prisma.poolPost.update({
-            where: { id: post.id },
-            data: { scrapeError: 'NOT_FOUND: post deleted or unavailable', lastScrapedAt: now },
-          });
+          participantWrites.push(
+            prisma.poolPost.update({
+              where: { id: post.id },
+              data: { scrapeError: 'NOT_FOUND: post deleted or unavailable', lastScrapedAt: now },
+            }),
+          );
           errors.push(`X post not found: ${post.postLink}`);
           xPoints += post.points;
           continue;
@@ -262,10 +318,12 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
 
         if (!result.ok) {
           // RATE_LIMITED or UNKNOWN - keep existing metrics
-          await prisma.poolPost.update({
-            where: { id: post.id },
-            data: { scrapeError: `${result.error}: ${post.postLink}`, lastScrapedAt: now },
-          });
+          participantWrites.push(
+            prisma.poolPost.update({
+              where: { id: post.id },
+              data: { scrapeError: `${result.error}: ${post.postLink}`, lastScrapedAt: now },
+            }),
+          );
           errors.push(`X scrape error (${result.error}) for post ${post.id}`);
           xPoints += post.points;
           continue;
@@ -277,55 +335,75 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
             ? result.views * 0.8 + result.likes * 0.1 + result.retweets * 0.1
             : post.points; // keep last valid score if below minimum view threshold
 
-        await prisma.poolPost.update({
-          where: { id: post.id },
-          data: {
-            views: result.views,
-            likes: result.likes,
-            reposts: result.retweets,
-            points: pts,
-            lastScrapedAt: now,
-            scrapeError: null,
-          },
-        });
+        participantWrites.push(
+          prisma.poolPost.update({
+            where: { id: post.id },
+            data: {
+              views: result.views,
+              likes: result.likes,
+              reposts: result.retweets,
+              points: pts,
+              lastScrapedAt: now,
+              scrapeError: null,
+            },
+          }),
+        );
         xPoints += pts;
         scraped++;
       } else {
-        // TELEGRAM - still fetched individually (no batch endpoint available)
+        // TELEGRAM - fetched individually (no batch endpoint available);
+        // metrics call is outside the transaction but the write is collected.
         try {
           const { views, reactions } = await fetchTelegramPostMetrics(post.postLink);
           const pts = views * 0.8 + reactions * 0.2;
-          await prisma.poolPost.update({
-            where: { id: post.id },
-            data: { views, reactions, points: pts, lastScrapedAt: now, scrapeError: null },
-          });
+          participantWrites.push(
+            prisma.poolPost.update({
+              where: { id: post.id },
+              data: { views, reactions, points: pts, lastScrapedAt: now, scrapeError: null },
+            }),
+          );
           telegramPoints += pts;
           scraped++;
         } catch (e) {
           const errStr = `Telegram scrape error for post ${post.id}: ${e}`;
           errors.push(errStr);
           telegramPoints += post.points;
-          await prisma.poolPost.update({
-            where: { id: post.id },
-            data: { scrapeError: errStr, lastScrapedAt: now },
-          });
+          participantWrites.push(
+            prisma.poolPost.update({
+              where: { id: post.id },
+              data: { scrapeError: errStr, lastScrapedAt: now },
+            }),
+          );
         }
       }
     }
+
+    // referralBonusPoints is RECOMPUTED this cycle (not read from DB) so that
+    // a referral which no longer qualifies (wallet sold, post removed) is revoked.
+    const referralBonusPoints = referralBonusMap.get(userId) ?? 0;
 
     const totalPoints = calculateTotalPoints({
       xPoints,
       telegramPoints,
       holderBoost,
       referralMultiplier,
-      referralBonusPoints: participant.referralBonusPoints,
+      referralBonusPoints,
       campaignType,
     });
 
-    await prisma.poolParticipant.update({
-      where: { id: participant.id },
-      data: { xPoints, telegramPoints, holderBoost, referralMultiplier, totalPoints },
-    });
+    participantWrites.push(
+      prisma.poolParticipant.update({
+        where: { id: participant.id },
+        data: { xPoints, telegramPoints, holderBoost, referralMultiplier, referralBonusPoints, totalPoints },
+      }),
+    );
+
+    // Commit all writes for this participant in one atomic transaction.
+    // If the process is killed after the transaction commits, the next cycle
+    // resumes from the next participant with no partial state.
+    if (participantWrites.length > 0) {
+      await prisma.$transaction(participantWrites);
+    }
   }
 
   await saveLeaderboardSnapshot(pool.id);
@@ -350,6 +428,25 @@ export async function scrapeAllActivePools() {
   const cycleStart = new Date();
   console.log(`[${cycleStart.toISOString()}] Starting scrape cycle...`);
   const now = cycleStart;
+
+  // ── PENDING → ACTIVE backstop ─────────────────────────────────────────────
+  // If the pool creator deposited the reward but never re-hit deposit-status
+  // (or the API call failed), the pool stays stuck as PENDING forever.
+  // Each cycle we check: if on-chain balance >= totalReward, flip to ACTIVE.
+  const pendingPools = await prisma.pool.findMany({
+    where: { status: 'PENDING', contractAddress: { not: null } },
+  });
+  for (const pool of pendingPools) {
+    try {
+      const balance = await checkTokenBalance(pool.contractAddress!, pool.jettonMasterAddress);
+      if (balance >= BigInt(pool.totalReward)) {
+        console.log(`[backstop] Pool ${pool.id} is funded — flipping PENDING → ACTIVE`);
+        await prisma.pool.update({ where: { id: pool.id }, data: { status: 'ACTIVE' } });
+      }
+    } catch (e) {
+      console.error(`[backstop] Failed to check balance for pending pool ${pool.id}:`, e);
+    }
+  }
 
   // End expired pools
   const expiredPools = await prisma.pool.findMany({

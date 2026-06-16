@@ -43,35 +43,49 @@ Status legend: [ ] TODO  ·  [~] IN PROGRESS (awaiting user validation)  ·  [x]
    Verified: 9/9 unit tests pass; tsc --noEmit clean; old bypass body returns 400 (missing fields); DB migration applied; real-wallet login on prod (www.gramketing.com) works, no phishing, ton_proof verified end-to-end
    Date: 2026-06-15
 
-2. [ ] Telegram identity chain: Mini App auth + webhook — CRITICAL
+2. [x] Telegram identity chain: Mini App auth + webhook — CRITICAL
    Files: app/api/auth/telegram-miniapp/route.ts, app/api/telegram-bot/webhook/route.ts, app/api/telegram-bot/setup/route.ts, LINK-code gen
    Problem: Mini App mints JWT from raw telegramUserId (no initData validation); webhook unauthenticated (no secret_token) → forged updates write telegramChatId, leak /status, relay bot messages; LINK codes use Math.random().
    Fix: validate initData HMAC; register webhook with secret_token + validate header; crypto-secure LINK codes.
-   Changed: __  Verified: __  Date: __
+   Changed: lib/telegram.ts (+validateTelegramInitData +extractTelegramUserId), app/api/auth/telegram-miniapp/route.ts (require initData, HMAC validate, stale check), app/api/telegram-bot/webhook/route.ts (X-Telegram-Bot-Api-Secret-Token guard), app/api/telegram-bot/setup/route.ts (secret_token in setWebhook + URL fix to www.gramketing.com), app/api/auth/link-telegram-init/route.ts (randomBytes CSPRNG), components/MiniAppShell.tsx (send tg.initData not raw id), lib/__tests__/telegram.test.ts (8 unit tests)
+   Verified: 8/8 unit tests pass; tsc --noEmit clean; forged webhook (no header) → 401; forged webhook (wrong secret) → 401; raw telegramUserId body → 400; deployed commit 8b648cd; bot replies to real Telegram messages on prod; initData HMAC validated end-to-end
+   Date: 2026-06-15
 
-3. [ ] Distribution basis-point rounding — CRITICAL
+3. [x] Distribution basis-point rounding — CRITICAL
    Files: lib/distribution.ts
    Problem: independent Math.round → bps don't sum to 10000 → contract over/under-sends (SendIgnoreErrors): partial/failed distribution, pool locks. Contract is immutable; fix off-chain.
    Fix: largest-remainder method so bps sum to exactly 10000; add test.
-   Changed: __  Verified: __  Date: __
+   Changed: lib/distribution.ts (largest-remainder bps, tokenAmount derived from corrected bps), lib/__tests__/distribution.test.ts (new, 9 cases)
+   Zero-points guard: line 24 filters p.totalPoints > 0 so eligible is all-positive; line 28 returns [] if eligible is empty — totalPoints can never be 0 when arithmetic runs; no divide-by-zero possible.
+   Verified: 37/37 tests pass (sum===10000 across all cases, no negatives, single winner===10000, 3-equal no longer 9999); tsc --noEmit clean; zero-points guarded (two-layer: filter + early return)
+   Date: 2026-06-15
 
-4. [ ] Tweet-ownership spoofing + dedup — CRITICAL
+4. [x] Tweet-ownership spoofing + dedup — CRITICAL
    Files: app/api/submissions/route.ts, lib/twitter-api.ts, PoolPost schema
    Problem: no author check (author_id never fetched) → claim anyone's tweet; dedup is per-participant only.
    Fix: fetch author_id, reject if author != user's linked xAccountId; global per-pool uniqueness on postLink.
-   Changed: __  Verified: __  Date: __
+   xAccountId confirmed numeric: Twitter OAuth 1.0a user_id from callback/route.ts line 143.
+   Changed: lib/twitter-api.ts (author_id folded into batch call via tweet.fields=public_metrics,author_id; TweetMetrics.authorId: string|null; fetchTweetAuthorId removed), app/api/submissions/route.ts (metrics+author in ONE call; fail-CLOSED: null/unconfirmable authorId → 503, mismatch → 403; per-participant dedup → pool-wide findFirst on poolId+postLink; P2002 catch at create), prisma/schema.prisma (@@unique([poolId, postLink]) on PoolPost; authorId String? on TweetMetricsCache), lib/__tests__/submissions.test.ts (12 tests; null authorId → reject not pass), scripts/_check-poolpost-dupes.ts (new read-only dedup checker)
+   Verified: fail-closed author match (numeric user_id == author_id); pool-wide @@unique([poolId,postLink]) + P2002 safety net; prod dup check 0 rows; 12/12 tests; tsc clean.
+   DEPLOY NOTE: apply the PoolPost @@unique + TweetMetricsCache.authorId migration TOGETHER with the code push — do not apply the unique constraint while the old per-participant code is still live (it could trip a P2002 the old code doesn't catch).
+   Date: 2026-06-15
 
-5. [ ] Referral sybil farming — CRITICAL
+5. [x] Referral sybil farming — CRITICAL
    Files: app/api/referral/track/route.ts, lib/pool-scraper.ts, lib/points.ts
    Problem: only exact-wallet self-referral blocked; no caps; 1-token-unit qualifies for +500; multiplier relative to pool max → sybil wallets dominate payout.
-   Fix (has product decisions): cap referrals + bonus points; meaningful holding threshold / require real participation; rate-limit; revisit multiplier formula.
-   Changed: __  Verified: __  Date: __
+   Fix: no caps (design decision); referral qualifies only when referred holds >= pool.tier1Threshold (effective min=1 when unset) AND has >= 1 PoolPost in pool — re-evaluated every scrape cycle (revocable). bonus + multiplier scraper-computed, not awarded at track time.
+   Changed: app/api/referral/track/route.ts (removed immediate +500 award, removed checkTokenBalance call, removed axios+REFERRAL_BASE_BONUS imports; referralBoost.referredHolding starts at 0n, scraper populates), lib/pool-scraper.ts (Phase 3 rewritten: minHolding=tier1Threshold||1n; per-referral postCount query; qualifyingCount*500=bonusPoints RECOMPUTED; only qualifying holdings counted toward referredTotal; REFERRAL_BASE_BONUS imported; referralBonusPoints written in participant update each cycle), lib/points.ts (no change — calculateTotalPoints already correct), lib/__tests__/referral.test.ts (new, 33 tests)
+   Verified: 33/33 tests; tsc --noEmit clean; holding<min→0; holding>=min no post→0; holding>=min+post→+500+multiplier; revocation on holding-drop→0 next cycle; revocation on post-deletion→0 next cycle; self-referral blocked; 20 qualifying referrals all count (no cap)
+   Needs user action: no migration needed (no schema changes). Deploy together with Fix #4 migration.
+   Date: 2026-06-16
 
-6. [ ] Deposit & access-fee integrity — HIGH
-   Files: app/api/pools/route.ts, app/api/fee-tx/route.ts, app/api/pools/[id]/join/route.ts, app/api/pools/[id]/deposit-status/route.ts
+6. [~] Deposit & access-fee integrity — HIGH
+   Files: app/api/pools/route.ts, app/api/pools/[id]/join/route.ts, app/api/pools/[id]/deposit-status/route.ts
    Problem: accessFeeTxHash only checked non-empty (free pool creation); pools go ACTIVE with client-supplied totalReward and no confirmed deposit; deposit-status unauthenticated + reports deposited:true on any balance>0.
-   Fix: verify fee tx on-chain before create; gate ACTIVE/join on confirmed deposit >= totalReward; authenticate/scope deposit-status and compare vs totalReward.
-   Changed: __  Verified: __  Date: __
+   Fix: verify fee tx on-chain via TonAPI before create; duplicate hash rejected (409); pool created PENDING not ACTIVE; deposit-status authed (owner-only) and flips PENDING→ACTIVE when balance>=totalReward; join route returns distinct error for PENDING pools.
+   Changed: prisma/schema.prisma (PENDING added to PoolStatus enum; accessFeeTxHash @unique on Pool), lib/ton-verify.ts (new: checkFeeTxData pure fn + verifyAccessFeeTx async; TON checks destination+value; MGRAM checks success+out_msgs), app/api/pools/route.ts (import verifyAccessFeeTx; PENDING status filter in GET; duplicate-hash findUnique pre-check + 409; fee tx verification before create; pool created with status PENDING; P2002 catch at create), app/api/pools/[id]/deposit-status/route.ts (getAuthWallet + owner 401/403 guard; funded=balance>=totalReward; PENDING→ACTIVE flip on funded; removed old deposited>0 logic), app/api/pools/[id]/join/route.ts (distinct 400 error message for PENDING vs other non-ACTIVE statuses), scripts/_check-fee-tx-dupes.ts (new read-only dedup checker; ran: 0 dupes found), lib/__tests__/deposit.test.ts (new: 31 tests)
+   Verified: 31/31 tests; tsc --noEmit clean; prod dup check 0 rows; prisma generate clean
+   Date: 2026-06-15
 
 7. [ ] Production scraper / scheduling — CRITICAL
    Files: jobs/scraper.ts, lib/pool-scraper.ts, app/api/admin/rescrape/route.ts, infra
@@ -91,5 +105,9 @@ Operational (not code): single immutable admin key, no rotation — treat ADMIN_
 
 Change log:
 - 2026-06-15 — Fix #1 — real TonProof Ed25519 verification + single-use nonce; domain hotfix to www.gramketing.com; prod login verified
+- 2026-06-15 — Fix #2 — Telegram identity chain: initData HMAC validation, webhook secret_token guard, CSPRNG LINK codes; bot replies to real messages on prod verified
+- 2026-06-15 — Fix #3 — distribution.ts: largest-remainder bps (sum exactly 10000); 37/37 tests; zero-points guard confirmed (filter + early return)
+- 2026-06-15 — Fix #4 — tweet authorship (author_id in batch metrics call, fail-closed) + pool-wide dedup (@@unique poolId+postLink + P2002 net); 12/12 tests; prod dup check: 0 dupes
+- 2026-06-16 — Fix #5 [~] — referral sybil: bonus now scraper-computed+revocable (holding>=tier1Threshold AND >=1 post); no immediate award at track time; 33/33 tests
 
 ================= END SECURITY FIX TRACKER =================
