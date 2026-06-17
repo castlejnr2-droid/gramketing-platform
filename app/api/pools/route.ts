@@ -5,6 +5,7 @@ import { notifyNewPool } from '@/lib/telegram-notify';
 import { deployAndInitPool } from '@/lib/gramketing-pool-contract';
 import { calculateFeeInTokens } from '@/lib/prices';
 import { logAdminEvent } from '@/lib/admin-log';
+import { verifyAccessFeeTx } from '@/lib/ton-verify';
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,8 +17,30 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    if (status && ['ACTIVE', 'ENDED', 'DISTRIBUTED'].includes(status)) {
+    // PENDING pools are private (reward not yet deposited) and must never appear in
+    // public search results. Fetching PENDING requires authentication; the project
+    // owner constraint is always derived from the session wallet — the ownerAddress
+    // query param is intentionally IGNORED for PENDING so it cannot be spoofed.
+    if (status === 'PENDING') {
+      const authWallet = await getAuthWallet(req);
+      if (!authWallet) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      // Scope to the authenticated owner's own PENDING pools only.
+      where.status = 'PENDING';
+      where.project = { ownerWalletAddress: authWallet };
+      // ownerAddress query param is NOT applied here — session wallet is authoritative.
+    } else if (status && ['ACTIVE', 'ENDED', 'DISTRIBUTED'].includes(status)) {
       where.status = status;
+      if (ownerAddress) {
+        where.project = { ownerWalletAddress: ownerAddress };
+      }
+    } else {
+      // No status filter → default public listing excludes PENDING.
+      where.status = { not: 'PENDING' };
+      if (ownerAddress) {
+        where.project = { ownerWalletAddress: ownerAddress };
+      }
     }
 
     if (search) {
@@ -25,10 +48,6 @@ export async function GET(req: NextRequest) {
         { project: { name: { contains: search, mode: 'insensitive' } } },
         { tokenSymbol: { contains: search, mode: 'insensitive' } },
       ];
-    }
-
-    if (ownerAddress) {
-      where.project = { ownerWalletAddress: ownerAddress };
     }
 
     const pools = await prisma.pool.findMany({
@@ -106,6 +125,34 @@ export async function POST(req: NextRequest) {
 
     const feeCurrency: 'TON' | 'MGRAM' = accessFeePaidIn === 'MGRAM' ? 'MGRAM' : 'TON';
 
+    // Reject if this tx hash was already used for another pool (replay / duplicate)
+    const existingByHash = await prisma.pool.findUnique({
+      where: { accessFeeTxHash },
+      select: { id: true },
+    });
+    if (existingByHash) {
+      return NextResponse.json(
+        { error: 'This transaction hash has already been used for another pool.' },
+        { status: 409 }
+      );
+    }
+
+    // Verify the access fee transaction on-chain before creating the pool.
+    // TON: verifies destination == ADMIN_WALLET_ADDRESS + value > 0.
+    // MGRAM: verifies jetton master == MGRAM_JETTON_MASTER_ADDRESS, recipient == TREASURY_WALLET_ADDRESS, amount > 0.
+    // Env vars are read inside verifyAccessFeeTx; it returns { ok: false } if any are missing.
+    const feeVerification = await verifyAccessFeeTx(
+      accessFeeTxHash,
+      feeCurrency,
+      1n, // require value > 0; exact USD amount is tracked via calculateFeeInTokens separately
+    );
+    if (!feeVerification.ok) {
+      return NextResponse.json(
+        { error: `Access fee transaction could not be verified: ${feeVerification.error}` },
+        { status: 400 }
+      );
+    }
+
     // Find or create project
     let project = await prisma.project.findFirst({
       where: {
@@ -130,33 +177,50 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
-    const pool = await prisma.pool.create({
-      data: {
-        projectId: project.id,
-        contractAddress: contractAddress || null,
-        totalReward: String(totalReward),
-        tokenSymbol,
-        jettonMasterAddress,
-        durationDays,
-        rewardSlots,
-        tier1Threshold: BigInt(tier1Threshold ?? 0),
-        tier2Threshold: BigInt(tier2Threshold ?? 0),
-        tier3Threshold: BigInt(tier3Threshold ?? 0),
-        accessFeePaidIn: feeCurrency,
-        accessFeeTxHash: accessFeeTxHash || null,
-        campaignType: campaignType ?? 'both',
-        xPostLink: xPostLink || null,
-        telegramPostLink: telegramPostLink || null,
-        xConfig: xConfig || null,
-        telegramConfig: telegramConfig || null,
-        startDate: now,
-        endDate,
-        status: 'ACTIVE',
-      },
-      include: {
-        project: true,
-      },
-    });
+    let pool;
+    try {
+      pool = await prisma.pool.create({
+        data: {
+          projectId: project.id,
+          contractAddress: contractAddress || null,
+          totalReward: String(totalReward),
+          tokenSymbol,
+          jettonMasterAddress,
+          durationDays,
+          rewardSlots,
+          tier1Threshold: BigInt(tier1Threshold ?? 0),
+          tier2Threshold: BigInt(tier2Threshold ?? 0),
+          tier3Threshold: BigInt(tier3Threshold ?? 0),
+          accessFeePaidIn: feeCurrency,
+          accessFeeTxHash: accessFeeTxHash || null,
+          campaignType: campaignType ?? 'both',
+          xPostLink: xPostLink || null,
+          telegramPostLink: telegramPostLink || null,
+          xConfig: xConfig || null,
+          telegramConfig: telegramConfig || null,
+          startDate: now,
+          endDate,
+          status: 'PENDING',
+        },
+        include: {
+          project: true,
+        },
+      });
+    } catch (createErr: unknown) {
+      // P2002 = unique constraint violation — race condition on accessFeeTxHash
+      if (
+        typeof createErr === 'object' &&
+        createErr !== null &&
+        'code' in createErr &&
+        (createErr as { code: string }).code === 'P2002'
+      ) {
+        return NextResponse.json(
+          { error: 'This transaction hash has already been used for another pool.' },
+          { status: 409 }
+        );
+      }
+      throw createErr;
+    }
 
     // ── Record platform revenue (fee payment) ─────────────────────────────────
     try {

@@ -35,6 +35,11 @@ message AdminRescue {
     destination: Address;
 }
 
+// Admin TON withdrawal: send all stranded TON directly to admin wallet
+message AdminWithdrawTon {
+    queryId: Int as uint64;
+}
+
 // TEP-74 standard jetton transfer opcode: 0x0f8a7ea5
 message(0x0f8a7ea5) JettonTransfer {
     queryId: Int as uint64;
@@ -304,6 +309,18 @@ contract GramketingPool with Deployable {
                 // Either discriminant bit (0 = inline) required by TEP-74 before payload
                 forwardPayload: beginCell().storeBit(false).endCell().asSlice()
             }.toCell()
+        });
+    }
+
+    // Withdraw all stranded TON directly to admin wallet (no jetton transfer involved).
+    // Use this to recover TON left in the contract after distribution is complete.
+    receive(msg: AdminWithdrawTon) {
+        require(sender() == self.admin, "Only admin can withdraw TON");
+        send(SendParameters{
+            to: self.admin,
+            value: 0,
+            bounce: false,
+            mode: SendRemainingBalance,
         });
     }
 

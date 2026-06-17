@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
-import { REFERRAL_BASE_BONUS } from '@/lib/points';
-import axios from 'axios';
 
 const REF_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -16,23 +14,6 @@ async function generateReferralCode(): Promise<string> {
     if (!existing) return code;
   }
   return Date.now().toString(36).toUpperCase().slice(-8).padStart(8, '0');
-}
-
-async function checkTokenBalance(
-  walletAddress: string,
-  jettonMasterAddress: string
-): Promise<bigint> {
-  try {
-    const res = await axios.get(
-      `${process.env.TON_ENDPOINT}/v2/jetton/${jettonMasterAddress}/wallets`,
-      { params: { owner_address: walletAddress, limit: 1 } }
-    );
-    const wallets = res.data?.jetton_wallets ?? [];
-    if (wallets.length === 0) return 0n;
-    return BigInt(wallets[0].balance ?? '0');
-  } catch {
-    return 0n;
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -115,41 +96,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Check if referred user holds the pool's project token
-    const holding = await checkTokenBalance(walletAddress, pool.jettonMasterAddress);
-    const holdsToken = holding > 0n;
-
-    // Create referral boost record
+    // Record the referral relationship. No points are awarded here — bonus
+    // points and the multiplier are computed by the scraper each cycle and
+    // can be revoked if the referred wallet drops below the holding minimum
+    // or removes their post. referredHolding starts at 0 and is updated each
+    // scrape cycle via checkTokenBalance in pool-scraper.ts.
     const referralBoost = await prisma.referralBoost.create({
       data: {
         referrerId: referrerParticipant.userId,
         referredUserId: referredUser.id,
         poolId,
-        referredHolding: holding,
+        referredHolding: 0n,
         boostMultiplier: 1.0, // scraper recalculates proportionally
       },
     });
 
-    // Only award bonus points if the referred user holds the pool token
-    if (holdsToken) {
-      const referrerPool = await prisma.poolParticipant.findUniqueOrThrow({
-        where: {
-          poolId_userId: { poolId, userId: referrerParticipant.userId },
-        },
-      });
-
-      await prisma.poolParticipant.update({
-        where: { id: referrerPool.id },
-        data: {
-          referralBonusPoints: { increment: REFERRAL_BASE_BONUS },
-        },
-      });
-    }
-
     return NextResponse.json({
       success: true,
       referralBoostId: referralBoost.id,
-      bonusAwarded: holdsToken,
     });
   } catch (err) {
     console.error('POST /api/referral/track error:', err);

@@ -21,3 +21,9 @@ Thumbs.db
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+.env*
+
+# Claude Code local settings
+.claude/

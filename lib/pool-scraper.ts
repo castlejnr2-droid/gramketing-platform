@@ -50,7 +50,7 @@ export async function checkTokenBalance(
 ): Promise<bigint> {
   try {
     const res = await axios.get(
-      `${process.env.TON_ENDPOINT}/v2/jetton/${jettonMasterAddress}/wallets`,
+      `${process.env.TONAPI_ENDPOINT ?? 'https://tonapi.io'}/v2/jetton/${jettonMasterAddress}/wallets`,
       { params: { owner_address: walletAddress, limit: 1 }, timeout: 8_000 }
     );
     const wallets = res.data?.jetton_wallets ?? [];

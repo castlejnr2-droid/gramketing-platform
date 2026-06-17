@@ -30,9 +30,29 @@ export async function calculateDistribution(poolId: string): Promise<Winner[]> {
   const totalPoints = eligible.reduce((sum, p) => sum + p.totalPoints, 0);
   const totalRewardBigInt = BigInt(pool.totalReward);
 
-  return eligible.map((p) => {
+  // Largest-remainder method: floors first, then distribute leftover bps
+  // one-at-a-time to winners with the largest fractional parts.
+  // This guarantees sum(shareBasisPoints) === 10000 exactly.
+  const exactShares = eligible.map((p) => (p.totalPoints / totalPoints) * 10000);
+  const floors = exactShares.map(Math.floor);
+  const remainders = exactShares.map((exact, i) => exact - floors[i]);
+
+  let leftover = 10000 - floors.reduce((a, b) => a + b, 0);
+
+  // Sort indices by remainder descending, stable (preserve original order on tie)
+  const order = remainders
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => b.r - a.r || a.i - b.i)
+    .map(({ i }) => i);
+
+  const bps = [...floors];
+  for (let k = 0; k < leftover; k++) {
+    bps[order[k]] += 1;
+  }
+
+  return eligible.map((p, i) => {
+    const shareBasisPoints = bps[i];
     const sharePercent = (p.totalPoints / totalPoints) * 100;
-    const shareBasisPoints = Math.round((p.totalPoints / totalPoints) * 10000);
     const tokenAmount = (
       (totalRewardBigInt * BigInt(shareBasisPoints)) /
       10000n

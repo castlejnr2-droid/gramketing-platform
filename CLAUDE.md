@@ -66,8 +66,7 @@ Status legend: [ ] TODO  ·  [~] IN PROGRESS (awaiting user validation)  ·  [x]
    Fix: fetch author_id, reject if author != user's linked xAccountId; global per-pool uniqueness on postLink.
    xAccountId confirmed numeric: Twitter OAuth 1.0a user_id from callback/route.ts line 143.
    Changed: lib/twitter-api.ts (author_id folded into batch call via tweet.fields=public_metrics,author_id; TweetMetrics.authorId: string|null; fetchTweetAuthorId removed), app/api/submissions/route.ts (metrics+author in ONE call; fail-CLOSED: null/unconfirmable authorId → 503, mismatch → 403; per-participant dedup → pool-wide findFirst on poolId+postLink; P2002 catch at create), prisma/schema.prisma (@@unique([poolId, postLink]) on PoolPost; authorId String? on TweetMetricsCache), lib/__tests__/submissions.test.ts (12 tests; null authorId → reject not pass), scripts/_check-poolpost-dupes.ts (new read-only dedup checker)
-   Verified: fail-closed author match (numeric user_id == author_id); pool-wide @@unique([poolId,postLink]) + P2002 safety net; prod dup check 0 rows; 12/12 tests; tsc clean.
-   DEPLOY NOTE: apply the PoolPost @@unique + TweetMetricsCache.authorId migration TOGETHER with the code push — do not apply the unique constraint while the old per-participant code is still live (it could trip a P2002 the old code doesn't catch).
+   Verified: fail-closed author match (numeric user_id == author_id); pool-wide @@unique([poolId,postLink]) + P2002 safety net; prod dup check 0 rows; 12/12 tests; tsc clean. Schema applied to prod 2026-06-17 via prisma db push (code already live via vercel --prod local deploy): PoolPost_poolId_postLink_key index + TweetMetricsCache.authorId column confirmed in DB; authorId queryable (NULL for existing rows).
    Date: 2026-06-15
 
 5. [x] Referral sybil farming — CRITICAL
@@ -79,12 +78,13 @@ Status legend: [ ] TODO  ·  [~] IN PROGRESS (awaiting user validation)  ·  [x]
    Needs user action: no migration needed (no schema changes). Deploy together with Fix #4 migration.
    Date: 2026-06-16
 
-6. [~] Deposit & access-fee integrity — HIGH
+6. [x] Deposit & access-fee integrity — HIGH
    Files: app/api/pools/route.ts, app/api/pools/[id]/join/route.ts, app/api/pools/[id]/deposit-status/route.ts
    Problem: accessFeeTxHash only checked non-empty (free pool creation); pools go ACTIVE with client-supplied totalReward and no confirmed deposit; deposit-status unauthenticated + reports deposited:true on any balance>0.
    Fix: verify fee tx on-chain via TonAPI before create; duplicate hash rejected (409); pool created PENDING not ACTIVE; deposit-status authed (owner-only) and flips PENDING→ACTIVE when balance>=totalReward; join route returns distinct error for PENDING pools.
-   Changed: prisma/schema.prisma (PENDING added to PoolStatus enum; accessFeeTxHash @unique on Pool), lib/ton-verify.ts (new: checkFeeTxData pure fn + verifyAccessFeeTx async; TON checks destination+value; MGRAM checks success+out_msgs), app/api/pools/route.ts (import verifyAccessFeeTx; PENDING status filter in GET; duplicate-hash findUnique pre-check + 409; fee tx verification before create; pool created with status PENDING; P2002 catch at create), app/api/pools/[id]/deposit-status/route.ts (getAuthWallet + owner 401/403 guard; funded=balance>=totalReward; PENDING→ACTIVE flip on funded; removed old deposited>0 logic), app/api/pools/[id]/join/route.ts (distinct 400 error message for PENDING vs other non-ACTIVE statuses), scripts/_check-fee-tx-dupes.ts (new read-only dedup checker; ran: 0 dupes found), lib/__tests__/deposit.test.ts (new: 31 tests)
-   Verified: 31/31 tests; tsc --noEmit clean; prod dup check 0 rows; prisma generate clean
+   Changed: prisma/schema.prisma (PENDING added to PoolStatus enum; accessFeeTxHash @unique on Pool), lib/ton-verify.ts (new: checkFeeTxData pure fn + verifyAccessFeeTx async; TON checks destination+value; MGRAM checks via TonAPI events endpoint: JettonTransfer action, jetton master, recipient, amount), app/api/pools/route.ts (import verifyAccessFeeTx; PENDING status filter in GET; duplicate-hash findUnique pre-check + 409; fee tx verification before create; pool created with status PENDING; P2002 catch at create), app/api/pools/[id]/deposit-status/route.ts (getAuthWallet + owner 401/403 guard; funded=balance>=totalReward; PENDING→ACTIVE flip on funded; removed old deposited>0 logic), app/api/pools/[id]/join/route.ts (distinct 400 error message for PENDING vs other non-ACTIVE statuses), scripts/_check-fee-tx-dupes.ts (new read-only dedup checker; ran: 0 dupes found), lib/__tests__/deposit.test.ts (new: 45 tests)
+   Schema applied to prod 2026-06-17 via prisma db push: PoolStatus enum now PENDING/ACTIVE/ENDED/DISTRIBUTED; Pool_accessFeeTxHash_key unique index confirmed in DB. Code was already live (vercel --prod local deploy). Pool creation unblocked.
+   Verified: 45/45 tests; tsc --noEmit clean; prod dup check 0 rows; all 4 schema changes confirmed in prod DB; authorId queryable.
    Date: 2026-06-15
 
 7. [~] Production scraper / scheduling — CRITICAL
@@ -95,7 +95,7 @@ Status legend: [ ] TODO  ·  [~] IN PROGRESS (awaiting user validation)  ·  [x]
    Changed (Phase A): lib/pool-scraper.ts (PENDING→ACTIVE backstop in scrapeAllActivePools; per-participant prisma.$transaction in Phase 3 referralBoost writes + Phase 5 PoolPost+PoolParticipant writes), railway.json (new; NIXPACKS build + ts-node start command), Railway project "gramketing-scraper" service "scraper" created with env vars set.
    Railway: project gramketing-scraper / service scraper / env vars: DATABASE_URL (prod Neon), TON_ENDPOINT, TWITTER_BEARER_TOKEN, TELEGRAM_BOT_TOKEN, TREASURY_WALLET_ADDRESS, MGRAM_JETTON_MASTER_ADDRESS. TON_FALLBACK_ENDPOINT empty locally (Fix #8 to address).
    DB host (masked): ep-billowing-recipe-aqr7oomu.c-8.us-east-1.aws.neon.tech (same as Vercel prod).
-   CONFIRM NEEDED: TON_ENDPOINT set to https://tonapi.io (inferred from /v2/jetton/… URL pattern; local .env has toncenter JSON-RPC fallback) — user must confirm this is the correct prod TonAPI endpoint.
+   TON_ENDPOINT split resolved: TON_ENDPOINT stays as toncenter JSON-RPC (TonClient / Group A); new TONAPI_ENDPOINT=https://tonapi.io introduced for all TonAPI /v2 REST calls (Group B: lib/pool-scraper.ts, app/api/pools/[id]/deposit-status/route.ts, lib/ton-verify.ts). Railway env corrected: TON_ENDPOINT=https://toncenter.com/api/v2/jsonRPC, TONAPI_ENDPOINT=https://tonapi.io. .env + .env.example updated. Vercel still needs TONAPI_ENDPOINT added at Phase B cutover.
    Verified: __  Date: __
 
 8. [ ] Hardening (after criticals) — LOW
@@ -113,6 +113,8 @@ Change log:
 - 2026-06-15 — Fix #2 — Telegram identity chain: initData HMAC validation, webhook secret_token guard, CSPRNG LINK codes; bot replies to real messages on prod verified
 - 2026-06-15 — Fix #3 — distribution.ts: largest-remainder bps (sum exactly 10000); 37/37 tests; zero-points guard confirmed (filter + early return)
 - 2026-06-15 — Fix #4 — tweet authorship (author_id in batch metrics call, fail-closed) + pool-wide dedup (@@unique poolId+postLink + P2002 net); 12/12 tests; prod dup check: 0 dupes
-- 2026-06-16 — Fix #5 [~] — referral sybil: bonus now scraper-computed+revocable (holding>=tier1Threshold AND >=1 post); no immediate award at track time; 33/33 tests
+- 2026-06-16 — Fix #5 — referral sybil: bonus now scraper-computed+revocable (holding>=tier1Threshold AND >=1 post); no immediate award at track time; 33/33 tests
+- 2026-06-17 — Fixes #3/#4/#5/#6 all ACTIVE in prod (vercel --prod local deploy); schema synced via prisma db push: PENDING enum, accessFeeTxHash @unique, PoolPost @@unique(poolId,postLink), TweetMetricsCache.authorId; pool creation unblocked
+- 2026-06-17 — Fix #7 pre-B: TON_ENDPOINT split → TONAPI_ENDPOINT=https://tonapi.io for all TonAPI /v2 REST calls; Railway env corrected; TONAPI_ENDPOINT set in Vercel (all environments)
 
 ================= END SECURITY FIX TRACKER =================

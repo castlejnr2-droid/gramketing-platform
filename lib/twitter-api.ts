@@ -1,12 +1,16 @@
 /**
- * Twitter API v2 integration for fetching tweet public_metrics.
+ * Twitter API v2 integration for fetching tweet public_metrics + author_id.
  *
  * Key design decisions:
- *  - Batch endpoint: GET /2/tweets?ids=id1,id2,...&tweet.fields=public_metrics
+ *  - Batch endpoint: GET /2/tweets?ids=id1,id2,...&tweet.fields=public_metrics,author_id
  *    fetches up to 100 IDs per HTTP call instead of one per tweet.
+ *    author_id is included so the submission route can verify ownership in the
+ *    same call — no separate round-trip needed.
  *  - Results are cached in TweetMetricsCache keyed by (tweetId, utcDay).
  *    A cached row for today is returned without hitting the API, avoiding
- *    duplicate charges ($0.005/tweet on the Basic plan).
+ *    duplicate charges ($0.005/tweet on the Basic plan). authorId is also
+ *    stored in the cache; rows written before this field was added have
+ *    authorId = null (the submission route treats null as unverifiable → reject).
  *  - Exponential back-off on 429 / transient network errors (3 attempts).
  *  - Auth errors (401/403) are surfaced immediately as TOKEN_EXPIRED so the
  *    scraper can halt and alert rather than burning retries.
@@ -18,6 +22,7 @@ import { prisma } from '@/lib/prisma';
 
 export interface TweetMetrics {
   tweetId: string;
+  authorId: string | null; // numeric Twitter user ID; null for pre-fix cache rows
   views: number;    // impression_count
   likes: number;    // like_count
   retweets: number; // retweet_count
@@ -41,6 +46,7 @@ function sleep(ms: number): Promise<void> {
 interface TwitterBatchResponse {
   data?: Array<{
     id: string;
+    author_id?: string; // present when tweet.fields=author_id is requested
     public_metrics: {
       impression_count: number;
       like_count: number;
@@ -62,7 +68,7 @@ async function apiBatch(ids: string[]): Promise<TwitterBatchResponse> {
   const url =
     `https://api.twitter.com/2/tweets` +
     `?ids=${ids.join(',')}` +
-    `&tweet.fields=public_metrics`;
+    `&tweet.fields=public_metrics,author_id`;
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     let httpStatus = 0;
@@ -149,6 +155,7 @@ export async function fetchTweetMetrics(tweetIds: string[]): Promise<TweetFetchR
       ok: true,
       fromCache: true,
       tweetId: c.tweetId,
+      authorId: c.authorId ?? null, // null for rows written before this field existed
       views: c.views,
       likes: c.likes,
       retweets: c.retweets,
@@ -177,6 +184,7 @@ export async function fetchTweetMetrics(tweetIds: string[]): Promise<TweetFetchR
         const pm = tweet.public_metrics;
         const m: TweetMetrics = {
           tweetId: tweet.id,
+          authorId: tweet.author_id ?? null,
           views: pm.impression_count ?? 0,
           likes: pm.like_count ?? 0,
           retweets: pm.retweet_count ?? 0,
@@ -185,8 +193,8 @@ export async function fetchTweetMetrics(tweetIds: string[]): Promise<TweetFetchR
         upserts.push(
           prisma.tweetMetricsCache.upsert({
             where: { tweetId: m.tweetId },
-            create: { tweetId: m.tweetId, views: m.views, likes: m.likes, retweets: m.retweets, utcDay: today, fetchedAt: new Date() },
-            update: { views: m.views, likes: m.likes, retweets: m.retweets, utcDay: today, fetchedAt: new Date() },
+            create: { tweetId: m.tweetId, authorId: m.authorId, views: m.views, likes: m.likes, retweets: m.retweets, utcDay: today, fetchedAt: new Date() },
+            update: { authorId: m.authorId, views: m.views, likes: m.likes, retweets: m.retweets, utcDay: today, fetchedAt: new Date() },
           }),
         );
       }

@@ -32,6 +32,12 @@ export async function POST(
     if (!pool) {
       return NextResponse.json({ error: 'Pool not found' }, { status: 404 });
     }
+    if (pool.status === 'PENDING') {
+      return NextResponse.json(
+        { error: 'Pool is not yet active — the creator has not deposited the reward yet.' },
+        { status: 400 }
+      );
+    }
     if (pool.status !== 'ACTIVE') {
       return NextResponse.json({ error: 'Pool is not active' }, { status: 400 });
     }

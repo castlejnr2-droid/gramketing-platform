@@ -19,6 +19,7 @@ enum SubmissionStatus {
 }
 
 enum PoolStatus {
+  PENDING     // created but awaiting confirmed reward deposit; not joinable yet
   ACTIVE
   ENDED
   DISTRIBUTED
@@ -94,7 +95,7 @@ model Pool {
   tier2Threshold       BigInt   @default(0)
   tier3Threshold       BigInt   @default(0)
   accessFeePaidIn      FeeCurrency
-  accessFeeTxHash      String?
+  accessFeeTxHash      String?               @unique
   campaignType         String                @default("both")
   xPostLink            String?
   telegramPostLink     String?
@@ -204,6 +205,10 @@ model PoolPost {
   submittedAt   DateTime         @default(now())
   lastScrapedAt DateTime?
   scrapeError   String?
+
+  // One post URL may be submitted to a given pool only once, by anyone.
+  // A post can still appear in multiple different pools.
+  @@unique([poolId, postLink])
 }
 
 model BannedMarketer {
@@ -245,6 +250,7 @@ model TonProofChallenge {
 /// ($0.005 per tweet fetch on the Basic plan).
 model TweetMetricsCache {
   tweetId   String   @id              // numeric tweet ID string
+  authorId  String?                   // numeric author user ID; null for rows written before this field was added
   views     Int                       // impression_count
   likes     Int                       // like_count
   retweets  Int                       // retweet_count

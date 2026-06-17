@@ -1,9 +1,9 @@
 # Tact compilation report
 Contract: GramketingPool
-BoC Size: 2127 bytes
+BoC Size: 2262 bytes
 
 ## Structures (Structs and Messages)
-Total structures: 25
+Total structures: 26
 
 ### DataSize
 TL-B: `_ cells:int257 bits:int257 refs:int257 = DataSize`
@@ -76,6 +76,10 @@ Signature: `SetJettonWallet{newJettonWalletAddress:address}`
 ### AdminRescue
 TL-B: `admin_rescue#ac681978 queryId:uint64 amount:coins destination:address = AdminRescue`
 Signature: `AdminRescue{queryId:uint64,amount:coins,destination:address}`
+
+### AdminWithdrawTon
+TL-B: `admin_withdraw_ton#a1903f15 queryId:uint64 = AdminWithdrawTon`
+Signature: `AdminWithdrawTon{queryId:uint64}`
 
 ### JettonTransfer
 TL-B: `jetton_transfer#0f8a7ea5 queryId:uint64 amount:coins destination:address responseDestination:address customPayload:Maybe ^cell forwardTonAmount:coins forwardPayload:remainder<slice> = JettonTransfer`
@@ -160,6 +164,7 @@ No arguments
 * 52626: Only admin can end pool
 * 53782: Pool not active
 * 55690: Duration must be 7, 14, 21, or 28 days
+* 59788: Only admin can withdraw TON
 * 62796: Only jetton wallet can notify
 
 ## Trait inheritance diagram

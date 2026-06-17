@@ -107,6 +107,9 @@ slice $Cell$_fun_asSlice(cell $self) impure inline;
 ;; $RewardsDistributed$_constructor_totalDistributed_winnerCount
 ((int, int)) $RewardsDistributed$_constructor_totalDistributed_winnerCount(int $totalDistributed, int $winnerCount) inline;
 
+;; $SendParameters$_constructor_to_value_bounce_mode
+((int, cell, cell, cell, int, slice, int)) $SendParameters$_constructor_to_value_bounce_mode(slice $to, int $value, int $bounce, int $mode) inline;
+
 ;; $DeployOk$_constructor_queryId
 ((int)) $DeployOk$_constructor_queryId(int $queryId) inline;
 
@@ -336,6 +339,10 @@ _ $Context$_get_value((int, slice, int, slice) v) inline {
 
 ((int, cell, cell, cell, int, slice, int)) $SendParameters$_constructor_to_value_mode_body(slice $to, int $value, int $mode, cell $body) inline {
     return ($mode, $body, null(), null(), $value, $to, true);
+}
+
+((int, cell, cell, cell, int, slice, int)) $SendParameters$_constructor_to_value_bounce_mode(slice $to, int $value, int $bounce, int $mode) inline {
+    return ($mode, null(), null(), null(), $value, $to, $bounce);
 }
 
 ;;
@@ -713,6 +720,15 @@ _ %poolInfo() method_id(106583) {
             var $msg'destination = in_msg~load_msg_addr();
             throw_unless(11957, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
             $global_send($SendParameters$_constructor_to_value_mode_body($self'jettonWalletAddress, 300000000, 128, $JettonTransfer$_store_cell($JettonTransfer$_constructor_queryId_amount_destination_responseDestination_customPayload_forwardTonAmount_forwardPayload($msg'queryId, $msg'amount, $msg'destination, $self'admin, null(), 10000000, $Cell$_fun_asSlice($Builder$_fun_endCell($Builder$_fun_storeBit(false, $global_beginCell())))), begin_cell())));
+            $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
+            return ();
+        }
+        
+        ;; Receive AdminWithdrawTon message
+        if (op == 2710585109) {
+            var $msg'queryId = in_msg~load_uint(64);
+            throw_unless(59788, ( equal_slices_bits(__tact_context_get_sender(), $self'admin) ));
+            $global_send($SendParameters$_constructor_to_value_bounce_mode($self'admin, 0, false, 128));
             $GramketingPool$_contract_store(($self'owner, $self'admin, $self'nonce, $self'jettonWalletAddress, $self'totalReward, $self'durationDays, $self'rewardSlots, $self'startTime, $self'endTime, $self'status, $self'depositedAmount));
             return ();
         }

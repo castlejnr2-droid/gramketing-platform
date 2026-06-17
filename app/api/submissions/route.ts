@@ -103,13 +103,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Duplicate check - same participant, same post link
-    const existing = await prisma.poolPost.findFirst({
-      where: { participantId: participant.id, postLink: postUrl },
+    // Pool-wide dedup: a given postLink may be submitted only once per pool,
+    // by anyone. This prevents one post from being claimed by multiple participants.
+    const existingPost = await prisma.poolPost.findFirst({
+      where: { poolId, postLink: postUrl },
     });
-    if (existing) {
+    if (existingPost) {
       return NextResponse.json(
-        { error: 'You already submitted this post to this pool' },
+        { error: 'This post has already been submitted to this pool.' },
         { status: 409 }
       );
     }
@@ -133,7 +134,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Fetch initial metrics ─────────────────────────────────────────────
+    // ── Fetch metrics + verify tweet authorship (X only, one API call) ───
+    // author_id is returned alongside public_metrics in the same batch call.
+    // Fail-CLOSED: if we cannot confirm the author (API error, tweet not found,
+    // or pre-fix cache row with null authorId) we reject — no silent bypass.
     let views = 0;
     let likes = 0;
     let reposts = 0;
@@ -142,15 +146,40 @@ export async function POST(req: NextRequest) {
 
     if (platform === 'X') {
       const tweetId = extractTweetId(postUrl);
-      if (tweetId) {
-        const [result] = await fetchTweetMetrics([tweetId]);
-        if (result.ok) {
-          fetchedViews = result.views;
-          views = result.views;
-          likes = result.likes;
-          reposts = result.retweets;
-        }
+      if (!tweetId) {
+        return NextResponse.json(
+          { error: 'Could not parse tweet ID from URL.' },
+          { status: 400 },
+        );
       }
+
+      const [result] = await fetchTweetMetrics([tweetId]);
+
+      if (!result.ok) {
+        // Tweet not found, API down, or rate-limited — can't verify ownership.
+        return NextResponse.json(
+          { error: "Couldn't verify your tweet — please try again in a moment." },
+          { status: 503 },
+        );
+      }
+
+      // Fail-closed: null authorId means cache row predates this field or API
+      // omitted it — either way we cannot confirm ownership, so we reject.
+      if (!result.authorId || result.authorId !== user.xAccountId) {
+        return NextResponse.json(
+          {
+            error: result.authorId
+              ? 'This tweet was not authored by your linked X account.'
+              : "Couldn't verify tweet ownership — please try again in a moment.",
+          },
+          { status: 403 },
+        );
+      }
+
+      fetchedViews = result.views;
+      views = result.views;
+      likes = result.likes;
+      reposts = result.retweets;
     } else {
       const metrics = await fetchTelegramPostMetrics(postUrl);
       if (metrics.views > 0 || metrics.reactions > 0) {
@@ -176,19 +205,33 @@ export async function POST(req: NextRequest) {
         ? views >= MIN_VIEWS ? views * 0.8 + likes * 0.1 + reposts * 0.1 : 0
         : views * 0.8 + reactions * 0.2;
 
-    const poolPost = await prisma.poolPost.create({
-      data: {
-        poolId,
-        participantId: participant.id,
-        platform,
-        postLink: postUrl,
-        views,
-        likes,
-        reposts,
-        reactions,
-        points,
-      },
-    });
+    let poolPost;
+    try {
+      poolPost = await prisma.poolPost.create({
+        data: {
+          poolId,
+          participantId: participant.id,
+          platform,
+          postLink: postUrl,
+          views,
+          likes,
+          reposts,
+          reactions,
+          points,
+        },
+      });
+    } catch (createErr: unknown) {
+      // Safety net: the @@unique([poolId, postLink]) constraint fires if a
+      // concurrent request slipped through the pre-check above.
+      const code = (createErr as { code?: string })?.code;
+      if (code === 'P2002') {
+        return NextResponse.json(
+          { error: 'This post has already been submitted to this pool.' },
+          { status: 409 }
+        );
+      }
+      throw createErr;
+    }
 
     return NextResponse.json({ poolPost }, { status: 201 });
   } catch (err: unknown) {
