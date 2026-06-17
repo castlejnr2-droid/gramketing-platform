@@ -1,8 +1,7 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "npm ci"
+    "builder": "NIXPACKS"
   },
   "deploy": {
     "startCommand": "npx ts-node -r tsconfig-paths/register --transpile-only jobs/scraper.ts",
