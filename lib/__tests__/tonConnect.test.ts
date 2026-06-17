@@ -14,30 +14,70 @@ import { verifyTonProof, TonProofAccount, TonProofData } from '../tonConnect';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// ── Wallet stateInit builders ─────────────────────────────────────────────────
+// Each builder produces a minimal stateInit with the data cell layout used by
+// the corresponding wallet contract.  The code cell is intentionally empty —
+// these stateInits are only used for address derivation and key-extraction tests.
+
+/** W5R1: sig_allowed(1) + seqno(32) + wallet_id(32) + pubkey(256) → key at bit 65 */
 function buildW5R1StateInit(publicKey: Buffer) {
   const dataCell = beginCell()
-    .storeInt(-1, 1)           // signature_allowed
+    .storeInt(-1, 1)           // sig_allowed
     .storeUint(0, 32)          // seqno
-    .storeUint(698983191, 32)  // wallet_id (W5 default)
-    .storeBuffer(publicKey)    // 32-byte Ed25519 public key
+    .storeUint(698983191, 32)  // wallet_id (32-bit)
+    .storeBuffer(publicKey)    // pubkey at bit 65
     .storeBit(0)               // empty plugins dict
     .endCell();
 
-  // Minimal code cell (empty — for address derivation only)
   const codeCell = beginCell().endCell();
+  return beginCell()
+    .storeBit(0).storeBit(0)   // no split_depth, no special
+    .storeBit(1).storeRef(codeCell)  // has code
+    .storeBit(1).storeRef(dataCell)  // has data
+    .storeBit(0)               // no library
+    .endCell();
+}
 
-  // StateInit cell
-  const stateInitCell = beginCell()
-    .storeBit(0)           // no split_depth
-    .storeBit(0)           // no special
-    .storeBit(1)           // has code
-    .storeRef(codeCell)
-    .storeBit(1)           // has data
-    .storeRef(dataCell)
-    .storeBit(0)           // no library
+/** V4R2 / V3R2: seqno(32) + wallet_id(32) + pubkey(256) → key at bit 64 */
+function buildV4R2StateInit(publicKey: Buffer) {
+  const dataCell = beginCell()
+    .storeUint(0, 32)          // seqno
+    .storeUint(698983191, 32)  // subwallet_id (32-bit)
+    .storeBuffer(publicKey)    // pubkey at bit 64
+    .storeBit(0)               // empty plugins dict
     .endCell();
 
-  return stateInitCell;
+  const codeCell = beginCell().endCell();
+  return beginCell()
+    .storeBit(0).storeBit(0)
+    .storeBit(1).storeRef(codeCell)
+    .storeBit(1).storeRef(dataCell)
+    .storeBit(0)
+    .endCell();
+}
+
+/**
+ * W5 with 64-bit wallet_id (Tonkeeper variant):
+ *   sig_allowed(1) + seqno(32) + wallet_id(64) + pubkey(256) → key at bit 97
+ *
+ * This is the layout that was FAILING before the fix — the old offset table
+ * only tried [65, 64] and would extract the wrong bytes at those offsets.
+ */
+function buildW5_64bitId_StateInit(publicKey: Buffer) {
+  const dataCell = beginCell()
+    .storeInt(-1, 1)                 // sig_allowed
+    .storeUint(0, 32)                // seqno
+    .storeUint(BigInt('0x29A9A31700000000'), 64)  // wallet_id as 64-bit
+    .storeBuffer(publicKey)          // pubkey at bit 97
+    .endCell();
+
+  const codeCell = beginCell().endCell();
+  return beginCell()
+    .storeBit(0).storeBit(0)
+    .storeBit(1).storeRef(codeCell)
+    .storeBit(1).storeRef(dataCell)
+    .storeBit(0)
+    .endCell();
 }
 
 function buildProofMessage(params: {
@@ -96,14 +136,15 @@ function assert(cond: boolean, msg: string) {
 
 // ── Build a valid proof fixture ───────────────────────────────────────────────
 
-async function buildFixture() {
+type StateInitBuilder = (pubKey: Buffer) => ReturnType<typeof buildW5R1StateInit>;
+
+async function buildFixture(buildStateInit: StateInitBuilder = buildW5R1StateInit) {
   const seed    = Buffer.alloc(32, 0x42); // deterministic seed for reproducibility
   const kp      = keyPairFromSeed(seed);
   const pubKey  = Buffer.from(kp.publicKey);
 
-  const stateInitCell = buildW5R1StateInit(pubKey);
-  const si            = { code: beginCell().endCell(), data: beginCell().endCell() };
-  // For address derivation, use contractAddress with the real stateInit cell
+  const stateInitCell = buildStateInit(pubKey);
+  // Derive address from stateInit hash (workchain 0)
   const addr = Address.parseRaw(
     `0:${stateInitCell.hash().toString('hex')}`,
   );
@@ -206,6 +247,64 @@ async function buildFixture() {
     const tamperedProof: TonProofData = { ...proof, payload: proof.payload.replace('d', 'e') };
     const ok = await verifyTonProof(account, tamperedProof, 'gramketing.com');
     assert(!ok, 'expected false for tampered payload');
+  });
+
+  // ── V4R2 wallet (pubkey at bit 64) ───────────────────────────────────────────
+
+  await test('V4R2 wallet: valid proof accepted (pubkey at bit 64)', async () => {
+    const f = await buildFixture(buildV4R2StateInit);
+    const ok = await verifyTonProof(f.account, f.proof, 'gramketing.com');
+    assert(ok, 'expected true for V4R2 wallet proof');
+  });
+
+  await test('V4R2 wallet: wrong pubkey is rejected', async () => {
+    const f = await buildFixture(buildV4R2StateInit);
+    const badAccount: TonProofAccount = {
+      ...f.account,
+      publicKey: Buffer.alloc(32, 0xab).toString('hex'), // attacker's key
+    };
+    const ok = await verifyTonProof(badAccount, f.proof, 'gramketing.com');
+    assert(!ok, 'expected false: attacker key not in V4R2 stateInit');
+  });
+
+  // ── W5 with 64-bit wallet_id (pubkey at bit 97) — the regression case ────────
+
+  await test('W5 64-bit wallet_id: valid proof accepted (pubkey at bit 97)', async () => {
+    const f = await buildFixture(buildW5_64bitId_StateInit);
+    const ok = await verifyTonProof(f.account, f.proof, 'gramketing.com');
+    assert(ok, 'expected true for W5 64-bit wallet_id proof — this was the failing case before the fix');
+  });
+
+  await test('W5 64-bit wallet_id: wrong pubkey is rejected (security invariant)', async () => {
+    const f = await buildFixture(buildW5_64bitId_StateInit);
+    const badAccount: TonProofAccount = {
+      ...f.account,
+      publicKey: Buffer.alloc(32, 0xde).toString('hex'), // attacker claims a different key
+    };
+    const ok = await verifyTonProof(badAccount, f.proof, 'gramketing.com');
+    assert(!ok, 'expected false: attacker key not present in stateInit at any offset');
+  });
+
+  await test('W5 64-bit wallet_id: tampered signature is rejected', async () => {
+    const f = await buildFixture(buildW5_64bitId_StateInit);
+    const bad = Buffer.from(f.proof.signature, 'base64');
+    bad[0] ^= 0xff;
+    const tamperedProof: TonProofData = { ...f.proof, signature: bad.toString('base64') };
+    const ok = await verifyTonProof(f.account, tamperedProof, 'gramketing.com');
+    assert(!ok, 'expected false for tampered signature on W5 64-bit wallet');
+  });
+
+  await test('W5 64-bit wallet_id: cross-layout address mismatch rejected', async () => {
+    // Build a W5R1 (32-bit) account but verify against W5-64-bit stateInit — different hash
+    const f64 = await buildFixture(buildW5_64bitId_StateInit);
+    const fR1 = await buildFixture(buildW5R1StateInit);
+    // Use the W5R1 stateInit but the W5-64 address — hash won't match
+    const badAccount: TonProofAccount = {
+      ...f64.account,
+      walletStateInit: fR1.account.walletStateInit, // stateInit hash ≠ f64.account.address
+    };
+    const ok = await verifyTonProof(badAccount, f64.proof, 'gramketing.com');
+    assert(!ok, 'expected false: stateInit hash does not match claimed address');
   });
 
   // Summary

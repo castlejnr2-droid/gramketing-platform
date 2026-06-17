@@ -87,16 +87,17 @@ export async function verifyTonProof(
       return false;
     }
 
-    // 5. Extract public key from the stateInit data cell; must match proof publicKey
-    const claimedPubKey  = Buffer.from(account.publicKey, 'hex');
-    const embeddedPubKey = extractPublicKeyFromStateInit(stateInitCell);
-    if (!embeddedPubKey) {
-      console.warn('[verifyTonProof] could not extract public key from stateInit');
-      return false;
-    }
-    if (!embeddedPubKey.equals(claimedPubKey)) {
-      console.warn('[verifyTonProof] public key in stateInit does not match claimed publicKey');
-      return false;
+    // 5. Confirm the claimed public key is present in the stateInit data cell.
+    //    We scan all bit offsets rather than assuming a fixed layout, so all known
+    //    wallet contracts are handled without hard-coded offset tables:
+    //      V4R2 / V3R2  seqno(32) + wallet_id(32)       + pubkey → bit 64
+    //      W5R1         sig_allowed(1) + seqno(32) + wallet_id(32)  + pubkey → bit 65
+    //      W5 (64-bit wallet_id) sig_allowed(1) + seqno(32) + wallet_id(64) + pubkey → bit 97
+    //    Acceptance is still EXACT equality — the scan only widens where we look,
+    //    never what we accept.
+    const claimedPubKey = Buffer.from(account.publicKey, 'hex');
+    if (!stateInitContainsPublicKey(stateInitCell, claimedPubKey)) {
+      return false; // debug details already logged inside
     }
 
     // 6. Build the signed message per the TON Connect ton_proof spec:
@@ -152,38 +153,82 @@ export async function verifyTonProof(
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 /**
- * Extracts the Ed25519 public key from the wallet stateInit data cell.
+ * Returns true if `claimedPubKey` (32 bytes) appears as a contiguous 256-bit
+ * sequence at any bit offset within the stateInit's data cell, or within any
+ * first-level reference cell of the data cell.
  *
- * Supports the standard TON wallet versions:
- *   W5R1:  sig_allowed(1) + seqno(32) + wallet_id(32) + pubkey(256) → offset 65
- *   V4R2 / V3R2: seqno(32) + subwallet_id(32) + pubkey(256)         → offset 64
+ * This exhaustive scan handles all known wallet contract layouts without a
+ * hard-coded offset table, including future layouts we haven't seen yet:
+ *   V3R2 / V4R2  seqno(32) + wallet_id(32)                        + pubkey → bit 64
+ *   W5R1         sig_allowed(1) + seqno(32) + wallet_id(32)        + pubkey → bit 65
+ *   W5 (64-bit)  sig_allowed(1) + seqno(32) + wallet_id(64)        + pubkey → bit 97
  *
- * Tries both offsets; returns whichever produces a 32-byte non-zero key,
- * or null if neither succeeds.
+ * Security: acceptance is EXACT equality with claimedPubKey — the scan widens
+ * where we look, never what we accept.  Combined with:
+ *   • step 3: stateInit cell hash === Address.parse(account.address).hash
+ *   • step 5: Ed25519 signature verification
+ * an attacker cannot forge a stateInit that maps to the victim's address and
+ * embeds the attacker's own key.
+ *
+ * Emits a structured debug warning on failure so unknown layouts can be
+ * diagnosed from live logs without leaking any secret (public keys are public).
  */
-function extractPublicKeyFromStateInit(stateInitCell: Cell): Buffer | null {
+function stateInitContainsPublicKey(
+  stateInitCell: Cell,
+  claimedPubKey: Buffer,
+): boolean {
   try {
     const si = loadStateInit(stateInitCell.beginParse());
-    if (!si.data) return null;
+    if (!si.data) {
+      console.warn('[verifyTonProof] stateInit has no data cell');
+      return false;
+    }
 
-    const totalBits = si.data.bits.length;
+    // Cells to search: data cell first, then its first-level refs.
+    const candidates: Array<{ label: string; cell: Cell }> = [
+      { label: 'data', cell: si.data },
+      ...si.data.refs.map((ref, i) => ({ label: `data.refs[${i}]`, cell: ref })),
+    ];
 
-    // Try W5R1 offset (65) then V4/V3 offset (64)
-    for (const offset of [65, 64]) {
-      if (totalBits < offset + 256) continue;
-      try {
-        const ds = si.data.beginParse();
-        ds.skip(offset);
-        const key = Buffer.from(ds.loadBuffer(32));
-        // Sanity: reject all-zero keys
-        if (!key.every((b) => b === 0)) return key;
-      } catch {
+    const searchLog: string[] = [];
+
+    for (const { label, cell } of candidates) {
+      const totalBits = cell.bits.length;
+      if (totalBits < 256) {
+        searchLog.push(`${label}(bits=${totalBits},skip:too_short)`);
         continue;
       }
+
+      const maxOffset = totalBits - 256;
+      searchLog.push(`${label}(bits=${totalBits},scan:0..${maxOffset})`);
+
+      for (let offset = 0; offset <= maxOffset; offset++) {
+        try {
+          const ds = cell.beginParse();
+          ds.skip(offset);
+          const extracted = Buffer.from(ds.loadBuffer(32));
+          if (extracted.equals(claimedPubKey)) {
+            return true; // found — no logging needed
+          }
+        } catch {
+          // Cell exhausted or parse error at this offset — stop scanning this cell.
+          break;
+        }
+      }
     }
-    return null;
-  } catch {
-    return null;
+
+    // Key not found anywhere — log enough to diagnose the wallet layout.
+    console.warn('[verifyTonProof] public key not found in stateInit', {
+      claimedPublicKey: claimedPubKey.toString('hex'),
+      dataCellBits:     si.data.bits.length,
+      dataCellRefs:     si.data.refs.length,
+      searched:         searchLog,
+    });
+    return false;
+  } catch (err) {
+    console.warn('[verifyTonProof] stateInit parse error',
+      err instanceof Error ? err.message : String(err));
+    return false;
   }
 }
 
