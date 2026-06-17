@@ -13,6 +13,7 @@ import {
   storeCancelPool,
 } from '../contracts/output/gramketing_pool_GramketingPool';
 import { getAdminWallet, getAdminKeypair, getTonClient, tonRetry, sleep } from './ton-admin';
+import { getJettonWalletAddressViaTonApi } from './ton-balance';
 
 // ── Jetton helpers ────────────────────────────────────────────────────────────
 
@@ -534,10 +535,12 @@ export async function buildJettonFeeTransaction(params: {
   amount: string; // gas in nanoTON
   payload: string; // base64 BOC
 }> {
-  const senderJettonWallet = await getJettonWalletAddress(
-    params.jettonMasterAddress,
+  // Use TonAPI (reliable) instead of toncenter get_wallet_address (rate-limited).
+  const senderJettonWalletRaw = await getJettonWalletAddressViaTonApi(
     params.senderAddress,
+    params.jettonMasterAddress,
   );
+  const senderJettonWallet = Address.parse(senderJettonWalletRaw);
 
   const treasuryAddr = Address.parse(params.treasuryAddress);
   const senderAddr = Address.parse(params.senderAddress);
