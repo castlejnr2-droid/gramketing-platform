@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
-import axios from 'axios';
+import { getJettonBalance } from '@/lib/ton-balance';
 
 export async function GET(
   req: NextRequest,
@@ -40,24 +40,19 @@ export async function GET(
     }
 
     // Check the contract's jetton wallet balance on-chain
-    let balance: string;
+    let balanceBigInt: bigint;
     try {
-      const res = await axios.get(
-        `${process.env.TONAPI_ENDPOINT ?? 'https://tonapi.io'}/v2/jetton/${pool.jettonMasterAddress}/wallets`,
-        {
-          params: { owner_address: pool.contractAddress, limit: 1 },
-          timeout: 8_000,
-        }
-      );
-      const wallets = res.data?.jetton_wallets ?? [];
-      balance = wallets.length > 0 ? (wallets[0].balance ?? '0') : '0';
+      balanceBigInt = await getJettonBalance(pool.contractAddress!, pool.jettonMasterAddress!);
     } catch {
-      // TON API error — return unknown status
+      // TonAPI transient error (network/429/5xx) — return unknown status
       return NextResponse.json({ funded: false, balance: '0', apiError: true });
     }
+    // getJettonBalance returns 0n cleanly for wallets that have never been created
+    // (404 + "no jetton wallet" body) — that path does NOT set apiError.
 
     // A pool is "funded" when the on-chain balance covers the full reward amount
-    const funded = BigInt(balance) >= BigInt(pool.totalReward);
+    const balance = balanceBigInt.toString();
+    const funded = balanceBigInt >= BigInt(pool.totalReward);
 
     // Flip PENDING → ACTIVE once the deposit is confirmed
     if (funded && pool.status === 'PENDING') {

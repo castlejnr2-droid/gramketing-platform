@@ -1,9 +1,9 @@
-import axios from 'axios';
 import { prisma } from '@/lib/prisma';
 import { calculateTotalPoints, CampaignType, REFERRAL_BASE_BONUS } from '@/lib/points';
 import { fetchTelegramPostMetrics } from '@/lib/telegram';
 import { logAdminEvent } from '@/lib/admin-log';
 import { fetchTweetMetrics, extractTweetId } from '@/lib/twitter-api';
+import { getJettonBalance } from '@/lib/ton-balance';
 
 // ── X / Twitter scraping ──────────────────────────────────────────────────────
 
@@ -44,21 +44,16 @@ export async function fetchXPostMetrics(
 
 // ── Token balance check ───────────────────────────────────────────────────────
 
+/**
+ * Thin wrapper kept for external callers (admin rescrape route, backstop).
+ * Throws on any error other than "wallet not created yet" (→ 0n).
+ * Callers that can tolerate a transient failure should wrap in try/catch.
+ */
 export async function checkTokenBalance(
   walletAddress: string,
-  jettonMasterAddress: string
+  jettonMasterAddress: string,
 ): Promise<bigint> {
-  try {
-    const res = await axios.get(
-      `${process.env.TONAPI_ENDPOINT ?? 'https://tonapi.io'}/v2/jetton/${jettonMasterAddress}/wallets`,
-      { params: { owner_address: walletAddress, limit: 1 }, timeout: 8_000 }
-    );
-    const wallets = res.data?.jetton_wallets ?? [];
-    if (wallets.length === 0) return 0n;
-    return BigInt(wallets[0].balance ?? '0');
-  } catch {
-    return 0n;
-  }
+  return getJettonBalance(walletAddress, jettonMasterAddress);
 }
 
 // ── Leaderboard snapshot ──────────────────────────────────────────────────────
@@ -108,23 +103,41 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
   const campaignType = (pool.campaignType as CampaignType) ?? 'both';
 
   // ── Phase 1: Fetch all participant token balances ──────────────────────────
+  // balanceFailed tracks participants whose balance fetch threw (network/5xx/429).
+  // These participants are excluded from balance-derived calculations this cycle;
+  // their existing DB values (holderBoost, referralBoost) are preserved unchanged.
   const balanceMap = new Map<string, bigint>();
+  const balanceFailed = new Set<string>();
   for (const participant of pool.participants) {
-    const balance = await checkTokenBalance(
-      participant.user.walletAddress,
-      pool.jettonMasterAddress
-    );
-    balanceMap.set(participant.userId, balance);
+    try {
+      const balance = await getJettonBalance(
+        participant.user.walletAddress,
+        pool.jettonMasterAddress,
+      );
+      balanceMap.set(participant.userId, balance);
+    } catch (e) {
+      errors.push(`Balance fetch failed for participant ${participant.userId}: ${e instanceof Error ? e.message : String(e)}`);
+      balanceFailed.add(participant.userId);
+    }
   }
 
   // ── Phase 2: Pool-wide holder boost (1.0x – 2.0x proportional) ─────────────
+  // Only participants whose balance fetch succeeded contribute to the pool max.
+  // Participants with a failed fetch keep their existing DB holderBoost value
+  // (written in the Phase 5 participant update below).
   const maxBalance = pool.participants.reduce((max, p) => {
+    if (balanceFailed.has(p.userId)) return max;
     const b = balanceMap.get(p.userId) ?? 0n;
     return b > max ? b : max;
   }, 0n);
 
   const holderBoostMap = new Map<string, number>();
   for (const participant of pool.participants) {
+    if (balanceFailed.has(participant.userId)) {
+      // Preserve existing holderBoost — don't overwrite with a stale 0 calculation
+      holderBoostMap.set(participant.userId, participant.holderBoost ?? 1.0);
+      continue;
+    }
     const balance = balanceMap.get(participant.userId) ?? 0n;
     const boost =
       maxBalance === 0n ? 1.0 : 1.0 + Number(balance) / Number(maxBalance);
@@ -162,10 +175,29 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
     const boostWrites: ReturnType<typeof prisma.referralBoost.update>[] = [];
 
     for (const boost of referralBoosts) {
-      const holding = await checkTokenBalance(
-        boost.referred.walletAddress,
-        pool.jettonMasterAddress,
-      );
+      let holding: bigint;
+      try {
+        holding = await getJettonBalance(
+          boost.referred.walletAddress,
+          pool.jettonMasterAddress,
+        );
+      } catch (e) {
+        // TonAPI transient error — skip updating this referral's holding this cycle
+        // so we don't zero it out and incorrectly revoke the bonus.
+        errors.push(`Referral balance fetch failed for ${boost.referredUserId}: ${e instanceof Error ? e.message : String(e)}`);
+        // Still count prior qualifying state from DB if present
+        const priorHolding = BigInt(boost.referredHolding ?? '0');
+        if (priorHolding >= minHolding) {
+          const postCount = await prisma.poolPost.count({
+            where: { poolId: pool.id, participant: { userId: boost.referredUserId } },
+          });
+          if (postCount >= 1) {
+            referredTotal += priorHolding;
+            qualifyingCount++;
+          }
+        }
+        continue;
+      }
 
       // Condition (2): referred has >= 1 PoolPost in this pool
       const postCount = await prisma.poolPost.count({
