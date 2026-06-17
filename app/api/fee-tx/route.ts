@@ -52,6 +52,15 @@ export async function GET(req: NextRequest) {
       currency as 'TON' | 'MGRAM',
     );
 
+    // Fail-closed: if the MGRAM oracle is down, tokenAmount comes back 0 and we
+    // must not build a transaction for 0 tokens.
+    if (currency === 'MGRAM' && tokenAmount === 0) {
+      return NextResponse.json(
+        { error: 'MGRAM fee price temporarily unavailable, try again' },
+        { status: 503 },
+      );
+    }
+
     if (currency === 'TON') {
       const amountNano = toNano(tokenAmount.toFixed(9));
       const tx = buildFeeTransaction({ treasuryAddress, amountNano });

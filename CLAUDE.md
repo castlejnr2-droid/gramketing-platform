@@ -99,10 +99,27 @@ Status legend: [ ] TODO  ·  [~] IN PROGRESS (awaiting user validation)  ·  [x]
    Changed (Phase C): lib/ton-balance.ts (new shared helper getJettonBalance; 200→BigInt(balance); 404+"no jetton wallet"→0n; any other error→THROW so callers can distinguish transient failures from clean non-holders), lib/pool-scraper.ts (import getJettonBalance; checkTokenBalance now delegates to getJettonBalance; Phase 1 adds balanceFailed set — failed participants keep prior DB holderBoost, excluded from pool maxBalance; Phase 2 skips balanceFailed participants; Phase 3 per-referral try/catch — on throw, preserve prior qualifying state from DB instead of zeroing), app/api/pools/[id]/deposit-status/route.ts (getJettonBalance replaces broken axios call; 404-no-wallet→{funded:false,balance:'0'} no apiError; other error→apiError:true), lib/__tests__/ton-balance.test.ts (new, 12 tests).
    ton-verify.ts probed: /v2/blockchain/transactions/{hash} and /v2/events/{hash} both return JSON 404 for unknown hashes (not HTML) — endpoints are valid, no changes needed.
    Verified: 12/12 ton-balance tests pass; 156/156 total tests pass; tsc --noEmit clean; TonAPI 404 no-wallet path confirmed (treasury probe: status 404, body "account X has no jetton wallet Y" → 0n); ton-verify endpoints valid.
-   DEPLOY NEEDED: Vercel redeploy (deposit-status fix) + Railway redeploy (scraper balance fix). Awaiting user approval.
+   Deployed 2026-06-17: Vercel dpl_95aoa4n3aLjSx6KTQMmnFes1fb7P (Ready, aliased www.gramketing.com); Railway 9025bcb7 (Online). Live validation: known holder → 380338829307503218 PASS; treasury → 0n via clean-404 PASS.
+   verifyAccessFeeTx audit: MGRAM sender not bound to creator — see Fix #9 below.
    Date: 2026-06-17
 
-8. [ ] Hardening (after criticals) — LOW
+8. [x] verifyAccessFeeTx sender binding — CRITICAL (front-run hole)
+   Files: lib/ton-verify.ts, app/api/pools/route.ts, lib/prices.ts (new getRequiredFeeNano), lib/mgram-price.ts (new oracle), lib/fee-tx/route.ts (503 guard), lib/__tests__/fee-system.test.ts
+   Problem: neither TON nor MGRAM path checks that the fee tx was SENT BY the authenticated creator's wallet. Also: verifyAccessFeeTx was called with 1n (dust) not the real USD-pegged amount; MGRAM price was always 0.
+   Fix:
+     Sender binding — MGRAM: JettonTransfer.sender.address checked against creatorWallet (fail-closed: absent sender → wrong-sender). TON: in_msg.source.address checked (fail-closed: absent → wrong-sender). Both normalized with normalizeRaw.
+     Real fee amounts — getRequiredFeeNano() computes USD-pegged nano amount at live price, 4% tolerance, fail-closed for MGRAM price.
+     MGRAM oracle — lib/mgram-price.ts: GeckoTerminal OHLCV 6-candle TWAP, DeDust V2 pool; bounds [$1e-7,$1e-4]; 50% deviation guard (recent cache only); 10-min TTL; stale cache up to 1h on network error; null on sanity fail.
+     New FEE_TABLE: 7d $5/$62.5, 14d $99.5/$124.5, 21d $149.5/$187, 28d $199.5/$249.5.
+     503 path: if MGRAM oracle unavailable → getRequiredFeeNano throws → pools/route.ts → 503 "try again"; fee-tx/route.ts → 503 on tokenAmount===0.
+   Changed: lib/ton-verify.ts (source/sender fields; creatorWalletRaw param in checkFeeTxData+checkMgramTransfer+verifyAccessFeeTx; wrong-sender result), lib/prices.ts (FEE_TABLE; MGRAM_DECIMALS=9; FEE_TOLERANCE=0.04; getRequiredFeeNano), lib/mgram-price.ts (new), app/api/pools/route.ts (getRequiredFeeNano call; walletAddress passed to verifyAccessFeeTx), app/api/fee-tx/route.ts (503 guard), lib/__tests__/fee-system.test.ts (new, 60 tests)
+   Verified: 216/216 total tests pass (8 files); tsc --noEmit clean; deployed dpl_62qE2buSvHtnaJ4tstmqkBZEwQ7W (Ready, aliased www.gramketing.com).
+     Live MGRAM TWAP: 3.1225e-6 (6 candles, within [$1e-7,$1e-4]) — /api/prices confirms mgram=3.122514e-6, all 4 durations populated with non-zero tokenAmount.
+     TON sender binding VERIFIED: /v2/blockchain/transactions/{hash} returns in_msg.source.address='0:33664f...' (is_wallet:true) for direct TON transfers — field is present and matches the raw address format normalizeRaw expects.
+     503 fail-closed: unit-tested (fee-system.test.ts suite 2); cannot force-down oracle from prod externally, but logic path is: getMgramPrice()=null → getRequiredFeeNano throws → 503.
+   Date: 2026-06-17
+
+9. [ ] Hardening (after criticals) — LOW
    - Add explicit OAuth state nonce to link-x / twitter/callback.
    - Remove hardcoded JWT fallback in lib/auth.ts; throw if JWT_SECRET unset.
    - Set TON_FALLBACK_ENDPOINT in Vercel.
@@ -121,6 +138,8 @@ Change log:
 - 2026-06-17 — Fixes #3/#4/#5/#6 all ACTIVE in prod (vercel --prod local deploy); schema synced via prisma db push: PENDING enum, accessFeeTxHash @unique, PoolPost @@unique(poolId,postLink), TweetMetricsCache.authorId; pool creation unblocked
 - 2026-06-17 — Fix #7 pre-B: TON_ENDPOINT split → TONAPI_ENDPOINT=https://tonapi.io for all TonAPI /v2 REST calls; Railway env corrected; TONAPI_ENDPOINT set in Vercel (all environments)
 - 2026-06-17 — Fix #7 Phase B: Railway scraper worker deployed (deployment a6dd93dd, Online); first cycle clean (0 pools, 0 errors, ~900ms); cron running */30 * * * *
-- 2026-06-17 — Fix #7 Phase C: balance endpoint bug fixed (getJettonBalance; /v2/accounts/{owner}/jettons/{master}; balanceFailed set; per-referral try/catch); 12/12 new tests; 156/156 total; tsc clean; awaiting deploy
+- 2026-06-17 — Fix #7 Phase C: balance endpoint bug fixed (getJettonBalance; /v2/accounts/{owner}/jettons/{master}; balanceFailed set; per-referral try/catch); 12/12 new tests; 156/156 total; tsc clean; deployed (Vercel dpl_95aoa4n3aLjSx6KTQMmnFes1fb7P + Railway 9025bcb7); live validation PASS
+- 2026-06-17 — verifyAccessFeeTx audit: sender NOT bound to creator wallet — front-run hole added as Fix #8
+- 2026-06-17 — Fix #8 — sender binding (TON: in_msg.source; MGRAM: JettonTransfer.sender); real fee amounts via getRequiredFeeNano (4% tolerance); MGRAM oracle (GeckoTerminal OHLCV TWAP, DeDust V2); new FEE_TABLE; 216/216 tests; deployed dpl_62qE2buSvHtnaJ4tstmqkBZEwQ7W; TWAP=$3.1225e-6 live; TON in_msg.source confirmed present on TonAPI
 
 ================= END SECURITY FIX TRACKER =================

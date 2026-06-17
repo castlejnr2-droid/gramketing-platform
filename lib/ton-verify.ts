@@ -46,6 +46,7 @@ export function normalizeRaw(addr: string): string {
 export interface TonApiTx {
   success?: boolean;
   in_msg?: {
+    source?: { address?: string } | null;      // sender wallet (present for internal TON transfers)
     destination?: { address?: string } | null;
     value?: string | null; // nanotons as decimal string
   } | null;
@@ -54,22 +55,33 @@ export interface TonApiTx {
 export type TonFeeCheckResult =
   | 'ok'
   | 'tx-not-successful'   // success !== true
+  | 'wrong-sender'        // in_msg.source doesn't match authenticated creator wallet
   | 'wrong-destination'   // in_msg.destination doesn't match ADMIN_WALLET_ADDRESS
   | 'insufficient-value'; // in_msg.value below minimum
 
 /**
  * Pure function: validates a raw TonAPI transaction for a TON fee payment.
  *
- * @param tx             Parsed TonAPI v2 transaction object
- * @param feeWalletRaw   Expected fee recipient in normalized raw form
- * @param minValueNano   Minimum nanoton value required
+ * @param tx               Parsed TonAPI v2 transaction object
+ * @param feeWalletRaw     Expected fee recipient in normalized raw form
+ * @param minValueNano     Minimum nanoton value required
+ * @param creatorWalletRaw Authenticated creator wallet in normalized raw form;
+ *                         must match in_msg.source (fail-closed if source absent).
+ *                         Note: payments routed through a proxy/intermediary will
+ *                         fail this check — creators must send directly from their wallet.
  */
 export function checkFeeTxData(
   tx: TonApiTx,
   feeWalletRaw: string,
   minValueNano: bigint,
+  creatorWalletRaw: string,
 ): TonFeeCheckResult {
   if (!tx.success) return 'tx-not-successful';
+
+  // Sender binding: in_msg.source must match the authenticated creator.
+  // Absent source (e.g. external message edge cases) is treated as mismatch.
+  const source = normalizeRaw(tx.in_msg?.source?.address ?? '');
+  if (!source || source !== creatorWalletRaw) return 'wrong-sender';
 
   const dest = normalizeRaw(tx.in_msg?.destination?.address ?? '');
   if (!dest || dest !== feeWalletRaw) return 'wrong-destination';
@@ -87,6 +99,7 @@ export interface JettonTransferAction {
   type: string;   // "JettonTransfer" | "TonTransfer" | …
   status: string; // "ok" | "failed"
   JettonTransfer?: {
+    sender?: { address?: string } | null;    // sending wallet (bounceable EQ… form)
     recipient?: { address?: string } | null; // actual recipient wallet (raw)
     amount?: string | null;                  // jetton units as decimal string
     jetton?: { address?: string } | null;    // jetton master address (raw)
@@ -102,6 +115,7 @@ export type MgramCheckResult =
   | 'ok'
   | 'no-jetton-transfer-action' // no successful JettonTransfer action in event
   | 'wrong-jetton-master'        // transfer found but for a different token contract
+  | 'wrong-sender'               // correct token but sender ≠ authenticated creator wallet
   | 'wrong-recipient'            // correct token but recipient ≠ treasury wallet
   | 'insufficient-amount';       // correct token+recipient but amount below minimum
 
@@ -115,12 +129,15 @@ export type MgramCheckResult =
  * @param expectedJettonMasterRaw  MGRAM master address, normalized raw lowercase
  * @param expectedRecipientRaw     Treasury wallet address, normalized raw lowercase
  * @param minAmountNano            Minimum jetton units required
+ * @param creatorWalletRaw         Authenticated creator wallet, normalized raw lowercase;
+ *                                 must match JettonTransfer.sender.address (fail-closed if absent)
  */
 export function checkMgramTransfer(
   event: TonApiEvent,
   expectedJettonMasterRaw: string,
   expectedRecipientRaw: string,
   minAmountNano: bigint,
+  creatorWalletRaw: string,
 ): MgramCheckResult {
   const successfulTransfers = (event.actions ?? []).filter(
     (a) => a.type === 'JettonTransfer' && a.status === 'ok',
@@ -135,9 +152,15 @@ export function checkMgramTransfer(
 
   if (mgramTransfers.length === 0) return 'wrong-jetton-master';
 
-  // Among MGRAM transfers, verify recipient and amount
+  // Among MGRAM transfers, verify sender, recipient, and amount in order
   for (const action of mgramTransfers) {
     const jt = action.JettonTransfer!;
+
+    // Sender binding: JettonTransfer.sender.address (confirmed present in live TonAPI probe).
+    // Absent sender is treated as mismatch (fail-closed).
+    const sender = normalizeRaw(jt.sender?.address ?? '');
+    if (!sender || sender !== creatorWalletRaw) return 'wrong-sender';
+
     const recipient = normalizeRaw(jt.recipient?.address ?? '');
     if (recipient !== expectedRecipientRaw) return 'wrong-recipient';
 
@@ -147,8 +170,8 @@ export function checkMgramTransfer(
     return 'ok';
   }
 
-  // All MGRAM transfers went to wrong recipient
-  return 'wrong-recipient';
+  // All MGRAM transfers had wrong sender
+  return 'wrong-sender';
 }
 
 // ── Async entry point ─────────────────────────────────────────────────────────
@@ -163,17 +186,23 @@ export function checkMgramTransfer(
  * Returns { ok: true } when the fee is confirmed on-chain and passes all checks.
  * Returns { ok: false, error: string } on any failure. Never throws.
  *
- * @param txHash       Transaction hash provided by the pool creator
- * @param currency     'TON' or 'MGRAM'
- * @param minValueNano Minimum amount in smallest units (nanotons for TON; jetton nano-units for MGRAM)
+ * @param txHash        Transaction hash provided by the pool creator
+ * @param currency      'TON' or 'MGRAM'
+ * @param minValueNano  Minimum amount in smallest units (nanotons for TON; jetton nano-units for MGRAM)
+ * @param creatorWallet Authenticated creator wallet address (any TON representation);
+ *                      normalized and matched against the on-chain sender field.
  */
 export async function verifyAccessFeeTx(
   txHash: string,
   currency: 'TON' | 'MGRAM',
   minValueNano: bigint,
+  creatorWallet: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const endpoint = process.env.TONAPI_ENDPOINT ?? 'https://tonapi.io';
   if (!endpoint) return { ok: false, error: 'TONAPI_ENDPOINT not configured' };
+
+  const creatorWalletRaw = normalizeRaw(creatorWallet);
+  if (!creatorWalletRaw) return { ok: false, error: 'Creator wallet address missing or invalid' };
 
   if (currency === 'TON') {
     const feeWallet = process.env.ADMIN_WALLET_ADDRESS ?? '';
@@ -200,7 +229,7 @@ export async function verifyAccessFeeTx(
       return { ok: false, error: 'TonAPI returned unparseable response' };
     }
 
-    const result = checkFeeTxData(tx, feeWalletRaw, minValueNano);
+    const result = checkFeeTxData(tx, feeWalletRaw, minValueNano, creatorWalletRaw);
     if (result === 'ok') return { ok: true };
     return { ok: false, error: result };
   }
@@ -238,7 +267,7 @@ export async function verifyAccessFeeTx(
     return { ok: false, error: 'TonAPI returned unparseable response' };
   }
 
-  const result = checkMgramTransfer(event, mgramMasterRaw, treasuryRaw, minValueNano);
+  const result = checkMgramTransfer(event, mgramMasterRaw, treasuryRaw, minValueNano, creatorWalletRaw);
   if (result === 'ok') return { ok: true };
   return { ok: false, error: result };
 }

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 import { notifyNewPool } from '@/lib/telegram-notify';
 import { deployAndInitPool } from '@/lib/gramketing-pool-contract';
-import { calculateFeeInTokens } from '@/lib/prices';
+import { calculateFeeInTokens, getRequiredFeeNano } from '@/lib/prices';
 import { logAdminEvent } from '@/lib/admin-log';
 import { verifyAccessFeeTx } from '@/lib/ton-verify';
 
@@ -137,14 +137,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Compute the minimum on-chain amount required for this fee (USD-pegged, live price,
+    // 4% tolerance).  MGRAM: fail-closed — if oracle is unavailable, reject with 503
+    // so the creator can retry rather than silently accepting any amount.
+    let requiredFeeNano: bigint;
+    try {
+      requiredFeeNano = await getRequiredFeeNano(durationDays, feeCurrency);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'fee price unavailable';
+      return NextResponse.json({ error: msg }, { status: 503 });
+    }
+
     // Verify the access fee transaction on-chain before creating the pool.
-    // TON: verifies destination == ADMIN_WALLET_ADDRESS + value > 0.
-    // MGRAM: verifies jetton master == MGRAM_JETTON_MASTER_ADDRESS, recipient == TREASURY_WALLET_ADDRESS, amount > 0.
+    // TON:   verifies sender == creator, destination == ADMIN_WALLET_ADDRESS, value >= required.
+    // MGRAM: verifies sender == creator, jetton master == MGRAM_JETTON_MASTER_ADDRESS,
+    //        recipient == TREASURY_WALLET_ADDRESS, amount >= required.
     // Env vars are read inside verifyAccessFeeTx; it returns { ok: false } if any are missing.
     const feeVerification = await verifyAccessFeeTx(
       accessFeeTxHash,
       feeCurrency,
-      1n, // require value > 0; exact USD amount is tracked via calculateFeeInTokens separately
+      requiredFeeNano,
+      walletAddress, // authenticated creator wallet — binds the tx sender
     );
     if (!feeVerification.ok) {
       return NextResponse.json(
