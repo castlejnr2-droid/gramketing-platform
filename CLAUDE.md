@@ -91,11 +91,10 @@ Status legend: [ ] TODO  ·  [~] IN PROGRESS (awaiting user validation)  ·  [x]
    Files: jobs/scraper.ts, lib/pool-scraper.ts, app/api/admin/rescrape/route.ts, infra
    Problem: no prod scheduler (jobs/scraper.ts never runs on Vercel) → metrics/points frozen at submission, payouts on stale data, pools never auto-end; synchronous rescrape times out → partial DB writes.
    Fix: run scraper as a Railway worker/cron on the 30-min cycle vs the same Neon DB; admin rescrape hands off to worker; wrap/chunk writes so a timeout can't leave partial state.
-   Phase A: worker prepared, not live; awaiting cutover.
-   Changed (Phase A): lib/pool-scraper.ts (PENDING→ACTIVE backstop in scrapeAllActivePools; per-participant prisma.$transaction in Phase 3 referralBoost writes + Phase 5 PoolPost+PoolParticipant writes), railway.json (new; NIXPACKS build + ts-node start command), Railway project "gramketing-scraper" service "scraper" created with env vars set.
-   Railway: project gramketing-scraper / service scraper / env vars: DATABASE_URL (prod Neon), TON_ENDPOINT, TWITTER_BEARER_TOKEN, TELEGRAM_BOT_TOKEN, TREASURY_WALLET_ADDRESS, MGRAM_JETTON_MASTER_ADDRESS. TON_FALLBACK_ENDPOINT empty locally (Fix #8 to address).
-   DB host (masked): ep-billowing-recipe-aqr7oomu.c-8.us-east-1.aws.neon.tech (same as Vercel prod).
-   TON_ENDPOINT split resolved: TON_ENDPOINT stays as toncenter JSON-RPC (TonClient / Group A); new TONAPI_ENDPOINT=https://tonapi.io introduced for all TonAPI /v2 REST calls (Group B: lib/pool-scraper.ts, app/api/pools/[id]/deposit-status/route.ts, lib/ton-verify.ts). Railway env corrected: TON_ENDPOINT=https://toncenter.com/api/v2/jsonRPC, TONAPI_ENDPOINT=https://tonapi.io. .env + .env.example updated. Vercel still needs TONAPI_ENDPOINT added at Phase B cutover.
+   Phase A+B complete: worker LIVE on Railway.
+   Changed: lib/pool-scraper.ts (PENDING→ACTIVE backstop; per-participant prisma.$transaction writes), railway.json (NIXPACKS build; no-op buildCommand to skip Next.js detection; startCommand with TS_NODE_PROJECT=scripts/tsconfig.json for CJS module resolution on Node 18). Build fixes: removed redundant buildCommand (EBUSY on double npm ci), added no-op buildCommand (suppress npm run build / Next.js detection), added TS_NODE_PROJECT (root tsconfig module=esnext/bundler incompatible with ts-node on Node 18; scripts/tsconfig.json uses commonjs).
+   Railway: project gramketing-scraper / service scraper / deployment a6dd93dd / region US West / status Online. Env vars: DATABASE_URL (prod Neon ep-billowing-recipe-aqr7oomu...), TON_ENDPOINT=https://toncenter.com/api/v2/jsonRPC, TONAPI_ENDPOINT=https://tonapi.io, TWITTER_BEARER_TOKEN, TELEGRAM_BOT_TOKEN, TREASURY_WALLET_ADDRESS, MGRAM_JETTON_MASTER_ADDRESS.
+   First cycle (2026-06-17T05:13:48Z): boot→immediate scrape (require.main===module); DB connected (prod Neon); 0 active pools → 0 posts updated, 0 errors; cycle duration ~897ms; no API calls (no pools to scrape); service Online, cron registered for */30 * * * *.
    Verified: __  Date: __
 
 8. [ ] Hardening (after criticals) — LOW
@@ -116,5 +115,6 @@ Change log:
 - 2026-06-16 — Fix #5 — referral sybil: bonus now scraper-computed+revocable (holding>=tier1Threshold AND >=1 post); no immediate award at track time; 33/33 tests
 - 2026-06-17 — Fixes #3/#4/#5/#6 all ACTIVE in prod (vercel --prod local deploy); schema synced via prisma db push: PENDING enum, accessFeeTxHash @unique, PoolPost @@unique(poolId,postLink), TweetMetricsCache.authorId; pool creation unblocked
 - 2026-06-17 — Fix #7 pre-B: TON_ENDPOINT split → TONAPI_ENDPOINT=https://tonapi.io for all TonAPI /v2 REST calls; Railway env corrected; TONAPI_ENDPOINT set in Vercel (all environments)
+- 2026-06-17 — Fix #7 Phase B: Railway scraper worker deployed (deployment a6dd93dd, Online); first cycle clean (0 pools, 0 errors, ~900ms); cron running */30 * * * *
 
 ================= END SECURITY FIX TRACKER =================
