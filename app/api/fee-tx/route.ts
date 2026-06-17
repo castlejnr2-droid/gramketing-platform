@@ -82,12 +82,21 @@ export async function GET(req: NextRequest) {
     const mgramDecimals = await getJettonDecimals(mgramMasterAddress);
     const amountRaw = BigInt(Math.round(tokenAmount * Math.pow(10, mgramDecimals)));
 
-    const tx = await buildJettonFeeTransaction({
-      jettonMasterAddress: mgramMasterAddress,
-      senderAddress: walletAddress,
-      treasuryAddress,
-      amountRaw,
-    });
+    let tx: Awaited<ReturnType<typeof buildJettonFeeTransaction>>;
+    try {
+      tx = await buildJettonFeeTransaction({
+        jettonMasterAddress: mgramMasterAddress,
+        senderAddress: walletAddress,
+        treasuryAddress,
+        amountRaw,
+      });
+    } catch (rpcErr) {
+      console.error('GET /api/fee-tx: jetton wallet lookup failed:', rpcErr);
+      return NextResponse.json(
+        { error: 'Fee unavailable — wallet lookup failed, please retry' },
+        { status: 503 },
+      );
+    }
 
     return NextResponse.json({
       ...tx,

@@ -42,10 +42,10 @@ const DURATIONS = [
 ];
 
 const USD_FEE_TABLE: Record<number, { mgram: number; ton: number }> = {
-  7:  { mgram: 100, ton: 125 },
-  14: { mgram: 199, ton: 249 },
-  21: { mgram: 299, ton: 374 },
-  28: { mgram: 399, ton: 499 },
+  7:  { mgram: 5,     ton: 62.5  },
+  14: { mgram: 99.5,  ton: 124.5 },
+  21: { mgram: 149.5, ton: 187   },
+  28: { mgram: 199.5, ton: 249.5 },
 };
 
 const STEPS = [
