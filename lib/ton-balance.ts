@@ -77,10 +77,15 @@ export async function getJettonBalance(
 
 /**
  * Returns the on-chain jetton wallet address for `ownerAddress` on the given
- * jetton master, using TonAPI v2 (reliable, no toncenter dependency).
+ * jetton master, using TonAPI v2.
  *
- * Throws with a descriptive message on:
- *   - 404 "no jetton wallet" → owner has never held the jetton
+ * Retries up to MAX_ATTEMPTS times (300 ms backoff) because TonAPI's indexer
+ * occasionally returns a transient 404 "no jetton wallet" even for valid holders
+ * (observed: 2/5 rapid calls → 404 for a confirmed holder). The retry converts
+ * those transient failures to success on the next attempt.
+ *
+ * Throws after all attempts if:
+ *   - Confirmed "no jetton wallet" on final attempt → owner has never held it
  *   - network errors, non-2xx responses, malformed body
  */
 export async function getJettonWalletAddressViaTonApi(
@@ -90,49 +95,74 @@ export async function getJettonWalletAddressViaTonApi(
   const endpoint = process.env.TONAPI_ENDPOINT ?? 'https://tonapi.io';
   const url = `${endpoint}/v2/accounts/${encodeURIComponent(ownerAddress)}/jettons/${encodeURIComponent(jettonMasterAddress)}`;
 
-  let res: Response;
-  try {
-    res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
-  } catch (err) {
-    throw new Error(
-      `TonAPI request failed for ${ownerAddress}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
+  const MAX_ATTEMPTS = 3;
+  const BACKOFF_MS   = 300;
 
-  if (res.status === 404) {
-    let body: unknown;
-    try { body = await res.json(); } catch { /* ignore */ }
-    const errMsg = typeof body === 'object' && body !== null && 'error' in body
-      ? String((body as Record<string, unknown>).error)
-      : '';
-    if (errMsg.toLowerCase().includes('no jetton wallet')) {
-      throw new Error(`Owner ${ownerAddress} has no mGRAM jetton wallet — receive mGRAM before paying with it`);
+  let lastErr: Error = new Error('no attempts made');
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    if (attempt > 1) {
+      await new Promise(r => setTimeout(r, BACKOFF_MS));
     }
-    throw new Error(`TonAPI unexpected 404 for ${ownerAddress}: ${errMsg}`);
+
+    let res: Response;
+    try {
+      res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+    } catch (err) {
+      lastErr = new Error(
+        `TonAPI request failed for ${ownerAddress} (attempt ${attempt}): ${err instanceof Error ? err.message : String(err)}`,
+      );
+      console.warn('[getJettonWalletAddress]', lastErr.message);
+      continue; // retry on network error
+    }
+
+    if (res.status === 404) {
+      let body: unknown;
+      try { body = await res.json(); } catch { /* ignore */ }
+      const errMsg = typeof body === 'object' && body !== null && 'error' in body
+        ? String((body as Record<string, unknown>).error)
+        : '';
+      lastErr = new Error(
+        `TonAPI 404 for ${ownerAddress} (attempt ${attempt}): ${errMsg}`,
+      );
+      console.warn('[getJettonWalletAddress]', lastErr.message);
+      // Retry — TonAPI indexer returns transient 404s for valid holders.
+      // A genuine "no wallet" will keep failing and we throw after MAX_ATTEMPTS.
+      continue;
+    }
+
+    if (!res.ok) {
+      lastErr = new Error(`TonAPI returned ${res.status} for ${ownerAddress} (attempt ${attempt})`);
+      console.warn('[getJettonWalletAddress]', lastErr.message);
+      continue; // retry on 429 / 5xx
+    }
+
+    let data: unknown;
+    try { data = await res.json(); } catch {
+      lastErr = new Error(`TonAPI returned unparseable response for ${ownerAddress} (attempt ${attempt})`);
+      console.warn('[getJettonWalletAddress]', lastErr.message);
+      continue;
+    }
+
+    const walletAddress =
+      typeof data === 'object' && data !== null &&
+      'wallet_address' in data &&
+      typeof (data as Record<string, unknown>).wallet_address === 'object' &&
+      (data as Record<string, unknown>).wallet_address !== null
+        ? String(
+            ((data as Record<string, unknown>).wallet_address as Record<string, unknown>).address ?? '',
+          )
+        : '';
+
+    if (!walletAddress) {
+      lastErr = new Error(`TonAPI response missing wallet_address for ${ownerAddress} (attempt ${attempt})`);
+      console.warn('[getJettonWalletAddress]', lastErr.message);
+      continue;
+    }
+
+    return walletAddress; // success
   }
 
-  if (!res.ok) {
-    throw new Error(`TonAPI returned ${res.status} for jetton wallet lookup of ${ownerAddress}`);
-  }
-
-  let data: unknown;
-  try { data = await res.json(); } catch {
-    throw new Error(`TonAPI returned unparseable response for ${ownerAddress}`);
-  }
-
-  const walletAddress =
-    typeof data === 'object' && data !== null &&
-    'wallet_address' in data &&
-    typeof (data as Record<string, unknown>).wallet_address === 'object' &&
-    (data as Record<string, unknown>).wallet_address !== null
-      ? String(
-          ((data as Record<string, unknown>).wallet_address as Record<string, unknown>).address ?? '',
-        )
-      : '';
-
-  if (!walletAddress) {
-    throw new Error(`TonAPI response missing wallet_address for ${ownerAddress}`);
-  }
-
-  return walletAddress;
+  // All attempts failed — surface the last error with full detail.
+  throw lastErr;
 }

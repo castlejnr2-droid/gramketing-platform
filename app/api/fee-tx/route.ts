@@ -91,9 +91,10 @@ export async function GET(req: NextRequest) {
         amountRaw,
       });
     } catch (rpcErr) {
-      console.error('GET /api/fee-tx: jetton wallet lookup failed:', rpcErr);
+      const detail = rpcErr instanceof Error ? rpcErr.message : String(rpcErr);
+      console.error('GET /api/fee-tx: jetton wallet lookup failed:', detail);
       return NextResponse.json(
-        { error: 'Fee unavailable — wallet lookup failed, please retry' },
+        { error: 'Fee unavailable — wallet lookup failed, please retry', detail },
         { status: 503 },
       );
     }
