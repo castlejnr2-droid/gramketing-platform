@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, Suspense } from 'react';
+import { useCallback, useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Link from 'next/link';
@@ -48,6 +48,7 @@ export default function MiniAppSettingsPage() {
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
   const [account, setAccount] = useState<AccountInfo | null>(null);
+  const [authState, setAuthState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
   const [usernameInput, setUsernameInput] = useState('');
   const [tgChannelInput, setTgChannelInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
@@ -64,17 +65,34 @@ export default function MiniAppSettingsPage() {
   const [unlinkXError, setUnlinkXError] = useState<string | null>(null);
   const [xBanner, setXBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Fetch account from server — uses the httpOnly JWT cookie so it works whether
+  // the user authenticated via TonConnect or via the Telegram Mini App fast path.
+  const fetchAccount = useCallback(async () => {
+    try {
+      const r = await fetch('/api/dashboard', { credentials: 'include' });
+      if (r.status === 401 || r.status === 404) {
+        setAuthState('unauthenticated');
+        return;
+      }
+      const d = await r.json();
+      const acc: AccountInfo | null = d.account ?? null;
+      setAccount(acc);
+      if (acc?.username) setUsernameInput(acc.username);
+      if (acc?.telegramChannelUrl) setTgChannelInput(acc.telegramChannelUrl);
+      setAuthState('authenticated');
+    } catch {
+      // Network error — don't flip to unauthenticated, leave as loading to retry
+    }
+  }, []);
+
+  // Fetch on mount (catches Telegram auto-auth cookie) and on every session-ready
+  // event (catches TonConnect auth that completes after mount).
   useEffect(() => {
-    if (!wallet) return;
-    fetch('/api/dashboard', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        setAccount(d.account ?? null);
-        if (d.account?.username) setUsernameInput(d.account.username);
-        if (d.account?.telegramChannelUrl) setTgChannelInput(d.account.telegramChannelUrl);
-      })
-      .catch(() => {});
-  }, [wallet]);
+    fetchAccount();
+    const handler = () => fetchAccount();
+    window.addEventListener('gramketing:session-ready', handler);
+    return () => window.removeEventListener('gramketing:session-ready', handler);
+  }, [fetchAccount]);
 
   // Listen for postMessage from the X OAuth popup.
   useEffect(() => {
@@ -83,13 +101,8 @@ export default function MiniAppSettingsPage() {
       if (!e.data || e.data.type !== 'X_LINKED') return;
 
       if (e.data.success) {
-        fetch('/api/dashboard', { credentials: 'include' })
-          .then((r) => r.json())
-          .then((d) => {
-            setAccount(d.account ?? null);
-            setXBanner({ type: 'success', message: 'X account connected successfully!' });
-          })
-          .catch(() => setXBanner({ type: 'success', message: 'X account connected successfully!' }));
+        fetchAccount().catch(() => {});
+        setXBanner({ type: 'success', message: 'X account connected successfully!' });
       } else {
         const reason: string = e.data.reason ?? 'unknown';
         const friendly =
@@ -105,7 +118,7 @@ export default function MiniAppSettingsPage() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [fetchAccount]);
 
   const saveUsername = async () => {
     setUsernameError(null);
@@ -187,7 +200,16 @@ export default function MiniAppSettingsPage() {
     finally { setUnlinkingTg(false); }
   };
 
-  if (!wallet) {
+  if (authState === 'loading') {
+    return (
+      <div className="pt-12 px-4 flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <span className="w-8 h-8 border-2 border-white/20 border-t-[#0088CC] rounded-full animate-spin mb-4" />
+        <p className="text-white/40 text-sm">Loading settings…</p>
+      </div>
+    );
+  }
+
+  if (authState === 'unauthenticated') {
     return (
       <div className="pt-12 px-4 flex flex-col items-center justify-center min-h-[60vh] text-center">
         <Settings className="w-12 h-12 text-white/20 mb-4" />
@@ -438,11 +460,15 @@ export default function MiniAppSettingsPage() {
         {/* Wallet */}
         <div className="glass-card p-5">
           <label className="block text-sm font-medium text-white/70 mb-3">Wallet</label>
-          <p className="text-xs text-white/50 font-mono break-all mb-3">{wallet.account.address}</p>
-          <button onClick={() => tonConnectUI.disconnect()}
-            className="text-sm text-red-400 hover:text-red-300 transition-colors">
-            Disconnect wallet
-          </button>
+          <p className="text-xs text-white/50 font-mono break-all mb-3">
+            {wallet?.account?.address ?? account?.walletAddress ?? '—'}
+          </p>
+          {wallet && (
+            <button onClick={() => tonConnectUI.disconnect()}
+              className="text-sm text-red-400 hover:text-red-300 transition-colors">
+              Disconnect wallet
+            </button>
+          )}
         </div>
 
         {/* Resources */}

@@ -85,11 +85,13 @@ function AuthListener() {
         authInFlightRef.current = true;
         const proofData = tonProof.proof;
 
-        // Forward the Telegram user ID so the server can link accounts
-        // automatically when connecting from inside the Mini App.
-        const telegramUserId =
+        // Forward the validated Telegram initData string so the server can
+        // link accounts after HMAC verification when connecting from inside
+        // the Mini App.  We send the raw initData (not initDataUnsafe) so
+        // the server can perform the full HMAC check before trusting the ID.
+        const telegramInitData =
           typeof window !== 'undefined'
-            ? window.Telegram?.WebApp?.initDataUnsafe?.user?.id
+            ? window.Telegram?.WebApp?.initData || undefined
             : undefined;
 
         try {
@@ -110,7 +112,7 @@ function AuthListener() {
                 payload:   proofData.payload,
                 signature: proofData.signature,
               },
-              ...(telegramUserId ? { telegramUserId: String(telegramUserId) } : {}),
+              ...(telegramInitData ? { telegramInitData } : {}),
             }),
           });
 

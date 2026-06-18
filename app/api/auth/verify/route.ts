@@ -3,6 +3,7 @@ import { Address } from '@ton/core';
 import { prisma } from '@/lib/prisma';
 import { signJwt } from '@/lib/auth';
 import { verifyTonProof, TonProofAccount, TonProofData } from '@/lib/tonConnect';
+import { validateTelegramInitData, extractTelegramUserId } from '@/lib/telegram';
 
 // The expected domain must match what the wallet signed.
 // Set TON_PROOF_DOMAIN in Vercel env to match your production hostname.
@@ -16,7 +17,27 @@ export async function POST(req: NextRequest) {
 
     const account: TonProofAccount | undefined = body.account;
     const proof:   TonProofData    | undefined = body.proof;
-    const telegramUserId: string | number | undefined = body.telegramUserId;
+
+    // Resolve Telegram user ID — prefer HMAC-validated initData string over raw ID.
+    // telegramInitData is sent by Providers.tsx (Mini App context) and is validated
+    // server-side. telegramUserId is a legacy/fallback field; accepted but logged.
+    let telegramUserId: string | undefined;
+    if (body.telegramInitData && typeof body.telegramInitData === 'string') {
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      if (botToken) {
+        const params = validateTelegramInitData(body.telegramInitData, botToken);
+        if (params) {
+          telegramUserId = extractTelegramUserId(params) ?? undefined;
+        } else {
+          console.warn('[auth/verify] telegramInitData HMAC validation failed — skipping Telegram link');
+        }
+      }
+    } else if (body.telegramUserId) {
+      // Legacy path: raw user ID without HMAC proof.  Still accepted so old
+      // clients don't break, but the ID is not cryptographically verified.
+      console.warn('[auth/verify] received unvalidated telegramUserId — upgrade client to send telegramInitData');
+      telegramUserId = String(body.telegramUserId);
+    }
 
     // Validate required proof fields are present
     if (
@@ -108,10 +129,21 @@ export async function POST(req: NextRequest) {
     // Persist Telegram user ID if supplied from Mini App context and not yet saved.
     // Only write if the field is currently empty to avoid overwriting a verified link.
     if (telegramUserId && !user.telegramChatId) {
-      await prisma.user.update({
-        where: { walletAddress },
-        data:  { telegramChatId: String(telegramUserId) },
-      });
+      try {
+        await prisma.user.update({
+          where: { walletAddress },
+          data:  { telegramChatId: String(telegramUserId) },
+        });
+      } catch (linkErr: unknown) {
+        // P2002: another wallet is already linked to this Telegram ID.
+        // Don't fail the auth — wallet authentication still succeeds.
+        const code = (linkErr as { code?: string })?.code;
+        if (code === 'P2002') {
+          console.warn('[auth/verify] telegramChatId already linked to another wallet, skipping link for', walletAddress);
+        } else {
+          throw linkErr; // unexpected error — let outer catch handle it
+        }
+      }
     }
 
     // Sign JWT and set httpOnly cookie

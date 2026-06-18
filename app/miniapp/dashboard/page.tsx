@@ -46,19 +46,29 @@ export default function MiniAppDashboardPage() {
   const [ownedPools, setOwnedPools] = useState<OwnedPool[]>([]);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
-  const fetchDashboard = useCallback(() => {
-    if (!wallet) { setLoading(false); return; }
-    fetch('/api/dashboard', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        setActivePools(d.activePools ?? []);
-        setEndedPools(d.endedPools ?? []);
-        setAccount(d.account ?? null);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [wallet]);
+  // Fetch dashboard data using the JWT cookie — works whether the user
+  // authenticated via TonConnect or via the Telegram Mini App fast path.
+  const fetchDashboard = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/dashboard', { credentials: 'include' });
+      if (r.status === 401 || r.status === 404) {
+        setAuthState('unauthenticated');
+        return;
+      }
+      const d = await r.json();
+      setActivePools(d.activePools ?? []);
+      setEndedPools(d.endedPools ?? []);
+      setAccount(d.account ?? null);
+      setAuthState('authenticated');
+    } catch {
+      // Network error — leave state as-is
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchDashboard();
@@ -67,14 +77,17 @@ export default function MiniAppDashboardPage() {
   // Re-fetch when TonConnect auth completes (gramketing:session-ready is dispatched
   // by Providers.tsx after proof verification, and by MiniAppShell after Telegram link auth).
   useEffect(() => {
-    const handler = () => { setLoading(true); fetchDashboard(); };
+    const handler = () => fetchDashboard();
     window.addEventListener('gramketing:session-ready', handler);
     return () => window.removeEventListener('gramketing:session-ready', handler);
   }, [fetchDashboard]);
 
+  // Fetch pools owned by this wallet.  Use account.walletAddress from the server
+  // when TonConnect wallet isn't in state (e.g. Telegram fast-path auth).
   useEffect(() => {
-    if (!wallet) return;
-    fetch(`/api/pools?ownerAddress=${encodeURIComponent(wallet.account.address)}&limit=20`)
+    const address = account?.walletAddress ?? wallet?.account?.address;
+    if (!address) return;
+    fetch(`/api/pools?ownerAddress=${encodeURIComponent(address)}&limit=20`)
       .then((r) => r.json())
       .then((d) => setOwnedPools((d.pools ?? []).map((p: { id: string; project: { name: string }; tokenSymbol: string; totalReward: string; status: string; endDate: string; _count: { participants: number } }) => ({
         id: p.id, projectName: p.project.name, tokenSymbol: p.tokenSymbol,
@@ -82,9 +95,13 @@ export default function MiniAppDashboardPage() {
         participantCount: p._count.participants,
       }))))
       .catch(() => {});
-  }, [wallet]);
+  }, [account?.walletAddress, wallet?.account?.address]);
 
-  if (!wallet) {
+  if (loading) {
+    return <div className="pt-12 px-4 text-center text-white/40">Loading dashboard...</div>;
+  }
+
+  if (authState === 'unauthenticated') {
     return (
       <div className="pt-12 px-4 flex flex-col items-center justify-center min-h-[60vh] text-center">
         <Trophy className="w-12 h-12 text-[#0088CC]/50 mb-4" />
@@ -96,10 +113,6 @@ export default function MiniAppDashboardPage() {
         </button>
       </div>
     );
-  }
-
-  if (loading) {
-    return <div className="pt-12 px-4 text-center text-white/40">Loading dashboard...</div>;
   }
 
   return (

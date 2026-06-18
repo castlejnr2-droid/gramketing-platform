@@ -130,14 +130,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true });
       }
 
-      // Check if this Telegram account is already linked to a different wallet
+      // Check if this Telegram account is already linked to a different wallet.
+      // If so, allow the user to move their Telegram link to the new wallet —
+      // unlink from the old wallet first, then link to the new one.
       const existing = await prisma.user.findUnique({ where: { telegramChatId: chatId } });
       if (existing && existing.id !== user.id) {
-        await sendMessage(
-          chatId,
-          '❌ This Telegram account is already linked to another wallet. It must be unlinked from that account first.'
-        );
-        return NextResponse.json({ ok: true });
+        // Same physical person, different wallet — move the Telegram link.
+        // Remove old telegramChatId and stale notification prefs so the new
+        // wallet's prefs take over cleanly.
+        console.log('[webhook] moving telegramChatId from user', existing.id, 'to user', user.id);
+        await prisma.telegramNotificationPrefs.deleteMany({
+          where: { userId: existing.id },
+        });
+        await prisma.user.update({
+          where: { id: existing.id },
+          data: { telegramChatId: null, telegramUnlinkedAt: new Date() },
+        });
       }
 
       await prisma.user.update({
@@ -146,6 +154,7 @@ export async function POST(req: NextRequest) {
           telegramChatId: chatId,
           linkTelegramCode: null,
           linkTelegramCodeExpiry: null,
+          telegramUnlinkedAt: null,
         },
       });
 
