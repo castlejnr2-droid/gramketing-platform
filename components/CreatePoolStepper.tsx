@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
+import { Cell } from '@ton/core';
 
 interface Prices {
   ton: number;
@@ -225,7 +226,10 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
         messages: [message],
       });
 
-      setPaymentTxHash(result.boc);
+      // TonConnect returns the signed external message as a Base64 BOC.
+      // TonAPI event endpoints expect the cell hash in hex (64 chars), not the full BOC.
+      const txHash = Cell.fromBase64(result.boc).hash().toString('hex');
+      setPaymentTxHash(txHash);
       setStep(3);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Transaction cancelled or failed');

@@ -202,10 +202,10 @@ function checkFeeTxData(
   return 'ok';
 }
 
-// ── Inlined: sender-aware checkMgramTransfer (MGRAM) ─────────────────────────
+// ── Inlined: sender-aware checkMgramTransfer (MGRAM) + checkTonTransfer (TON) ─
 
 interface JettonTransferAction {
-  type: string;
+  type: 'JettonTransfer';
   status: string;
   JettonTransfer?: {
     sender?: { address?: string } | null;
@@ -215,8 +215,20 @@ interface JettonTransferAction {
   } | null;
 }
 
+interface TonTransferAction {
+  type: 'TonTransfer';
+  status: string;
+  TonTransfer?: {
+    sender?: { address?: string } | null;
+    recipient?: { address?: string } | null;
+    amount?: number | null; // TonAPI returns int64 nanotons, not a string
+    comment?: string | null;
+  } | null;
+}
+
 interface TonApiEvent {
-  actions?: JettonTransferAction[] | null;
+  actions?: (JettonTransferAction | TonTransferAction | { type: string; status: string })[] | null;
+  in_progress?: boolean;
 }
 
 type MgramCheckResult =
@@ -235,7 +247,7 @@ function checkMgramTransfer(
   creatorWalletRaw: string,
 ): MgramCheckResult {
   const successfulTransfers = (event.actions ?? []).filter(
-    (a) => a.type === 'JettonTransfer' && a.status === 'ok',
+    (a): a is JettonTransferAction => a.type === 'JettonTransfer' && a.status === 'ok',
   );
   if (successfulTransfers.length === 0) return 'no-jetton-transfer-action';
 
@@ -644,6 +656,121 @@ function makeGoodEvent(
 
   await suite('MGRAM: no actions → no-jetton-transfer-action', async () => {
     check('empty', checkMgramTransfer({ actions: [] }, MGRAM_MA, TREASURY, FEE_NANO, CREATOR), 'no-jetton-transfer-action');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECTION 5: TON events-based verification (checkTonTransfer)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Inlined: checkTonTransfer ─────────────────────────────────────────────
+
+  type TonTransferCheckResult =
+    | 'ok'
+    | 'no-ton-transfer-action'
+    | 'wrong-sender'
+    | 'wrong-recipient'
+    | 'insufficient-amount';
+
+  function checkTonTransfer(
+    event: TonApiEvent,
+    expectedRecipientRaw: string,
+    minAmountNano: bigint,
+    creatorWalletRaw: string,
+  ): TonTransferCheckResult {
+    const successfulTransfers = (event.actions ?? []).filter(
+      (a): a is TonTransferAction => a.type === 'TonTransfer' && a.status === 'ok',
+    );
+    if (successfulTransfers.length === 0) return 'no-ton-transfer-action';
+    for (const action of successfulTransfers) {
+      const tt = action.TonTransfer!;
+      const sender = normalizeRaw(tt.sender?.address ?? '');
+      if (!sender || sender !== creatorWalletRaw) return 'wrong-sender';
+      const recipient = normalizeRaw(tt.recipient?.address ?? '');
+      if (recipient !== expectedRecipientRaw) return 'wrong-recipient';
+      const amount = BigInt(tt.amount ?? 0);
+      if (amount < minAmountNano) return 'insufficient-amount';
+      return 'ok';
+    }
+    return 'wrong-sender';
+  }
+
+  // ── Fixtures ──────────────────────────────────────────────────────────────
+
+  function makeTonEvent(
+    tt: Partial<NonNullable<TonTransferAction['TonTransfer']>> = {},
+  ): TonApiEvent {
+    return {
+      actions: [{
+        type: 'TonTransfer',
+        status: 'ok',
+        TonTransfer: {
+          sender:    { address: CREATOR },
+          recipient: { address: FEE_ADDR },
+          amount:    Number(TON_NANO),
+          ...tt,
+        },
+      }],
+    };
+  }
+
+  // ── Tests ─────────────────────────────────────────────────────────────────
+
+  await suite('TON transfer: happy path → ok', async () => {
+    check('ok', checkTonTransfer(makeTonEvent(), FEE_ADDR, TON_NANO, CREATOR), 'ok');
+  });
+
+  await suite('TON transfer: no actions → no-ton-transfer-action', async () => {
+    check('empty', checkTonTransfer({ actions: [] }, FEE_ADDR, TON_NANO, CREATOR), 'no-ton-transfer-action');
+  });
+
+  await suite('TON transfer: only JettonTransfer actions → no-ton-transfer-action', async () => {
+    const event: TonApiEvent = {
+      actions: [{ type: 'JettonTransfer', status: 'ok', JettonTransfer: { sender: { address: CREATOR }, recipient: { address: FEE_ADDR }, amount: '0', jetton: { address: MGRAM_MA } } }],
+    };
+    check('jetton-only → no ton transfer', checkTonTransfer(event, FEE_ADDR, TON_NANO, CREATOR), 'no-ton-transfer-action');
+  });
+
+  await suite('TON transfer: wrong sender → wrong-sender', async () => {
+    check('wrong sender', checkTonTransfer(makeTonEvent({ sender: { address: OTHER } }), FEE_ADDR, TON_NANO, CREATOR), 'wrong-sender');
+  });
+
+  await suite('TON transfer: missing sender → wrong-sender (fail-closed)', async () => {
+    check('absent sender', checkTonTransfer(makeTonEvent({ sender: undefined }), FEE_ADDR, TON_NANO, CREATOR), 'wrong-sender');
+  });
+
+  await suite('TON transfer: null sender → wrong-sender (fail-closed)', async () => {
+    check('null sender', checkTonTransfer(makeTonEvent({ sender: null }), FEE_ADDR, TON_NANO, CREATOR), 'wrong-sender');
+  });
+
+  await suite('TON transfer: wrong recipient → wrong-recipient', async () => {
+    check('wrong recipient', checkTonTransfer(makeTonEvent({ recipient: { address: OTHER } }), FEE_ADDR, TON_NANO, CREATOR), 'wrong-recipient');
+  });
+
+  await suite('TON transfer: insufficient amount → insufficient-amount', async () => {
+    check('1 nano short', checkTonTransfer(makeTonEvent({ amount: Number(TON_NANO) - 1 }), FEE_ADDR, TON_NANO, CREATOR), 'insufficient-amount');
+  });
+
+  await suite('TON transfer: zero amount → insufficient-amount', async () => {
+    check('zero', checkTonTransfer(makeTonEvent({ amount: 0 }), FEE_ADDR, TON_NANO, CREATOR), 'insufficient-amount');
+  });
+
+  await suite('TON transfer: exact amount → ok', async () => {
+    check('exact', checkTonTransfer(makeTonEvent({ amount: Number(TON_NANO) }), FEE_ADDR, TON_NANO, CREATOR), 'ok');
+  });
+
+  await suite('TON transfer: over-payment → ok', async () => {
+    check('double', checkTonTransfer(makeTonEvent({ amount: Number(TON_NANO) * 2 }), FEE_ADDR, TON_NANO, CREATOR), 'ok');
+  });
+
+  await suite('TON transfer: sender comparison is case-insensitive', async () => {
+    check('uppercase sender', checkTonTransfer(makeTonEvent({ sender: { address: CREATOR.toUpperCase() } }), FEE_ADDR, TON_NANO, CREATOR), 'ok');
+  });
+
+  await suite('TON transfer: failed status action ignored → no-ton-transfer-action', async () => {
+    const event: TonApiEvent = {
+      actions: [{ type: 'TonTransfer', status: 'failed', TonTransfer: { sender: { address: CREATOR }, recipient: { address: FEE_ADDR }, amount: Number(TON_NANO) } }],
+    };
+    check('failed status skipped', checkTonTransfer(event, FEE_ADDR, TON_NANO, CREATOR), 'no-ton-transfer-action');
   });
 
   // ── FEE_TABLE sanity ──────────────────────────────────────────────────────

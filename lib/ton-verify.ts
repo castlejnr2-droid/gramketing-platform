@@ -94,9 +94,9 @@ export function checkFeeTxData(
 
 // ── MGRAM fee: events-based jetton transfer check ─────────────────────────────
 
-/** One action entry from TonAPI v2 /v2/events/{event_id}. */
+/** One action entry from TonAPI v2 /v2/events/{event_id} — jetton transfer. */
 export interface JettonTransferAction {
-  type: string;   // "JettonTransfer" | "TonTransfer" | …
+  type: 'JettonTransfer';
   status: string; // "ok" | "failed"
   JettonTransfer?: {
     sender?: { address?: string } | null;    // sending wallet (bounceable EQ… form)
@@ -106,9 +106,28 @@ export interface JettonTransferAction {
   } | null;
 }
 
+/** One action entry from TonAPI v2 /v2/events/{event_id} — plain TON transfer. */
+export interface TonTransferAction {
+  type: 'TonTransfer';
+  status: string; // "ok" | "failed"
+  TonTransfer?: {
+    sender?: { address?: string } | null;    // sending wallet address (raw)
+    recipient?: { address?: string } | null; // receiving wallet address (raw)
+    amount?: number | null;                  // nanotons as integer (TonAPI returns int64)
+    comment?: string | null;
+  } | null;
+}
+
+/** Generic action — unknown types not used in fee verification. */
+export interface UnknownAction {
+  type: string;
+  status: string;
+}
+
 /** Partial shape of a TonAPI v2 /v2/events/{event_id} response. */
 export interface TonApiEvent {
-  actions?: JettonTransferAction[] | null;
+  actions?: (JettonTransferAction | TonTransferAction | UnknownAction)[] | null;
+  in_progress?: boolean; // true while the trace is still being indexed
 }
 
 export type MgramCheckResult =
@@ -140,7 +159,7 @@ export function checkMgramTransfer(
   creatorWalletRaw: string,
 ): MgramCheckResult {
   const successfulTransfers = (event.actions ?? []).filter(
-    (a) => a.type === 'JettonTransfer' && a.status === 'ok',
+    (a): a is JettonTransferAction => a.type === 'JettonTransfer' && a.status === 'ok',
   );
 
   if (successfulTransfers.length === 0) return 'no-jetton-transfer-action';
@@ -171,6 +190,60 @@ export function checkMgramTransfer(
   }
 
   // All MGRAM transfers had wrong sender
+  return 'wrong-sender';
+}
+
+// ── TON transfer: events-based check ─────────────────────────────────────────
+
+export type TonTransferCheckResult =
+  | 'ok'
+  | 'no-ton-transfer-action' // no successful TonTransfer action found in event
+  | 'wrong-sender'           // transfer sender ≠ authenticated creator wallet
+  | 'wrong-recipient'        // transfer recipient ≠ expected fee wallet
+  | 'insufficient-amount';   // nanoton amount below minimum
+
+/**
+ * Pure function: validates a TonAPI event for a plain TON fee payment.
+ *
+ * Uses TonAPI's event trace (same /v2/events endpoint as MGRAM) rather than
+ * /v2/blockchain/transactions, because the external message hash resolves to
+ * the *sender's wallet* transaction — its in_msg.destination is the sender's
+ * wallet, not the fee recipient.  The events endpoint follows the full trace
+ * and exposes TonTransfer actions with the correct sender/recipient/amount.
+ *
+ * @param event              Parsed TonAPI v2 event object
+ * @param expectedRecipientRaw  Fee wallet address, normalized raw lowercase
+ * @param minAmountNano      Minimum nanotons required
+ * @param creatorWalletRaw   Authenticated creator wallet, normalized raw lowercase
+ */
+export function checkTonTransfer(
+  event: TonApiEvent,
+  expectedRecipientRaw: string,
+  minAmountNano: bigint,
+  creatorWalletRaw: string,
+): TonTransferCheckResult {
+  const successfulTransfers = (event.actions ?? []).filter(
+    (a): a is TonTransferAction => a.type === 'TonTransfer' && a.status === 'ok',
+  );
+
+  if (successfulTransfers.length === 0) return 'no-ton-transfer-action';
+
+  for (const action of successfulTransfers) {
+    const tt = action.TonTransfer!;
+
+    const sender = normalizeRaw(tt.sender?.address ?? '');
+    if (!sender || sender !== creatorWalletRaw) return 'wrong-sender';
+
+    const recipient = normalizeRaw(tt.recipient?.address ?? '');
+    if (recipient !== expectedRecipientRaw) return 'wrong-recipient';
+
+    // TonAPI returns TonTransfer.amount as a number (int64 nanotons), not a string
+    const amount = BigInt(tt.amount ?? 0);
+    if (amount < minAmountNano) return 'insufficient-amount';
+
+    return 'ok';
+  }
+
   return 'wrong-sender';
 }
 
@@ -209,27 +282,36 @@ export async function verifyAccessFeeTx(
     const feeWalletRaw = normalizeRaw(feeWallet);
     if (!feeWalletRaw) return { ok: false, error: 'ADMIN_WALLET_ADDRESS not configured or invalid' };
 
+    // Use /v2/events/{hash} (same as MGRAM) instead of /v2/blockchain/transactions/{hash}.
+    // The external message hash resolves to the sender's wallet transaction on the raw
+    // transactions endpoint; its in_msg.destination is the sender's wallet, not the fee
+    // recipient.  The events endpoint follows the full trace and surfaces TonTransfer
+    // actions with the correct sender/recipient/amount.
     let res: Response;
     try {
       res = await fetch(
-        `${endpoint}/v2/blockchain/transactions/${encodeURIComponent(txHash)}`,
+        `${endpoint}/v2/events/${encodeURIComponent(txHash)}`,
         { signal: AbortSignal.timeout(8_000) },
       );
     } catch (err) {
       return { ok: false, error: `TonAPI request failed: ${err instanceof Error ? err.message : String(err)}` };
     }
 
-    if (res.status === 404) return { ok: false, error: 'Transaction not found on-chain' };
+    if (res.status === 404) return { ok: false, error: 'Transaction not found on-chain yet, please retry' };
     if (!res.ok) return { ok: false, error: `TonAPI returned ${res.status}` };
 
-    let tx: TonApiTx;
+    let event: TonApiEvent;
     try {
-      tx = (await res.json()) as TonApiTx;
+      event = (await res.json()) as TonApiEvent;
     } catch {
       return { ok: false, error: 'TonAPI returned unparseable response' };
     }
 
-    const result = checkFeeTxData(tx, feeWalletRaw, minValueNano, creatorWalletRaw);
+    if (event.in_progress) {
+      return { ok: false, error: 'Transaction still indexing, please retry in a few seconds' };
+    }
+
+    const result = checkTonTransfer(event, feeWalletRaw, minValueNano, creatorWalletRaw);
     if (result === 'ok') return { ok: true };
     return { ok: false, error: result };
   }
@@ -257,7 +339,7 @@ export async function verifyAccessFeeTx(
     return { ok: false, error: `TonAPI request failed: ${err instanceof Error ? err.message : String(err)}` };
   }
 
-  if (res.status === 404) return { ok: false, error: 'Transaction not found on-chain' };
+  if (res.status === 404) return { ok: false, error: 'Transaction not found on-chain yet, please retry' };
   if (!res.ok) return { ok: false, error: `TonAPI returned ${res.status}` };
 
   let event: TonApiEvent;
@@ -265,6 +347,10 @@ export async function verifyAccessFeeTx(
     event = (await res.json()) as TonApiEvent;
   } catch {
     return { ok: false, error: 'TonAPI returned unparseable response' };
+  }
+
+  if (event.in_progress) {
+    return { ok: false, error: 'Transaction still indexing, please retry in a few seconds' };
   }
 
   const result = checkMgramTransfer(event, mgramMasterRaw, treasuryRaw, minValueNano, creatorWalletRaw);
