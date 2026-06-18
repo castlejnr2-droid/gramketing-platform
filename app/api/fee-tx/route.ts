@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthWallet } from '@/lib/auth';
 import { calculateFeeInTokens } from '@/lib/prices';
 import { buildFeeTransaction, buildJettonFeeTransaction, getJettonDecimals } from '@/lib/gramketing-pool-contract';
-import { toNano } from '@ton/core';
+import { toNano, Address } from '@ton/core';
 
 export async function GET(req: NextRequest) {
   try {
@@ -43,6 +43,17 @@ export async function GET(req: NextRequest) {
     if (!treasuryAddress) {
       return NextResponse.json(
         { error: 'TREASURY_WALLET_ADDRESS is not configured - contact support' },
+        { status: 500 },
+      );
+    }
+    // Validate the address is a real TON address before attempting any transaction.
+    // Catches misconfigured env vars (e.g. still set to "placeholder").
+    try {
+      Address.parse(treasuryAddress);
+    } catch {
+      console.error('GET /api/fee-tx: TREASURY_WALLET_ADDRESS is not a valid TON address:', treasuryAddress);
+      return NextResponse.json(
+        { error: 'TREASURY_WALLET_ADDRESS is not configured correctly - contact support' },
         { status: 500 },
       );
     }
@@ -92,9 +103,9 @@ export async function GET(req: NextRequest) {
       });
     } catch (rpcErr) {
       const detail = rpcErr instanceof Error ? rpcErr.message : String(rpcErr);
-      console.error('GET /api/fee-tx: jetton wallet lookup failed:', detail);
+      console.error('GET /api/fee-tx: buildJettonFeeTransaction failed:', detail);
       return NextResponse.json(
-        { error: 'Fee unavailable — wallet lookup failed, please retry', detail },
+        { error: 'Fee temporarily unavailable, please retry', detail },
         { status: 503 },
       );
     }
