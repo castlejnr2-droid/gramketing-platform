@@ -125,16 +125,86 @@ export async function POST(req: NextRequest) {
 
     const feeCurrency: 'TON' | 'MGRAM' = accessFeePaidIn === 'MGRAM' ? 'MGRAM' : 'TON';
 
-    // Reject if this tx hash was already used for another pool (replay / duplicate)
+    // Duplicate tx-hash guard: reject replay attacks but handle idempotent retries.
+    //
+    // A pool CAN already exist with this hash if:
+    //   - The pool was created in DB but the HTTP response never reached the frontend
+    //     (Vercel function timeout, network drop between DB write and response send).
+    //   - The user double-clicked "Create Pool".
+    //
+    // If the existing pool belongs to THIS authenticated creator → idempotent: return
+    // it as if freshly created so the frontend can advance to the deposit step.
+    // If it belongs to a DIFFERENT creator → 409 (genuine replay attack).
     const existingByHash = await prisma.pool.findUnique({
       where: { accessFeeTxHash },
-      select: { id: true },
+      include: {
+        project: { select: { ownerWalletAddress: true } },
+      },
     });
     if (existingByHash) {
-      return NextResponse.json(
-        { error: 'This transaction hash has already been used for another pool.' },
-        { status: 409 }
+      const existingOwner = existingByHash.project?.ownerWalletAddress ?? '';
+      if (existingOwner !== walletAddress) {
+        console.error(
+          `POST /api/pools: replay attempt — tx ${accessFeeTxHash} already used by pool ` +
+          `${existingByHash.id} (owner ${existingOwner}), attempted by ${walletAddress}`,
+        );
+        return NextResponse.json(
+          { error: 'This transaction hash has already been used for another pool.' },
+          { status: 409 },
+        );
+      }
+
+      // Same creator — idempotent retry.
+      //
+      // This happens when the pool was created in DB but the response never reached
+      // the client (Vercel function timeout, network drop, etc.).  The payment was
+      // already verified when the pool was first created, so we skip re-verification.
+      //
+      // If the contract was never deployed (contractAddress is null — typically
+      // because deployAndInitPool exceeded the Vercel timeout), retry it now using
+      // the same nonce (pool.createdAt ms) so the contract address is deterministic
+      // and the deployment is idempotent (GramketingPool.init with same nonce).
+      console.log(
+        `POST /api/pools: idempotent retry — tx ${accessFeeTxHash} → pool ` +
+        `${existingByHash.id} (creator ${walletAddress}), contractAddress=${existingByHash.contractAddress ?? 'null'}`,
       );
+
+      if (!existingByHash.contractAddress) {
+        // Contract deployment failed or timed out on the first attempt. Retry it.
+        try {
+          const adminAddress = process.env.ADMIN_WALLET_ADDRESS;
+          if (!adminAddress) throw new Error('ADMIN_WALLET_ADDRESS is not configured');
+          const { contractAddress: redeployedAddress } = await deployAndInitPool({
+            ownerAddress: walletAddress,
+            adminAddress,
+            jettonMasterAddress: existingByHash.jettonMasterAddress,
+            totalReward: existingByHash.totalReward,
+            durationDays: existingByHash.durationDays,
+            rewardSlots: existingByHash.rewardSlots,
+            nonce: BigInt(existingByHash.createdAt.getTime()),
+          });
+          await prisma.pool.update({
+            where: { id: existingByHash.id },
+            data: { contractAddress: redeployedAddress },
+          });
+          existingByHash.contractAddress = redeployedAddress;
+          console.log(
+            `POST /api/pools: contract redeployed for pool ${existingByHash.id}: ${redeployedAddress}`,
+          );
+        } catch (deployErr) {
+          const errMsg = deployErr instanceof Error ? deployErr.message : String(deployErr);
+          console.error(`POST /api/pools: contract redeploy failed for pool ${existingByHash.id}:`, errMsg);
+          // Return the pool anyway — deposit-tx will surface a clear error explaining
+          // the contract is not yet deployed and the user can retry again.
+        }
+      }
+
+      // Reload pool with project included (the include above only fetched project.ownerWalletAddress)
+      const reloadedPool = await prisma.pool.findUnique({
+        where: { id: existingByHash.id },
+        include: { project: true },
+      });
+      return NextResponse.json({ pool: reloadedPool ?? existingByHash }, { status: 201 });
     }
 
     // Compute the minimum on-chain amount required for this fee (USD-pegged, live price,
@@ -221,15 +291,19 @@ export async function POST(req: NextRequest) {
       });
     } catch (createErr: unknown) {
       // P2002 = unique constraint violation — race condition on accessFeeTxHash
+      // (two concurrent requests for the same hash slipped past the pre-check above).
       if (
         typeof createErr === 'object' &&
         createErr !== null &&
         'code' in createErr &&
         (createErr as { code: string }).code === 'P2002'
       ) {
+        console.error(
+          `POST /api/pools: P2002 race on tx hash ${accessFeeTxHash} for creator ${walletAddress}`,
+        );
         return NextResponse.json(
           { error: 'This transaction hash has already been used for another pool.' },
-          { status: 409 }
+          { status: 409 },
         );
       }
       throw createErr;
