@@ -67,10 +67,11 @@ export async function POST(req: NextRequest) {
       username: user.username,
     });
 
+    const isProd = process.env.NODE_ENV === 'production';
     response.cookies.set('gramketing_token', token, {
       httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure:   isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge:   7 * 24 * 60 * 60, // 7 days
       path:     '/',
     });

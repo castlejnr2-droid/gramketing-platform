@@ -93,15 +93,22 @@ function AuthListener() {
       }
 
       // ── Restored session (no fresh proof available) ──────────────────────
-      // Check if the existing JWT cookie is still valid by calling a lightweight
-      // authenticated endpoint.  If it is, we're already logged in — no need to
-      // re-prove ownership.  If not, force a fresh connect so the user must sign.
+      // On mobile, the wallet deep-links back to the browser which may reload
+      // the page. After reload, TonConnect restores the wallet from localStorage
+      // and fires this callback WITHOUT a proof — the proof is still in transit
+      // via the TonConnect bridge. If we disconnect here we kill the bridge
+      // connection and the proof is never delivered, creating a login loop.
+      //
+      // Strategy: check the cookie. If valid → already logged in, nothing to do.
+      // If invalid (no cookie or expired) → refresh the challenge so the NEXT
+      // connect attempt has a valid nonce, but DO NOT disconnect. The proof will
+      // arrive via bridge and trigger a fresh onStatusChange with the proof,
+      // which will submit it and set the cookie. If the session is genuinely
+      // expired (7-day JWT) the user can manually disconnect and reconnect.
       try {
         const check = await fetch('/api/dashboard', { credentials: 'include' });
         if (!check.ok) {
-          // Cookie missing or expired — disconnect and require fresh connect+proof.
-          console.warn('[AuthListener] restored session has no valid cookie, disconnecting');
-          await tonConnectUI.disconnect();
+          console.warn('[AuthListener] no valid cookie on restored session — refreshing challenge, keeping wallet connected');
           refreshChallenge(tonConnectUI);
         }
         // else: cookie valid, already authenticated — nothing to do
@@ -118,7 +125,14 @@ function AuthListener() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <TonConnectUIProvider manifestUrl="https://www.gramketing.com/tonconnect-manifest.json">
+    <TonConnectUIProvider
+      manifestUrl="https://www.gramketing.com/tonconnect-manifest.json"
+      actionsConfiguration={{
+        // 'back' tells mobile wallets to return via the OS back gesture rather
+        // than redirecting to a URL, preventing a full page reload on return.
+        returnStrategy: 'back',
+      }}
+    >
       <AuthListener />
       {children}
     </TonConnectUIProvider>

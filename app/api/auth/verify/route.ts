@@ -86,10 +86,14 @@ export async function POST(req: NextRequest) {
       userId:        user.id,
     });
 
+    const isProd = process.env.NODE_ENV === 'production';
     response.cookies.set('gramketing_token', token, {
       httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure:   isProd,
+      // SameSite=None (with Secure) is required for Telegram Mini App WebViews
+      // (WKWebView on iOS treats the session as cross-site). In dev we use Lax
+      // since SameSite=None requires Secure which is unavailable on localhost.
+      sameSite: isProd ? 'none' : 'lax',
       maxAge:   7 * 24 * 60 * 60, // 7 days
       path:     '/',
     });
