@@ -457,24 +457,23 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
 
 // ── Scrape all active pools ───────────────────────────────────────────────────
 
-export async function scrapeAllActivePools() {
-  const cycleStart = new Date();
-  console.log(`[${cycleStart.toISOString()}] Starting scrape cycle...`);
-  const now = cycleStart;
-
-  // ── Deploy contracts for PENDING pools with no contractAddress ───────────────
-  // Pool creation via /api/pools deploys the escrow contract synchronously, but
-  // the Vercel function can time out (60 s) before deployAndInitPool finishes
-  // (~63 s worst case).  The pool is created in DB with contractAddress=null.
-  // The Railway scraper has no execution time limit, so it picks these up and
-  // deploys them here.
+/**
+ * Deploys escrow contracts for any PENDING pools that have contractAddress=null.
+ *
+ * Called by the fast deploy loop (every 30 s) and also at the start of each
+ * 30-minute scrape cycle.  deployAndInitPool polls TON for up to 63 seconds —
+ * acceptable here since the Railway worker has no execution time limit.
+ */
+export async function deployPendingContracts(): Promise<void> {
   const undeployedPools = await prisma.pool.findMany({
     where: { status: 'PENDING', contractAddress: null },
     include: { project: true },
   });
-  if (undeployedPools.length > 0) {
-    console.log(`[deploy] Found ${undeployedPools.length} PENDING pool(s) without a contract — deploying...`);
-  }
+
+  if (undeployedPools.length === 0) return;
+
+  console.log(`[deploy] ${undeployedPools.length} PENDING pool(s) without a contract — deploying...`);
+
   for (const pool of undeployedPools) {
     try {
       const adminAddress = process.env.ADMIN_WALLET_ADDRESS;
@@ -492,7 +491,7 @@ export async function scrapeAllActivePools() {
         where: { id: pool.id },
         data: { contractAddress: deployedAddress },
       });
-      console.log(`[deploy] Pool ${pool.id}: contract deployed at ${deployedAddress}`);
+      console.log(`[deploy] Pool ${pool.id}: deployed at ${deployedAddress}`);
       await logAdminEvent({
         action: 'DEPLOY_CONTRACT',
         level: 'info',
@@ -512,6 +511,16 @@ export async function scrapeAllActivePools() {
       }).catch(() => {});
     }
   }
+}
+
+export async function scrapeAllActivePools() {
+  const cycleStart = new Date();
+  console.log(`[${cycleStart.toISOString()}] Starting scrape cycle...`);
+  const now = cycleStart;
+
+  // Deploy any pools that are waiting for their contract (also runs in fast loop,
+  // but we run it here too so a fresh deploy doesn't wait for the next fast tick).
+  await deployPendingContracts();
 
   // ── PENDING → ACTIVE backstop ─────────────────────────────────────────────
   // If the pool creator deposited the reward but never re-hit deposit-status

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
 import { notifyNewPool } from '@/lib/telegram-notify';
-import { deployAndInitPool } from '@/lib/gramketing-pool-contract';
+// deployAndInitPool is called by the Railway scraper, not here (would timeout Vercel)
 import { calculateFeeInTokens, getRequiredFeeNano } from '@/lib/prices';
 import { logAdminEvent } from '@/lib/admin-log';
 import { verifyAccessFeeTx } from '@/lib/ton-verify';
@@ -310,47 +310,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ── Deploy escrow contract on-chain and send CreatePool message ───────────
-    try {
-      const adminAddress = process.env.ADMIN_WALLET_ADDRESS;
-      if (!adminAddress) throw new Error('ADMIN_WALLET_ADDRESS is not configured');
-
-      const { contractAddress: deployedAddress } = await deployAndInitPool({
-        ownerAddress: walletAddress,
-        adminAddress,
-        jettonMasterAddress,
-        totalReward: String(totalReward),
-        durationDays,
-        rewardSlots,
-        nonce: BigInt(pool.createdAt.getTime()), // unique per pool - ms timestamp from DB
-      });
-
-      await prisma.pool.update({
-        where: { id: pool.id },
-        data: { contractAddress: deployedAddress },
-      });
-
-      pool.contractAddress = deployedAddress;
-
-      await logAdminEvent({
-        action: 'DEPLOY_CONTRACT',
-        level: 'info',
-        poolId: pool.id,
-        message: `Escrow contract deployed: ${deployedAddress}`,
-        details: { contractAddress: deployedAddress },
-      });
-    } catch (deployErr) {
-      const errMsg = deployErr instanceof Error ? deployErr.message : String(deployErr);
-      console.error('Contract deployment failed (pool created in DB):', deployErr);
-      await logAdminEvent({
-        action: 'DEPLOY_CONTRACT',
-        level: 'error',
-        poolId: pool.id,
-        message: `Contract deployment failed - pool exists in DB but has no escrow contract. ${errMsg}`,
-        details: { error: errMsg },
-      });
-      // Pool is still created in DB; creator can retry deposit later via admin action
-    }
+    // Contract deployment is intentionally NOT done here.
+    // deployAndInitPool polls TON for up to 63 seconds, which exceeds Vercel's
+    // 60-second function timeout.  The Railway scraper worker runs a dedicated
+    // deploy loop every 30 seconds that picks up PENDING pools with
+    // contractAddress=null and deploys them without any time limit.
+    // The frontend polls /api/pools/:id/deploy-status until the address appears.
 
     // Notify opted-in users about the new pool (fire-and-forget)
     notifyNewPool(project.name, project.name, pool.totalReward).catch(console.error);

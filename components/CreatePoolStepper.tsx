@@ -106,7 +106,11 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const [depositTxLoading, setDepositTxLoading] = useState(false);
   const [depositTxError, setDepositTxError] = useState<string | null>(null);
 
-  // Deposit polling state
+  // Contract deploy polling (phase 1: wait for Railway to deploy the contract)
+  const [deployStatus, setDeployStatus] = useState<'idle' | 'waiting' | 'deployed'>('idle');
+  const deployIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Deposit polling state (phase 2: wait for on-chain deposit confirmation)
   const [pollStatus, setPollStatus] = useState<'idle' | 'polling' | 'confirmed' | 'timeout'>('idle');
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
@@ -153,11 +157,56 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
     return () => { cancelled = true; };
   }, [step, durationDays, feeCurrency]);
 
-  // Pre-fetch deposit transaction params as soon as the pool is created.
-  // Triggered by createdPoolId becoming non-empty so the Deposit button is
-  // ready the moment it appears - no latency on click.
+  // Phase 1: Poll deploy-status every 3 s until the Railway worker deploys the contract.
+  // Starts when the pool is created with contractAddress=null (typical case).
+  // Skips immediately if contractAddress was already returned (rare fast deploy).
   useEffect(() => {
     if (!createdPoolId) return;
+    if (contractAddress) {
+      // Contract already deployed (returned by the idempotent retry path)
+      setDeployStatus('deployed');
+      return;
+    }
+
+    setDeployStatus('waiting');
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const res = await fetch(`/api/pools/${createdPoolId}/deploy-status`, { credentials: 'include' });
+        const data = await res.json();
+        if (data.deployed && data.contractAddress && !cancelled) {
+          setContractAddress(data.contractAddress);
+          setDeployStatus('deployed');
+          if (deployIntervalRef.current) {
+            clearInterval(deployIntervalRef.current);
+            deployIntervalRef.current = null;
+          }
+        }
+      } catch { /* keep polling on transient errors */ }
+    };
+
+    // Poll every 3 seconds; first check after 2 seconds
+    const timer = setTimeout(() => {
+      check();
+      deployIntervalRef.current = setInterval(check, 3_000);
+    }, 2_000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (deployIntervalRef.current) {
+        clearInterval(deployIntervalRef.current);
+        deployIntervalRef.current = null;
+      }
+    };
+  }, [createdPoolId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Phase 2: Pre-fetch deposit transaction params once the contract is deployed.
+  // Triggered when contractAddress becomes non-empty so the Deposit button is
+  // ready the moment it appears - no latency on click.
+  useEffect(() => {
+    if (!createdPoolId || !contractAddress) return;
     let cancelled = false;
     setDepositTxData(null);
     setDepositTxError(null);
@@ -181,7 +230,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
       });
 
     return () => { cancelled = true; };
-  }, [createdPoolId]);
+  }, [createdPoolId, contractAddress]);
 
   const validate1 = () => {
     if (!projectName.trim()) return 'Project name is required';
@@ -290,6 +339,10 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
+    }
+    if (deployIntervalRef.current) {
+      clearInterval(deployIntervalRef.current);
+      deployIntervalRef.current = null;
     }
   };
 
@@ -889,6 +942,19 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
               </p>
             )}
 
+            {/* Phase 1: Contract deploying */}
+            {createdPoolId && deployStatus === 'waiting' && (
+              <div className="p-4 rounded-xl bg-[#0088CC]/10 border border-[#0088CC]/20 flex items-center gap-3">
+                <Loader2 className="w-4 h-4 text-[#0088CC] animate-spin flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-[#0088CC]">Deploying escrow contract…</p>
+                  <p className="text-xs text-white/40 mt-0.5">
+                    The smart contract is being deployed on TON. This usually takes 30–90 seconds.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Polling status banner */}
             {pollStatus === 'polling' && (
               <div className="p-4 rounded-xl bg-[#0088CC]/10 border border-[#0088CC]/20 flex items-center gap-3">
@@ -922,7 +988,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
               </div>
             )}
 
-            {createdPoolId && pollStatus === 'idle' && (
+            {createdPoolId && deployStatus === 'deployed' && pollStatus === 'idle' && (
               <>
                 {depositTxError && (
                   <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center justify-between gap-2">
