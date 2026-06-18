@@ -141,8 +141,11 @@ export async function fetchTweetMetrics(tweetIds: string[]): Promise<TweetFetchR
   const unique = [...new Set(tweetIds)];
 
   // ── 1. Cache check ──────────────────────────────────────────────────────────
+  // Use a 25-minute TTL so the 30-min scraper cycle always fetches fresh metrics.
+  // The old utcDay-keyed cache meant tweets were only refreshed once per UTC day.
+  const cacheExpiry = new Date(Date.now() - 25 * 60 * 1000);
   const cached = await prisma.tweetMetricsCache.findMany({
-    where: { tweetId: { in: unique }, utcDay: today },
+    where: { tweetId: { in: unique }, fetchedAt: { gt: cacheExpiry } },
   });
   const cacheMap = new Map(cached.map((c) => [c.tweetId, c]));
 
