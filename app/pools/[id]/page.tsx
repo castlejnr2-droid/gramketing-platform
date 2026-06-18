@@ -115,6 +115,7 @@ export default function PoolDetailPage() {
   const poolId = params.id as string;
 
   const [pool, setPool] = useState<PoolData | null>(null);
+  const [poolNotFound, setPoolNotFound] = useState(false);
   const [resolvedPoolId, setResolvedPoolId] = useState<string>('');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [myStats, setMyStats] = useState<MyStats | null>(null);
@@ -130,10 +131,11 @@ export default function PoolDetailPage() {
     try {
       const res = await fetch(`/api/pools/${poolId}`);
       const data = await res.json();
+      if (!data.pool) { setPoolNotFound(true); return; }
       setPool(data.pool);
       setResolvedPoolId(data.pool?.id ?? poolId); // fallback to poolId (it IS a CUID in old links)
     } catch {
-      // ignore
+      setPoolNotFound(true);
     }
   }, [poolId]);
 
@@ -205,10 +207,26 @@ export default function PoolDetailPage() {
     }
   };
 
-  if (loading || !pool) {
+  if (loading) {
     return (
       <div className="min-h-screen pt-24 px-4 flex items-center justify-center">
         <div className="glass-card p-8 text-white/40">Loading pool...</div>
+      </div>
+    );
+  }
+
+  if (!pool) {
+    return (
+      <div className="min-h-screen pt-24 px-4 flex items-center justify-center">
+        <div className="glass-card p-8 text-center">
+          <p className="text-white/60 mb-4">Pool not found.</p>
+          <button
+            onClick={() => router.push('/pools')}
+            className="text-[#0088CC] hover:text-[#0088CC]/80 text-sm underline"
+          >
+            Browse all pools
+          </button>
+        </div>
       </div>
     );
   }
