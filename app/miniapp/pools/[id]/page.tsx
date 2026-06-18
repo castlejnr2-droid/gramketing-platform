@@ -60,6 +60,7 @@ interface Submission {
   views: number; likes: number; reposts: number; reactions: number;
   points: number; submittedAt: string; lastScrapedAt?: string | null;
   scrapeError?: string | null;
+  refreshing?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -302,6 +303,45 @@ export default function MiniAppPoolDetailPage() {
       setJoinError('Network error - please try again');
     } finally {
       setJoiningPool(false);
+    }
+  };
+
+  // ── Per-post force refresh ────────────────────────────────────────────────
+
+  const refreshPost = async (postId: string) => {
+    setSubmissions((prev) =>
+      prev.map((s) => (s.id === postId ? { ...s, refreshing: true } : s))
+    );
+    try {
+      const res = await fetch(`/api/posts/${postId}/refresh-metrics`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSubmissions((prev) =>
+          prev.map((s) =>
+            s.id === postId
+              ? {
+                  ...s,
+                  views: updated.views,
+                  likes: updated.likes,
+                  reposts: updated.reposts,
+                  points: updated.points,
+                  lastScrapedAt: updated.lastScrapedAt,
+                  scrapeError: null,
+                  refreshing: false,
+                }
+              : s
+          )
+        );
+        // Re-fetch leaderboard so ranking reflects the updated points
+        fetchLeaderboard();
+      }
+    } catch { /* silent */ } finally {
+      setSubmissions((prev) =>
+        prev.map((s) => (s.id === postId ? { ...s, refreshing: false } : s))
+      );
     }
   };
 
@@ -667,9 +707,20 @@ export default function MiniAppPoolDetailPage() {
                               {sub.postUrl.replace('https://', '')}
                             </a>
                           </div>
-                          <span className="text-sm font-bold text-[#0088CC] flex-shrink-0">
-                            {sub.points.toFixed(0)} pts
-                          </span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {sub.platform === 'X' && (
+                              <button
+                                onClick={() => refreshPost(sub.id)}
+                                disabled={sub.refreshing}
+                                className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 text-white/30 hover:text-white hover:border-white/30 transition-all disabled:opacity-40"
+                              >
+                                {sub.refreshing ? '…' : '↻'}
+                              </button>
+                            )}
+                            <span className="text-sm font-bold text-[#0088CC]">
+                              {sub.points.toFixed(0)} pts
+                            </span>
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 text-[10px] text-white/40">
@@ -766,9 +817,20 @@ export default function MiniAppPoolDetailPage() {
                               {sub.postUrl.replace('https://', '')}
                             </a>
                           </div>
-                          <span className="text-sm font-bold text-[#0088CC] flex-shrink-0">
-                            {sub.points.toFixed(0)} pts
-                          </span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {sub.platform === 'X' && (
+                              <button
+                                onClick={() => refreshPost(sub.id)}
+                                disabled={sub.refreshing}
+                                className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 text-white/30 hover:text-white hover:border-white/30 transition-all disabled:opacity-40"
+                              >
+                                {sub.refreshing ? '…' : '↻'}
+                              </button>
+                            )}
+                            <span className="text-sm font-bold text-[#0088CC]">
+                              {sub.points.toFixed(0)} pts
+                            </span>
+                          </div>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-[10px] text-white/40">
                           <span>{sub.views.toLocaleString()} views</span>

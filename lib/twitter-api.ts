@@ -134,7 +134,10 @@ export function extractTweetId(postUrl: string): string | null {
  * Duplicate IDs in the input are deduplicated for the API call but the result
  * array still has one entry per original input element.
  */
-export async function fetchTweetMetrics(tweetIds: string[]): Promise<TweetFetchResult[]> {
+export async function fetchTweetMetrics(
+  tweetIds: string[],
+  options?: { bypassCache?: boolean },
+): Promise<TweetFetchResult[]> {
   if (tweetIds.length === 0) return [];
 
   const today = todayUtc();
@@ -143,10 +146,13 @@ export async function fetchTweetMetrics(tweetIds: string[]): Promise<TweetFetchR
   // ── 1. Cache check ──────────────────────────────────────────────────────────
   // Use a 25-minute TTL so the 30-min scraper cycle always fetches fresh metrics.
   // The old utcDay-keyed cache meant tweets were only refreshed once per UTC day.
+  // Pass bypassCache:true to skip the cache entirely (e.g. admin force-refresh).
   const cacheExpiry = new Date(Date.now() - 25 * 60 * 1000);
-  const cached = await prisma.tweetMetricsCache.findMany({
-    where: { tweetId: { in: unique }, fetchedAt: { gt: cacheExpiry } },
-  });
+  const cached = options?.bypassCache
+    ? []
+    : await prisma.tweetMetricsCache.findMany({
+        where: { tweetId: { in: unique }, fetchedAt: { gt: cacheExpiry } },
+      });
   const cacheMap = new Map(cached.map((c) => [c.tweetId, c]));
 
   const toFetch = unique.filter((id) => !cacheMap.has(id));
