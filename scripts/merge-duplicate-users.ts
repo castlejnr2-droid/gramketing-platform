@@ -110,6 +110,9 @@ async function main() {
     await prisma.$transaction(async (tx) => {
 
       // 4a. Copy social fields from losers to winner (only if winner is missing them)
+      // Build the social-field patch to apply to winner AFTER all losers are deleted.
+      // (walletAddress update is deferred to the end to avoid P2002 if a loser
+      //  already holds the canonical address string.)
       const socialPatch: Record<string, unknown> = {};
       const bestLoser = losers.find((l) => l.telegramChatId) ?? losers[0];
       if (!winner.telegramChatId && bestLoser.telegramChatId) {
@@ -131,13 +134,6 @@ async function main() {
       if (!winner.username) {
         const uLoser = losers.find((l) => l.username);
         if (uLoser) socialPatch.username = uLoser.username;
-      }
-      // Always ensure winner's walletAddress is the canonical form
-      socialPatch.walletAddress = canonical;
-
-      if (Object.keys(socialPatch).length > 0) {
-        await tx.user.update({ where: { id: winner.id }, data: socialPatch });
-        log(`  → Patched winner with: ${Object.keys(socialPatch).join(', ')}`);
       }
 
       for (const loser of losers) {
@@ -276,7 +272,14 @@ async function main() {
         log(`  ✅ Deleted loser user ${loser.id} (walletAddress: ${loser.walletAddress})`);
         totalMerged++;
       }
-    });
+
+      // 4g. AFTER all losers are deleted, apply social patch + canonical address.
+      //     walletAddress update is deferred here to avoid P2002 when a loser held
+      //     the canonical address string (delete loser first, then re-use that unique value).
+      const finalPatch = { ...socialPatch, walletAddress: canonical };
+      await tx.user.update({ where: { id: winner.id }, data: finalPatch });
+      log(`  → Winner patched: ${Object.keys(finalPatch).join(', ')}`);
+    }, { maxWait: 30_000, timeout: 60_000 });
   }
 
   if (DRY_RUN) {
