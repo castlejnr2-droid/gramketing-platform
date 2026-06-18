@@ -53,14 +53,14 @@ export async function tonRetry<T>(
   fn: (client: TonClient) => Promise<T>,
   label = 'ton-rpc',
 ): Promise<T> {
-  const DELAYS = [2_000, 4_000] as const; // delays *before* attempt 2 and 3
-  const MAX_ATTEMPTS = 3;
+  const DELAYS = [2_000, 4_000, 6_000, 8_000] as const; // delays before attempts 2-5
+  const MAX_ATTEMPTS = 5;
 
   let lastErr: unknown;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    // Switch to fallback on the last attempt if one is configured
-    const usesFallback = attempt === MAX_ATTEMPTS && FALLBACK_ENDPOINT !== null;
+    // Switch to fallback on attempts 3+ if one is configured (gives primary 2 shots first)
+    const usesFallback = attempt >= 3 && FALLBACK_ENDPOINT !== null;
     const endpoint = usesFallback ? FALLBACK_ENDPOINT! : PRIMARY_ENDPOINT;
 
     try {
@@ -71,7 +71,7 @@ export async function tonRetry<T>(
       const endpointLabel = usesFallback ? 'fallback' : 'primary';
 
       if (attempt < MAX_ATTEMPTS) {
-        const delay = DELAYS[attempt - 1];
+        const delay = DELAYS[attempt - 1] ?? 8_000;
         console.warn(
           `[ton-retry] ${label}: attempt ${attempt}/${MAX_ATTEMPTS} failed ` +
           `(${rateLimit ? '429 rate-limit' : 'error'}) on ${endpointLabel} - ` +
