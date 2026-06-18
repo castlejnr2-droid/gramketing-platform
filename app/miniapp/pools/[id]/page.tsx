@@ -183,6 +183,8 @@ export default function MiniAppPoolDetailPage() {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [todaySubmissions, setTodaySubmissions] = useState(0);
   const [countdown, setCountdown] = useState('');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // isAuthed: true when TonConnect wallet is connected OR when a Telegram-linked
   // JWT session was confirmed. Either path gives the user a valid JWT cookie.
@@ -208,6 +210,7 @@ export default function MiniAppPoolDetailPage() {
       const res = await fetch(`/api/pools/${poolId}/leaderboard`);
       const data = await res.json();
       setLeaderboard(data.leaderboard ?? []);
+      setLastUpdated(new Date());
     } catch { /* silent */ }
   }, [poolId]);
 
@@ -236,6 +239,16 @@ export default function MiniAppPoolDetailPage() {
 
   // Re-fetch stats when TonConnect wallet connects/disconnects
   useEffect(() => { fetchMyStats(); }, [fetchMyStats, wallet]);
+
+  // Auto-refresh leaderboard + stats every 5 minutes while the pool is active
+  useEffect(() => {
+    if (!pool || pool.status !== 'ACTIVE') return;
+    const interval = setInterval(() => {
+      fetchLeaderboard();
+      fetchMyStats();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [pool, fetchLeaderboard, fetchMyStats]);
 
   // Listen for the JWT issued via Telegram link (MiniAppShell fires this event
   // after /api/auth/telegram-miniapp returns linked:true and sets the cookie).
@@ -290,6 +303,14 @@ export default function MiniAppPoolDetailPage() {
     } finally {
       setJoiningPool(false);
     }
+  };
+
+  // ── Manual refresh ────────────────────────────────────────────────────────
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchLeaderboard(), fetchMyStats()]);
+    setRefreshing(false);
   };
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -510,6 +531,22 @@ export default function MiniAppPoolDetailPage() {
 
         {/* ── Leaderboard Tab ── */}
         <Tabs.Content value="leaderboard">
+          {/* Refresh bar */}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] text-white/30">
+              {lastUpdated
+                ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : 'Auto-refreshes every 5 min'}
+            </p>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
+            >
+              <Clock className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
           <Leaderboard
             poolId={pool.id}
             entries={leaderboard}

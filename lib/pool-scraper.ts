@@ -331,6 +331,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
               },
             }),
           );
+          console.warn(`[scraper] TOKEN_EXPIRED for post ${post.id} — metrics frozen`);
           errors.push(`X token expired for post ${post.id} (${post.postLink})`);
           xTokenExpired = true;
           xPoints += post.points;
@@ -344,6 +345,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
               data: { scrapeError: 'NOT_FOUND: post deleted or unavailable', lastScrapedAt: now },
             }),
           );
+          console.warn(`[scraper] NOT_FOUND for post ${post.id}: ${post.postLink}`);
           errors.push(`X post not found: ${post.postLink}`);
           xPoints += post.points;
           continue;
@@ -357,6 +359,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
               data: { scrapeError: `${result.error}: ${post.postLink}`, lastScrapedAt: now },
             }),
           );
+          console.warn(`[scraper] ${result.error} for post ${post.id}: ${post.postLink}`);
           errors.push(`X scrape error (${result.error}) for post ${post.id}`);
           xPoints += post.points;
           continue;
@@ -367,6 +370,8 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
           result.views >= 100
             ? result.views * 0.8 + result.likes * 0.1 + result.retweets * 0.1
             : post.points; // keep last valid score if below minimum view threshold
+
+        console.log(`[scraper] post ${post.id}: views=${result.views} likes=${result.likes} reposts=${result.retweets} pts=${pts.toFixed(0)} (prev views=${post.views} pts=${post.points.toFixed(0)})`);
 
         participantWrites.push(
           prisma.poolPost.update({
@@ -595,7 +600,12 @@ export async function scrapeAllActivePools() {
       const { scraped, errors } = await scrapePoolById(pool.id);
       totalScraped += scraped;
       totalErrors += errors.length;
-      if (errors.length > 0) poolsWithErrors.push(pool.id);
+      if (errors.length > 0) {
+        poolsWithErrors.push(pool.id);
+        console.warn(`[scraper] Pool ${pool.id} (${pool.tokenSymbol}): ${scraped} posts OK, ${errors.length} error(s): ${errors.slice(0, 3).join(' | ')}`);
+      } else {
+        console.log(`[scraper] Pool ${pool.id} (${pool.tokenSymbol}): ${scraped} posts updated OK`);
+      }
     } catch (e) {
       console.error(`Error scraping pool ${pool.id}:`, e);
       totalErrors++;
