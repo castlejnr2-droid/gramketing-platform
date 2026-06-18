@@ -3,7 +3,7 @@
  * All functions require ADMIN_MNEMONIC to be set in the environment.
  */
 
-import { Address, beginCell, toNano, Dictionary, internal, SendMode, Cell } from '@ton/core';
+import { Address, beginCell, toNano, Dictionary, internal, SendMode, Cell, contractAddress } from '@ton/core';
 import { TupleItemSlice } from '@ton/core';
 import { createHash } from 'crypto';
 import {
@@ -12,7 +12,7 @@ import {
   storeDistributeRewards,
   storeCancelPool,
 } from '../contracts/output/gramketing_pool_GramketingPool';
-import { getAdminWallet, getAdminKeypair, getTonClient, tonRetry, sleep } from './ton-admin';
+import { getAdminKeypair, getTonClient, tonRetry, sleep } from './ton-admin';
 import { getJettonWalletAddressViaTonApi } from './ton-balance';
 
 // ── Jetton helpers ────────────────────────────────────────────────────────────
@@ -247,98 +247,101 @@ export async function deployAndInitPool(params: {
   rewardSlots: number;
   nonce: bigint;        // unique salt - use Date.now() or a DB pool ID hash
 }): Promise<{ contractAddress: string; poolJettonWalletAddress: string }> {
-  const { keyPair, contract: walletContract, client } = await getAdminWallet();
+  const { keyPair, wallet } = await getAdminKeypair();
 
   const owner = Address.parse(params.ownerAddress);
   const admin = Address.parse(params.adminAddress);
 
-  // ── Step 1: Compute deterministic contract address ──────────────────────────
+  // ── Step 1: Compute deterministic contract address (no RPC needed) ───────────
   const poolContractInit = await GramketingPool.init(owner, admin, params.nonce);
-  const contractAddr = new GramketingPool(
-    // contractAddress() from @ton/core computes the address from stateInit
-    (await import('@ton/core')).contractAddress(0, poolContractInit),
-    poolContractInit,
+  const contractAddr = contractAddress(0, poolContractInit);
+
+  // ── Step 2: Check if already deployed (idempotent) ───────────────────────────
+  const existingState = await tonRetry(
+    (c) => c.getContractState(contractAddr),
+    'deploy/checkState',
   );
 
-  const contractAddress = contractAddr.address;
-
-  // Check if already deployed (idempotent)
-  const existingState = await client.getContractState(contractAddress);
   if (existingState.state !== 'active') {
-    // ── Step 2: Deploy (send stateInit + Deploy message) ───────────────────────
-    const seqno = await walletContract.getSeqno();
-    await walletContract.sendTransfer({
-      secretKey: keyPair.secretKey,
-      seqno,
-      messages: [
-        internal({
-          to: contractAddress,
-          value: toNano('0.15'), // gas for deployment + CreatePool
-          init: poolContractInit,
-          body: beginCell()
-            .storeUint(2490013878, 32) // Deploy opcode (from Tact Deployable)
-            .storeUint(0n, 64)         // queryId
-            .endCell(),
-          bounce: false,
-        }),
-      ],
-      sendMode: SendMode.PAY_GAS_SEPARATELY,
-    });
+    // ── Step 3: Deploy — fetch seqno + send in same retry so seqno stays fresh ──
+    await tonRetry(async (c) => {
+      const seqno = await c.open(wallet).getSeqno();
+      await c.open(wallet).sendTransfer({
+        secretKey: keyPair.secretKey,
+        seqno,
+        messages: [
+          internal({
+            to: contractAddr,
+            value: toNano('0.15'), // gas for deployment + CreatePool
+            init: poolContractInit,
+            body: beginCell()
+              .storeUint(2490013878, 32) // Deploy opcode (from Tact Deployable)
+              .storeUint(0n, 64)         // queryId
+              .endCell(),
+            bounce: false,
+          }),
+        ],
+        sendMode: SendMode.PAY_GAS_SEPARATELY,
+      });
+    }, 'deploy/sendDeploy');
 
-    // ── Step 3: Wait for contract to become active (max 60s) ───────────────────
+    // ── Step 4: Poll for contract to become active (max 63 s) ────────────────
     let active = false;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 21; i++) {
       await sleep(3000);
-      const state = await client.getContractState(contractAddress);
+      const state = await tonRetry(
+        (c) => c.getContractState(contractAddr),
+        'deploy/pollActive',
+      );
       if (state.state === 'active') { active = true; break; }
     }
-    if (!active) throw new Error('Contract deployment timed out - check admin wallet balance');
+    if (!active) throw new Error('Contract deployment timed out — check admin wallet TON balance');
   }
 
-  // ── Step 4: Derive pool's jetton wallet address ─────────────────────────────
-  const contractAddrStr = contractAddress.toString({ bounceable: true, urlSafe: true });
+  // ── Step 5: Derive pool's jetton wallet address ───────────────────────────────
+  const contractAddrStr = contractAddr.toString({ bounceable: true, urlSafe: true });
   const poolJettonWallet = await getJettonWalletAddress(params.jettonMasterAddress, contractAddrStr);
   const poolJettonWalletAddress = poolJettonWallet.toString({ bounceable: true, urlSafe: true });
 
-  // ── Step 5: Send CreatePool message ────────────────────────────────────────
-  // Only send if contract is freshly deployed (status=0, startTime=0)
-  // to prevent double-initialization.
-  const openPool = client.open(GramketingPool.fromAddress(contractAddress));
-  const info = await openPool.getPoolInfo();
+  // ── Step 6: Send CreatePool message if not yet initialized ───────────────────
+  const openPool = await tonRetry(
+    (c) => Promise.resolve(c.open(GramketingPool.fromAddress(contractAddr))),
+    'deploy/openPool',
+  );
+  const info = await tonRetry((c) => c.open(GramketingPool.fromAddress(contractAddr)).getPoolInfo(), 'deploy/getPoolInfo');
 
   if (info.startTime === 0n) {
-    // Not yet initialized - send CreatePool
-    // Fetch decimals so totalReward is stored in the contract in nano-token units
-    // (the contract declares totalReward as `coins`, i.e. a nano-denomination integer).
     const decimals = await getJettonDecimals(params.jettonMasterAddress);
     const totalRewardBigInt = displayToNano(params.totalReward, decimals);
 
-    const seqno = await walletContract.getSeqno();
-    await walletContract.sendTransfer({
-      secretKey: keyPair.secretKey,
-      seqno,
-      messages: [
-        internal({
-          to: contractAddress,
-          value: toNano('0.05'),
-          body: beginCell()
-            .store(
-              storeCreatePool({
-                $$type: 'CreatePool',
-                jettonWalletAddress: poolJettonWallet,
-                totalReward: totalRewardBigInt,
-                durationDays: BigInt(params.durationDays),
-                rewardSlots: BigInt(params.rewardSlots),
-              }),
-            )
-            .endCell(),
-        }),
-      ],
-      sendMode: SendMode.PAY_GAS_SEPARATELY,
-    });
-    // Fire-and-forget - will be processed within seconds
+    await tonRetry(async (c) => {
+      const seqno = await c.open(wallet).getSeqno();
+      await c.open(wallet).sendTransfer({
+        secretKey: keyPair.secretKey,
+        seqno,
+        messages: [
+          internal({
+            to: contractAddr,
+            value: toNano('0.05'),
+            body: beginCell()
+              .store(
+                storeCreatePool({
+                  $$type: 'CreatePool',
+                  jettonWalletAddress: poolJettonWallet,
+                  totalReward: totalRewardBigInt,
+                  durationDays: BigInt(params.durationDays),
+                  rewardSlots: BigInt(params.rewardSlots),
+                }),
+              )
+              .endCell(),
+          }),
+        ],
+        sendMode: SendMode.PAY_GAS_SEPARATELY,
+      });
+    }, 'deploy/sendCreatePool');
   }
 
+  void openPool; // suppress unused warning — used above for type narrowing
   return { contractAddress: contractAddrStr, poolJettonWalletAddress };
 }
 

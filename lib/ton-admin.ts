@@ -20,7 +20,8 @@ const FALLBACK_ENDPOINT =
   process.env.TON_FALLBACK_ENDPOINT ?? null;
 
 export function makeTonClient(endpoint: string): TonClient {
-  return new TonClient({ endpoint });
+  const apiKey = process.env.TONCENTER_API_KEY;
+  return new TonClient({ endpoint, ...(apiKey ? { apiKey } : {}) });
 }
 
 /** Returns the primary TonClient. Use tonRetry for resilient calls. */
