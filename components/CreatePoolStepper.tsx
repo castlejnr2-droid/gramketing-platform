@@ -115,29 +115,57 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
 
-  // Resume: on mount, load the user's latest PENDING pool (if any) so a page
-  // refresh doesn't lose the deposit step.
+  // Resume: on mount, load the user's latest PENDING pool and immediately check
+  // deposit status. If already funded, jump straight to Done without any user action.
   useEffect(() => {
-    fetch('/api/pools?status=PENDING', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        const pools: Array<{
+    const resume = async () => {
+      try {
+        const poolsRes = await fetch('/api/pools?status=PENDING', { credentials: 'include' });
+        if (!poolsRes.ok) return;
+        const poolsData = await poolsRes.json();
+        const pools = (poolsData.pools ?? []) as Array<{
           id: string;
           contractAddress: string | null;
           totalReward: string;
           tokenSymbol: string;
-        }> = d.pools ?? [];
-        if (pools.length === 0) return;
-        // Most recent PENDING pool (API returns newest first)
+        }>;
+        if (!pools.length) return;
+
         const latest = pools[0];
         console.log('[resume] Found PENDING pool:', latest.id, 'contractAddress:', latest.contractAddress);
-        setCreatedPoolId(latest.id);
-        setContractAddress(latest.contractAddress ?? '');
+
+        // Restore display values
         setTotalReward(latest.totalReward);
         setTokenSymbol(latest.tokenSymbol);
+        setCreatedPoolId(latest.id);
         setStep(3);
-      })
-      .catch(() => { /* ignore — user may not be logged in yet */ });
+
+        if (!latest.contractAddress) {
+          // Contract not yet deployed — deploy spinner will show via [createdPoolId] useEffect
+          return;
+        }
+
+        // Contract is deployed — set it synchronously then check deposit status
+        setContractAddress(latest.contractAddress);
+        setDeployStatus('deployed');
+
+        // Immediately check if deposit is already confirmed (handles page-refresh after deposit)
+        const depositRes = await fetch(`/api/pools/${latest.id}/deposit-status`, { credentials: 'include' });
+        const depositData = await depositRes.json();
+        console.log('Deposit status response:', depositData);
+
+        if (depositData.funded || depositData.deposited) {
+          // Already funded — go straight to Done
+          setPollStatus('confirmed');
+          setDepositDone(true);
+          setStep(4);
+        }
+        // If not funded, deposit button will be visible; user clicks it to send tokens
+      } catch (e) {
+        console.warn('[resume] error:', e);
+      }
+    };
+    resume();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch live prices for fee table display
@@ -184,11 +212,11 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
 
   // Phase 1: Poll deploy-status every 3 s until the Railway worker deploys the contract.
   // Starts when the pool is created with contractAddress=null (typical case).
-  // Skips immediately if contractAddress was already returned (rare fast deploy).
+  // Skips immediately if contractAddress was already set (resume or fast deploy path).
   useEffect(() => {
     if (!createdPoolId) return;
-    if (contractAddress) {
-      // Contract already deployed (returned by the idempotent retry path)
+    if (contractAddress || deployStatus === 'deployed') {
+      // Contract already deployed — resume() already handled this
       setDeployStatus('deployed');
       return;
     }
@@ -225,7 +253,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
         deployIntervalRef.current = null;
       }
     };
-  }, [createdPoolId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [createdPoolId, deployStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Phase 2: Pre-fetch deposit transaction params once the contract is deployed.
   // Triggered when contractAddress becomes non-empty so the Deposit button is
@@ -1038,6 +1066,18 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                   </button>
                 </div>
               </div>
+            )}
+
+            {/* Always-visible manual check button whenever we have a pool — lets users
+                who already deposited (and refreshed) trigger the status check manually */}
+            {createdPoolId && deployStatus === 'deployed' && pollStatus !== 'polling' && pollStatus !== 'confirmed' && (
+              <button
+                onClick={() => checkDepositStatus(createdPoolId)}
+                className="w-full flex items-center justify-center gap-2 text-sm text-white/50 hover:text-white border border-white/10 hover:border-white/20 px-4 py-2.5 rounded-xl transition-all"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Already deposited? Check status now
+              </button>
             )}
 
             {createdPoolId && deployStatus === 'deployed' && pollStatus === 'idle' && (
