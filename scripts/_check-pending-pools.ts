@@ -55,6 +55,9 @@ async function main() {
   }
 
   console.log(`Deleting PENDING pool ${deleteId} (${target.project?.name}, tx: ${target.accessFeeTxHash})...`);
+  // Delete dependent records first (FK constraints)
+  await prisma.platformRevenue.deleteMany({ where: { poolId: deleteId } });
+  await prisma.adminLog.deleteMany({ where: { poolId: deleteId } });
   await prisma.pool.delete({ where: { id: deleteId } });
   console.log('Deleted.');
 }

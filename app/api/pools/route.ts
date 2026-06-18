@@ -7,6 +7,18 @@ import { calculateFeeInTokens, getRequiredFeeNano } from '@/lib/prices';
 import { logAdminEvent } from '@/lib/admin-log';
 import { verifyAccessFeeTx } from '@/lib/ton-verify';
 
+// JSON.stringify cannot serialize BigInt — convert pool's BigInt fields to strings.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serializePool(pool: any) {
+  if (!pool) return pool;
+  return {
+    ...pool,
+    tier1Threshold: pool.tier1Threshold?.toString() ?? '0',
+    tier2Threshold: pool.tier2Threshold?.toString() ?? '0',
+    tier3Threshold: pool.tier3Threshold?.toString() ?? '0',
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -60,7 +72,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ pools });
+    return NextResponse.json({ pools: pools.map(serializePool) });
   } catch (err) {
     console.error('GET /api/pools error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -175,7 +187,7 @@ export async function POST(req: NextRequest) {
         where: { id: existingByHash.id },
         include: { project: true },
       });
-      return NextResponse.json({ pool: reloadedPool ?? existingByHash }, { status: 201 });
+      return NextResponse.json({ pool: serializePool(reloadedPool ?? existingByHash) }, { status: 201 });
     }
 
     // Compute the minimum on-chain amount required for this fee (USD-pegged, live price,
@@ -320,7 +332,7 @@ export async function POST(req: NextRequest) {
     // Notify opted-in users about the new pool (fire-and-forget)
     notifyNewPool(project.name, project.name, pool.totalReward).catch(console.error);
 
-    return NextResponse.json({ pool }, { status: 201 });
+    return NextResponse.json({ pool: serializePool(pool) }, { status: 201 });
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     const stack  = err instanceof Error ? err.stack : undefined;
