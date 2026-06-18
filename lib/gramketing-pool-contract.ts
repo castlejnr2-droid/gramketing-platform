@@ -299,21 +299,22 @@ export async function deployAndInitPool(params: {
   }
 
   // ── Step 5: Derive pool's jetton wallet address ───────────────────────────────
+  // Small pause so TonCenter rate-limit window resets between the burst of RPC
+  // calls above and the getPoolInfo / sendCreatePool calls below.
+  await sleep(3000);
   const contractAddrStr = contractAddr.toString({ bounceable: true, urlSafe: true });
   const poolJettonWallet = await getJettonWalletAddress(params.jettonMasterAddress, contractAddrStr);
   const poolJettonWalletAddress = poolJettonWallet.toString({ bounceable: true, urlSafe: true });
 
   // ── Step 6: Send CreatePool message if not yet initialized ───────────────────
-  const openPool = await tonRetry(
-    (c) => Promise.resolve(c.open(GramketingPool.fromAddress(contractAddr))),
-    'deploy/openPool',
-  );
+  await sleep(2000); // space out calls to avoid TonCenter rate-limit
   const info = await tonRetry((c) => c.open(GramketingPool.fromAddress(contractAddr)).getPoolInfo(), 'deploy/getPoolInfo');
 
   if (info.startTime === 0n) {
     const decimals = await getJettonDecimals(params.jettonMasterAddress);
     const totalRewardBigInt = displayToNano(params.totalReward, decimals);
 
+    await sleep(2000); // space before seqno fetch
     await tonRetry(async (c) => {
       const seqno = await c.open(wallet).getSeqno();
       await c.open(wallet).sendTransfer({
@@ -341,7 +342,6 @@ export async function deployAndInitPool(params: {
     }, 'deploy/sendCreatePool');
   }
 
-  void openPool; // suppress unused warning — used above for type narrowing
   return { contractAddress: contractAddrStr, poolJettonWalletAddress };
 }
 
