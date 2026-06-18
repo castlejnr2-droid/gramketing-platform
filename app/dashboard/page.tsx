@@ -43,6 +43,15 @@ interface OwnedPool {
   top3: LeaderboardTop3[];
 }
 
+interface PendingPool {
+  id: string;
+  projectName: string;
+  tokenSymbol: string;
+  totalReward: string;
+  contractAddress: string | null;
+  createdAt: string;
+}
+
 interface AccountInfo {
   walletAddress: string;
   username?: string;
@@ -103,9 +112,12 @@ export default function DashboardPage() {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [ownedEndedPools, setOwnedEndedPools] = useState<OwnedPool[]>([]);
+  const [pendingPools, setPendingPools] = useState<PendingPool[]>([]);
 
   useEffect(() => {
     if (!wallet) return;
+
+    // Fetch non-PENDING owned pools (ACTIVE / ENDED / DISTRIBUTED)
     fetch(`/api/pools?ownerAddress=${encodeURIComponent(wallet.account.address)}&limit=50`)
       .then((r) => r.json())
       .then(async (d) => {
@@ -154,6 +166,29 @@ export default function DashboardPage() {
           })
         );
         setOwnedEndedPools(enriched);
+      })
+      .catch(() => {});
+
+    // Fetch PENDING pools separately (requires auth cookie — owner-only via status filter)
+    fetch('/api/pools?status=PENDING', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        const pools = (d.pools ?? []) as Array<{
+          id: string;
+          project: { name: string };
+          tokenSymbol: string;
+          totalReward: string;
+          contractAddress: string | null;
+          createdAt: string;
+        }>;
+        setPendingPools(pools.map((p) => ({
+          id: p.id,
+          projectName: p.project.name,
+          tokenSymbol: p.tokenSymbol,
+          totalReward: p.totalReward,
+          contractAddress: p.contractAddress,
+          createdAt: p.createdAt,
+        })));
       })
       .catch(() => {});
   }, [wallet]);
@@ -403,7 +438,7 @@ export default function DashboardPage() {
             <Layers className="w-5 h-5 text-[#0088CC]" />
             My Created Pools
           </h2>
-          {ownedEndedPools.length === 0 ? (
+          {pendingPools.length === 0 && ownedEndedPools.length === 0 ? (
             <div className="glass-card p-10 text-center text-white/40">
               <p className="mb-4">You haven&apos;t created any pools yet.</p>
               <Link href="/create-pool" className="btn-primary text-sm inline-flex items-center gap-2">
@@ -412,6 +447,36 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Pending pools — deposit not yet confirmed */}
+              {pendingPools.map((p) => (
+                <div key={p.id} className="glass-card p-5 border border-yellow-500/30">
+                  <div className="flex items-start justify-between flex-wrap gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <h3 className="font-semibold text-white">{p.projectName}</h3>
+                        <span className="text-xs text-[#0088CC] bg-[#0088CC]/10 px-2 py-0.5 rounded font-mono">
+                          ${p.tokenSymbol}
+                        </span>
+                        <span className="text-xs bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded font-semibold">
+                          {p.contractAddress ? 'DEPOSIT REQUIRED' : 'DEPLOYING…'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-white/40">
+                        Reward: <span className="text-white/70">{p.totalReward} {p.tokenSymbol}</span>
+                        {!p.contractAddress && (
+                          <span className="ml-3 text-yellow-400/70">Contract deploying — check back shortly</span>
+                        )}
+                        {p.contractAddress && (
+                          <span className="ml-3 text-yellow-400/70">Deposit required to activate pool</span>
+                        )}
+                      </p>
+                    </div>
+                    <Link href="/create-pool" className="btn-primary text-sm flex items-center gap-2 flex-shrink-0">
+                      Complete Setup <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
               {ownedEndedPools.map((p) => {
                 const msLeft = new Date(p.endDate).getTime() - Date.now();
                 const dLeft = Math.max(0, Math.floor(msLeft / 86_400_000));
