@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthWallet } from '@/lib/auth';
+import { normalizeWalletAddress } from '@/lib/ton';
 
 const REF_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -48,11 +49,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get or create the referred user
+    // Get or create the referred user — always use canonical address format
+    const canonicalWallet = (() => { try { return normalizeWalletAddress(walletAddress); } catch { return walletAddress; } })();
     const referredUser = await prisma.user.upsert({
-      where: { walletAddress },
+      where: { walletAddress: canonicalWallet },
       update: {},
-      create: { walletAddress },
+      create: { walletAddress: canonicalWallet },
     });
 
     // Cannot refer yourself

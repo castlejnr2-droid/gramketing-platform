@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Address } from '@ton/core';
 import { prisma } from '@/lib/prisma';
 import { signJwt } from '@/lib/auth';
 import { verifyTonProof, TonProofAccount, TonProofData } from '@/lib/tonConnect';
 import { validateTelegramInitData, extractTelegramUserId } from '@/lib/telegram';
+import { normalizeWalletAddress, walletAddressVariants } from '@/lib/ton';
 
 // The expected domain must match what the wallet signed.
 // Set TON_PROOF_DOMAIN in Vercel env to match your production hostname.
@@ -116,79 +116,157 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature', reason: 'bad_signature' }, { status: 401 });
     }
 
-    // Derive canonical wallet address.
-    // Explicitly set urlSafe:true + bounceable:true so the format is stable
-    // regardless of @ton/core library version (default has changed between versions).
-    const parsedAddress = Address.parse(account.address);
-    const canonicalAddress = parsedAddress.toString({ urlSafe: true, bounceable: true });
+    // Canonical form: bounceable=true, urlSafe=true — enforced by normalizeWalletAddress().
+    const canonicalAddress = normalizeWalletAddress(account.address);
+    const variants = walletAddressVariants(account.address);
 
-    // Build the full set of address format variants so we can find users whose
-    // address was stored in any historical format (urlSafe=false, raw, non-bounceable).
-    const addressVariants = Array.from(new Set([
-      canonicalAddress,
-      parsedAddress.toString({ urlSafe: false, bounceable: true }),
-      parsedAddress.toString({ urlSafe: true,  bounceable: false }),
-      parsedAddress.toString({ urlSafe: false, bounceable: false }),
-      parsedAddress.toRawString(),
-    ]));
-
-    // Find all existing users that match any address variant.
-    // If the wallet was stored in a legacy format this query finds them too.
+    // Find ALL existing users that match any address encoding for this wallet.
     const matchingUsers = await prisma.user.findMany({
-      where: { walletAddress: { in: addressVariants } },
+      where: { walletAddress: { in: variants } },
     });
 
-    let user: (typeof matchingUsers)[0] | null = null;
+    let user: (typeof matchingUsers)[0];
     let userCreated = false;
 
-    if (matchingUsers.length > 0) {
-      // Prefer whichever record has the most social data so we never surface a
-      // bare "new" record when a richer one exists (common when address was
-      // stored in a different format on first login).
-      user = matchingUsers.reduce((best, candidate) => {
-        const bestScore  = (best.telegramChatId  ? 2 : 0) + (best.xAccountId  ? 1 : 0);
-        const candScore  = (candidate.telegramChatId ? 2 : 0) + (candidate.xAccountId ? 1 : 0);
-        return candScore > bestScore ? candidate : best;
-      });
-
-      console.log('[auth/verify] found existing user', {
-        userId:           user.id,
-        storedAddress:    user.walletAddress,
-        canonicalAddress,
-        formatChanged:    user.walletAddress !== canonicalAddress,
-        multipleRecords:  matchingUsers.length,
-        telegramChatId:   user.telegramChatId ? '✓' : null,
-        xAccountId:       user.xAccountId     ? '✓' : null,
-      });
-
-      // Migrate walletAddress to canonical format if it was stored differently.
-      if (user.walletAddress !== canonicalAddress) {
-        try {
-          user = await prisma.user.update({
-            where: { id: user.id },
-            data:  { walletAddress: canonicalAddress },
-          });
-          console.log('[auth/verify] migrated walletAddress to canonical format', canonicalAddress);
-        } catch (migrateErr: unknown) {
-          // P2002 means another record already has the canonical address.
-          // That record takes precedence; re-run the lookup to get it.
-          const code = (migrateErr as { code?: string })?.code;
-          if (code === 'P2002') {
-            const canonical = await prisma.user.findUnique({ where: { walletAddress: canonicalAddress } });
-            if (canonical) {
-              console.warn('[auth/verify] canonical address already exists as separate record — using it', { canonicalId: canonical.id, oldId: user.id });
-              user = canonical;
-            }
-          } else {
-            console.warn('[auth/verify] walletAddress migration failed, continuing with stored format', migrateErr);
-          }
-        }
-      }
-    } else {
-      // No existing user — create fresh.
+    if (matchingUsers.length === 0) {
+      // First ever login for this wallet.
       user = await prisma.user.create({ data: { walletAddress: canonicalAddress } });
       userCreated = true;
       console.log('[auth/verify] new user created', { userId: user.id, walletAddress: canonicalAddress });
+
+    } else if (matchingUsers.length === 1) {
+      user = matchingUsers[0];
+      console.log('[auth/verify] existing user', {
+        userId:        user.id,
+        storedAddress: user.walletAddress,
+        canonical:     canonicalAddress,
+        formatDiff:    user.walletAddress !== canonicalAddress,
+        tg:            user.telegramChatId ? '✓' : null,
+        x:             user.xAccountId    ? '✓' : null,
+      });
+
+      // Migrate address format to canonical if it differs.
+      if (user.walletAddress !== canonicalAddress) {
+        try {
+          user = await prisma.user.update({ where: { id: user.id }, data: { walletAddress: canonicalAddress } });
+          console.log('[auth/verify] address migrated to canonical', canonicalAddress);
+        } catch (e: unknown) {
+          console.warn('[auth/verify] address migration failed (P2002?), continuing as-is', e);
+        }
+      }
+
+    } else {
+      // Multiple records for the same wallet — merge them NOW, at login time.
+      // This handles any users that slipped through before the migration script ran.
+      console.warn('[auth/verify] multiple user records for same wallet — merging', {
+        canonicalAddress,
+        ids: matchingUsers.map((u) => u.id),
+      });
+
+      // Pick winner: most social data, then oldest record as tiebreaker.
+      const sorted = [...matchingUsers].sort((a, b) => {
+        const scoreA = (a.telegramChatId ? 4 : 0) + (a.xAccountId ? 2 : 0) + (a.username ? 1 : 0);
+        const scoreB = (b.telegramChatId ? 4 : 0) + (b.xAccountId ? 2 : 0) + (b.username ? 1 : 0);
+        return scoreB - scoreA || a.createdAt.getTime() - b.createdAt.getTime();
+      });
+      const winner = sorted[0];
+      const losers = sorted.slice(1);
+
+      for (const loser of losers) {
+        try {
+          await prisma.$transaction(async (tx) => {
+            // Reassign PoolParticipant rows (unique on poolId+userId — skip if conflict)
+            const loserParts = await tx.poolParticipant.findMany({ where: { userId: loser.id } });
+            for (const lp of loserParts) {
+              const wp = await tx.poolParticipant.findUnique({
+                where: { poolId_userId: { poolId: lp.poolId, userId: winner.id } },
+              });
+              if (!wp) {
+                await tx.poolParticipant.update({ where: { id: lp.id }, data: { userId: winner.id } });
+              } else {
+                // Merge points; move PoolPosts; delete loser's participant
+                await tx.poolParticipant.update({
+                  where: { id: wp.id },
+                  data: {
+                    totalPoints:         wp.totalPoints         + lp.totalPoints,
+                    xPoints:             wp.xPoints             + lp.xPoints,
+                    telegramPoints:      wp.telegramPoints      + lp.telegramPoints,
+                    referralBonusPoints: wp.referralBonusPoints + lp.referralBonusPoints,
+                    referralMultiplier:  Math.max(wp.referralMultiplier, lp.referralMultiplier),
+                    holderBoost:         Math.max(wp.holderBoost, lp.holderBoost),
+                  },
+                });
+                // Reassign PoolPosts that don't collide
+                const posts = await tx.poolPost.findMany({ where: { participantId: lp.id } });
+                for (const post of posts) {
+                  const clash = await tx.poolPost.findUnique({
+                    where: { poolId_postLink: { poolId: post.poolId, postLink: post.postLink } },
+                  });
+                  if (!clash || clash.participantId === wp.id) {
+                    await tx.poolPost.update({ where: { id: post.id }, data: { participantId: wp.id } }).catch(() => {});
+                  } else {
+                    await tx.poolPost.delete({ where: { id: post.id } });
+                  }
+                }
+                await tx.poolParticipant.delete({ where: { id: lp.id } });
+              }
+            }
+            // Reassign Submissions (skip duplicates)
+            const loserSubs = await tx.submission.findMany({ where: { userId: loser.id } });
+            for (const sub of loserSubs) {
+              const dup = await tx.submission.findFirst({
+                where: { poolId: sub.poolId, userId: winner.id, platform: sub.platform, submittedDate: sub.submittedDate },
+              });
+              if (dup) {
+                await tx.submission.delete({ where: { id: sub.id } });
+              } else {
+                await tx.submission.update({ where: { id: sub.id }, data: { userId: winner.id } });
+              }
+            }
+            // ReferralBoost
+            await tx.referralBoost.updateMany({ where: { referrerId:     loser.id }, data: { referrerId:     winner.id } });
+            await tx.referralBoost.updateMany({ where: { referredUserId: loser.id }, data: { referredUserId: winner.id } });
+            await tx.referralBoost.deleteMany({ where: { referrerId: winner.id, referredUserId: winner.id } });
+            // TelegramNotificationPrefs
+            const loserPrefs = await tx.telegramNotificationPrefs.findUnique({ where: { userId: loser.id } });
+            if (loserPrefs) {
+              const winnerPrefs = await tx.telegramNotificationPrefs.findUnique({ where: { userId: winner.id } });
+              if (!winnerPrefs) {
+                await tx.telegramNotificationPrefs.update({ where: { id: loserPrefs.id }, data: { userId: winner.id } });
+              } else {
+                await tx.telegramNotificationPrefs.delete({ where: { id: loserPrefs.id } });
+              }
+            }
+            // Copy social fields to winner if winner is missing them
+            const patch: Record<string, unknown> = {};
+            if (!winner.telegramChatId && loser.telegramChatId) patch.telegramChatId = loser.telegramChatId;
+            if (!winner.xAccountId     && loser.xAccountId)     patch.xAccountId     = loser.xAccountId;
+            if (!winner.xHandle        && loser.xHandle)         patch.xHandle        = loser.xHandle;
+            if (!winner.username       && loser.username)        patch.username       = loser.username;
+            if (Object.keys(patch).length) {
+              await tx.user.update({ where: { id: winner.id }, data: patch });
+              Object.assign(winner, patch); // reflect in local object for JWT
+            }
+            // Delete loser
+            await tx.user.delete({ where: { id: loser.id } });
+          });
+          console.log('[auth/verify] merged loser', loser.id, '→ winner', winner.id);
+        } catch (mergeErr) {
+          console.error('[auth/verify] merge failed for loser', loser.id, mergeErr);
+          // Non-fatal — continue with winner even if merge incomplete
+        }
+      }
+
+      // Ensure winner has canonical address
+      if (winner.walletAddress !== canonicalAddress) {
+        try {
+          await prisma.user.update({ where: { id: winner.id }, data: { walletAddress: canonicalAddress } });
+          winner.walletAddress = canonicalAddress;
+        } catch (e) {
+          console.warn('[auth/verify] canonical address update failed after merge', e);
+        }
+      }
+      user = await prisma.user.findUniqueOrThrow({ where: { id: winner.id } });
     }
 
     const walletAddress = user.walletAddress;

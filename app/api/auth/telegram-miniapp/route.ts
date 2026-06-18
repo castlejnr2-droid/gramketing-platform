@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Address } from '@ton/core';
 import { prisma } from '@/lib/prisma';
 import { signJwt } from '@/lib/auth';
 import { validateTelegramInitData, extractTelegramUserId } from '@/lib/telegram';
+import { normalizeWalletAddress } from '@/lib/ton';
 
 /**
  * Called by the Mini App on load with the raw Telegram WebApp.initData string.
@@ -58,19 +58,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ linked: false });
     }
 
-    // Normalize walletAddress to canonical format so the JWT is consistent with
-    // tokens issued by /api/auth/verify (both use urlSafe:true bounceable:true).
+    // Normalize walletAddress to canonical format so the JWT always matches
+    // what /api/auth/verify and /api/dashboard use for DB lookups.
     let walletAddress = user.walletAddress;
     try {
-      walletAddress = Address.parse(user.walletAddress).toString({ urlSafe: true, bounceable: true });
-      if (walletAddress !== user.walletAddress) {
-        // Migrate legacy address format in DB
-        await prisma.user.update({ where: { id: user.id }, data: { walletAddress } }).catch(() => {});
-        console.log('[telegram-miniapp] migrated walletAddress to canonical format', { userId: user.id, from: user.walletAddress, to: walletAddress });
+      const canonical = normalizeWalletAddress(user.walletAddress);
+      if (canonical !== user.walletAddress) {
+        await prisma.user.update({ where: { id: user.id }, data: { walletAddress: canonical } }).catch(() => {});
+        console.log('[telegram-miniapp] migrated walletAddress to canonical', { userId: user.id, from: user.walletAddress, to: canonical });
+        walletAddress = canonical;
       }
     } catch {
-      // Not a valid TON address (raw hex, etc.) — use as-is
-      walletAddress = user.walletAddress;
+      // Unparseable address (legacy raw hex etc.) — use as-is
     }
 
     console.log('[telegram-miniapp] issuing JWT for linked user', { userId: user.id, walletAddress, telegramChatId: telegramUserId, xAccountId: user.xAccountId ? '✓' : null });

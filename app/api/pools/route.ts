@@ -6,13 +6,11 @@ import { notifyNewPool } from '@/lib/telegram-notify';
 import { calculateFeeInTokens, getRequiredFeeNano } from '@/lib/prices';
 import { logAdminEvent } from '@/lib/admin-log';
 import { verifyAccessFeeTx } from '@/lib/ton-verify';
-import { Address } from '@ton/core';
 import { generateSlug } from '@/lib/slug';
+import { normalizeWalletAddress } from '@/lib/ton';
 
-/** Normalize any TON address format (raw 0:... or user-friendly EQ.../UQ...)
- *  to the canonical string stored in the DB (Address.parse().toString()). */
 function normalizeAddress(addr: string): string {
-  try { return Address.parse(addr).toString(); } catch { return addr; }
+  try { return normalizeWalletAddress(addr); } catch { return addr; }
 }
 
 // JSON.stringify cannot serialize BigInt — convert pool's BigInt fields to strings.
