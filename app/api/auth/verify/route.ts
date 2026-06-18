@@ -34,14 +34,46 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log('[auth/verify] proof attempt', {
+      address:   account.address,
+      chain:     account.chain,
+      domain:    proof.domain?.value,
+      expected:  EXPECTED_DOMAIN,
+      payload:   proof.payload?.slice(0, 8) + '…',
+      timestamp: proof.timestamp,
+      now:       Math.floor(Date.now() / 1000),
+      delta:     Math.floor(Date.now() / 1000) - (proof.timestamp ?? 0),
+      hasSig:    !!proof.signature,
+      hasStateInit: !!account.walletStateInit,
+    });
+
     // Consume the challenge nonce — single-use, must exist and not be expired
     const challenge = await prisma.tonProofChallenge.findUnique({
       where: { payload: proof.payload },
     });
 
-    if (!challenge || challenge.used || challenge.expiresAt < new Date()) {
+    if (!challenge) {
+      console.warn('[auth/verify] challenge not found for payload', proof.payload?.slice(0, 16));
       return NextResponse.json(
-        { error: 'Invalid or expired challenge payload' },
+        { error: 'Invalid or expired challenge payload', reason: 'not_found' },
+        { status: 401 },
+      );
+    }
+    if (challenge.used) {
+      console.warn('[auth/verify] challenge already used', { challengeId: challenge.id });
+      return NextResponse.json(
+        { error: 'Challenge already used', reason: 'already_used' },
+        { status: 401 },
+      );
+    }
+    if (challenge.expiresAt < new Date()) {
+      console.warn('[auth/verify] challenge expired', {
+        challengeId: challenge.id,
+        expiresAt: challenge.expiresAt.toISOString(),
+        now: new Date().toISOString(),
+      });
+      return NextResponse.json(
+        { error: 'Challenge expired', reason: 'expired' },
         { status: 401 },
       );
     }
@@ -55,7 +87,12 @@ export async function POST(req: NextRequest) {
     // Verify the ton_proof cryptographically
     const valid = await verifyTonProof(account, proof, EXPECTED_DOMAIN);
     if (!valid) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      console.warn('[auth/verify] signature verification failed', {
+        address: account.address,
+        domain:  proof.domain?.value,
+        expected: EXPECTED_DOMAIN,
+      });
+      return NextResponse.json({ error: 'Invalid signature', reason: 'bad_signature' }, { status: 401 });
     }
 
     // Derive canonical wallet address (raw 0:hash format, consistent with DB)

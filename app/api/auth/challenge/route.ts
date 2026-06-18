@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 
-const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CHALLENGE_TTL_MS = 30 * 60 * 1000; // 30 minutes (was 5 — extended for Telegram Mini App users who may take longer to confirm the wallet popup)
 
 /**
  * GET /api/auth/challenge

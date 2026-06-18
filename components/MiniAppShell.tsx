@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutGrid, BarChart2, Trophy, Settings } from 'lucide-react';
@@ -29,6 +29,7 @@ const TABS = [
 
 export function MiniAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const sessionAttempted = useRef(false);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -37,30 +38,34 @@ export function MiniAppShell({ children }: { children: React.ReactNode }) {
     tg.ready();
     tg.expand();
 
-    // Auto-link if the Telegram user has already done the LINK-XXXXXX flow.
-    // If linked, the server issues a JWT cookie so the user has a session
-    // without needing to manually reconnect TonConnect.
-    if (tg.initData) {
-      fetch('/api/auth/telegram-miniapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ initData: tg.initData }),
+    // Only attempt the Telegram auto-link once per mount.
+    // The session-ready event is dispatched by Providers.tsx (TonConnect auth)
+    // as well, so this only handles the Telegram-linked-account fast path.
+    if (!tg.initData || sessionAttempted.current) return;
+    sessionAttempted.current = true;
+
+    fetch('/api/auth/telegram-miniapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ initData: tg.initData }),
+    })
+      .then((r) => r.json())
+      .then((data: { linked: boolean; walletAddress?: string }) => {
+        if (data.linked && data.walletAddress) {
+          // JWT cookie was set by the server.  Notify pages so they can
+          // fetch authenticated data without waiting for TonConnect.
+          window.dispatchEvent(
+            new CustomEvent('gramketing:session-ready', {
+              detail: { walletAddress: data.walletAddress },
+            })
+          );
+        }
+        // If not linked: the user must connect via TonConnect.
+        // Providers.tsx will dispatch gramketing:session-ready after the
+        // ton_proof is verified, so pages will receive the event either way.
       })
-        .then((r) => r.json())
-        .then((data: { linked: boolean; walletAddress?: string }) => {
-          if (data.linked && data.walletAddress) {
-            // JWT cookie was set by the server. Notify the rest of the miniapp
-            // so pages can fetch authenticated data without waiting for TonConnect.
-            window.dispatchEvent(
-              new CustomEvent('gramketing:session-ready', {
-                detail: { walletAddress: data.walletAddress },
-              })
-            );
-          }
-        })
-        .catch(() => {});
-    }
+      .catch(() => {});
   }, []);
 
   return (

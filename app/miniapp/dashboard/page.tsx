@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Link from 'next/link';
 import { getParticipantTier } from '@/lib/points';
@@ -47,7 +47,7 @@ export default function MiniAppDashboardPage() {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchDashboard = useCallback(() => {
     if (!wallet) { setLoading(false); return; }
     fetch('/api/dashboard', { credentials: 'include' })
       .then((r) => r.json())
@@ -59,6 +59,18 @@ export default function MiniAppDashboardPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [wallet]);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  // Re-fetch when TonConnect auth completes (gramketing:session-ready is dispatched
+  // by Providers.tsx after proof verification, and by MiniAppShell after Telegram link auth).
+  useEffect(() => {
+    const handler = () => { setLoading(true); fetchDashboard(); };
+    window.addEventListener('gramketing:session-ready', handler);
+    return () => window.removeEventListener('gramketing:session-ready', handler);
+  }, [fetchDashboard]);
 
   useEffect(() => {
     if (!wallet) return;
