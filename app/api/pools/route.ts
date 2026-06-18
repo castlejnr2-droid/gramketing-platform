@@ -160,46 +160,17 @@ export async function POST(req: NextRequest) {
       // the client (Vercel function timeout, network drop, etc.).  The payment was
       // already verified when the pool was first created, so we skip re-verification.
       //
-      // If the contract was never deployed (contractAddress is null — typically
-      // because deployAndInitPool exceeded the Vercel timeout), retry it now using
-      // the same nonce (pool.createdAt ms) so the contract address is deterministic
-      // and the deployment is idempotent (GramketingPool.init with same nonce).
+      // NOTE: We do NOT retry contract deployment here.  deployAndInitPool polls
+      // TON for up to 63 seconds, which exceeds Vercel's function timeout and causes
+      // a 500.  Instead, contract deployment for stuck PENDING pools is handled by
+      // the Railway scraper worker (jobs/scraper.ts) which runs every 30 minutes
+      // and has no execution time limit.
       console.log(
         `POST /api/pools: idempotent retry — tx ${accessFeeTxHash} → pool ` +
-        `${existingByHash.id} (creator ${walletAddress}), contractAddress=${existingByHash.contractAddress ?? 'null'}`,
+        `${existingByHash.id} (creator ${walletAddress}), contractAddress=${existingByHash.contractAddress ?? 'null — scraper will deploy'}`,
       );
 
-      if (!existingByHash.contractAddress) {
-        // Contract deployment failed or timed out on the first attempt. Retry it.
-        try {
-          const adminAddress = process.env.ADMIN_WALLET_ADDRESS;
-          if (!adminAddress) throw new Error('ADMIN_WALLET_ADDRESS is not configured');
-          const { contractAddress: redeployedAddress } = await deployAndInitPool({
-            ownerAddress: walletAddress,
-            adminAddress,
-            jettonMasterAddress: existingByHash.jettonMasterAddress,
-            totalReward: existingByHash.totalReward,
-            durationDays: existingByHash.durationDays,
-            rewardSlots: existingByHash.rewardSlots,
-            nonce: BigInt(existingByHash.createdAt.getTime()),
-          });
-          await prisma.pool.update({
-            where: { id: existingByHash.id },
-            data: { contractAddress: redeployedAddress },
-          });
-          existingByHash.contractAddress = redeployedAddress;
-          console.log(
-            `POST /api/pools: contract redeployed for pool ${existingByHash.id}: ${redeployedAddress}`,
-          );
-        } catch (deployErr) {
-          const errMsg = deployErr instanceof Error ? deployErr.message : String(deployErr);
-          console.error(`POST /api/pools: contract redeploy failed for pool ${existingByHash.id}:`, errMsg);
-          // Return the pool anyway — deposit-tx will surface a clear error explaining
-          // the contract is not yet deployed and the user can retry again.
-        }
-      }
-
-      // Reload pool with project included (the include above only fetched project.ownerWalletAddress)
+      // Reload pool with full project (the initial include only fetched ownerWalletAddress)
       const reloadedPool = await prisma.pool.findUnique({
         where: { id: existingByHash.id },
         include: { project: true },
@@ -386,7 +357,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ pool }, { status: 201 });
   } catch (err) {
-    console.error('POST /api/pools error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const stack  = err instanceof Error ? err.stack : undefined;
+    console.error('POST /api/pools unhandled error:', errMsg, stack ?? '');
+    return NextResponse.json({ error: 'Internal server error', detail: errMsg }, { status: 500 });
   }
 }

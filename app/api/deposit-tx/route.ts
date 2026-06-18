@@ -32,7 +32,10 @@ export async function GET(req: NextRequest) {
 
     if (!pool.contractAddress) {
       return NextResponse.json(
-        { error: 'Contract not yet deployed for this pool' },
+        {
+          error: 'Pool contract is being deployed — this usually takes under 2 minutes. Please wait and retry.',
+          code: 'CONTRACT_PENDING',
+        },
         { status: 400 },
       );
     }

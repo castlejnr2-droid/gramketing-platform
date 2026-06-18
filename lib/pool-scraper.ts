@@ -4,6 +4,7 @@ import { fetchTelegramPostMetrics } from '@/lib/telegram';
 import { logAdminEvent } from '@/lib/admin-log';
 import { fetchTweetMetrics, extractTweetId } from '@/lib/twitter-api';
 import { getJettonBalance } from '@/lib/ton-balance';
+import { deployAndInitPool } from '@/lib/gramketing-pool-contract';
 
 // ── X / Twitter scraping ──────────────────────────────────────────────────────
 
@@ -460,6 +461,57 @@ export async function scrapeAllActivePools() {
   const cycleStart = new Date();
   console.log(`[${cycleStart.toISOString()}] Starting scrape cycle...`);
   const now = cycleStart;
+
+  // ── Deploy contracts for PENDING pools with no contractAddress ───────────────
+  // Pool creation via /api/pools deploys the escrow contract synchronously, but
+  // the Vercel function can time out (60 s) before deployAndInitPool finishes
+  // (~63 s worst case).  The pool is created in DB with contractAddress=null.
+  // The Railway scraper has no execution time limit, so it picks these up and
+  // deploys them here.
+  const undeployedPools = await prisma.pool.findMany({
+    where: { status: 'PENDING', contractAddress: null },
+    include: { project: true },
+  });
+  if (undeployedPools.length > 0) {
+    console.log(`[deploy] Found ${undeployedPools.length} PENDING pool(s) without a contract — deploying...`);
+  }
+  for (const pool of undeployedPools) {
+    try {
+      const adminAddress = process.env.ADMIN_WALLET_ADDRESS;
+      if (!adminAddress) throw new Error('ADMIN_WALLET_ADDRESS not configured');
+      const { contractAddress: deployedAddress } = await deployAndInitPool({
+        ownerAddress: pool.project.ownerWalletAddress,
+        adminAddress,
+        jettonMasterAddress: pool.jettonMasterAddress,
+        totalReward: pool.totalReward,
+        durationDays: pool.durationDays,
+        rewardSlots: pool.rewardSlots,
+        nonce: BigInt(pool.createdAt.getTime()),
+      });
+      await prisma.pool.update({
+        where: { id: pool.id },
+        data: { contractAddress: deployedAddress },
+      });
+      console.log(`[deploy] Pool ${pool.id}: contract deployed at ${deployedAddress}`);
+      await logAdminEvent({
+        action: 'DEPLOY_CONTRACT',
+        level: 'info',
+        poolId: pool.id,
+        message: `Scraper deployed contract for pool ${pool.id}: ${deployedAddress}`,
+        details: { contractAddress: deployedAddress },
+      });
+    } catch (deployErr) {
+      const errMsg = deployErr instanceof Error ? deployErr.message : String(deployErr);
+      console.error(`[deploy] Pool ${pool.id}: deployment failed — ${errMsg}`);
+      await logAdminEvent({
+        action: 'DEPLOY_CONTRACT',
+        level: 'error',
+        poolId: pool.id,
+        message: `Scraper failed to deploy contract for pool ${pool.id}: ${errMsg}`,
+        details: { error: errMsg },
+      }).catch(() => {});
+    }
+  }
 
   // ── PENDING → ACTIVE backstop ─────────────────────────────────────────────
   // If the pool creator deposited the reward but never re-hit deposit-status
