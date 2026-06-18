@@ -450,7 +450,7 @@ export default function DashboardPage() {
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-white mb-2">Dashboard</h1>
           <p className="text-white/50 text-sm font-mono">
-            {wallet.account.address.slice(0, 8)}...{wallet.account.address.slice(-6)}
+            {(account?.walletAddress ?? wallet.account.address).slice(0, 8)}...{(account?.walletAddress ?? wallet.account.address).slice(-6)}
           </p>
         </div>
 

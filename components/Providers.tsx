@@ -154,12 +154,17 @@ function AuthListener() {
       //
       // Strategy:
       //   1. Check the httpOnly cookie.  If valid → already authenticated.
-      //   2. If not → call refreshChallenge NOW so a backup challenge is ready
-      //      in the DB.  This does NOT cancel the original challenge — the bridge
-      //      will deliver the original proof, the server will find it by payload
-      //      hash, and auth will complete via a fresh onStatusChange(wallet+proof).
-      //   3. Do NOT disconnect — that kills the bridge connection and the proof
-      //      is never delivered, creating the infinite loop.
+      //   2a. If not AND we are on the regular website (not inside the Telegram
+      //       Mini App WebView): disconnect TonConnect so the user is prompted
+      //       to reconnect with a fresh ton_proof.  This is the only reliable
+      //       way to obtain a new JWT when the cookie has expired — setting a
+      //       new ton_proof payload on an already-connected instance does not
+      //       cause the wallet to re-sign.
+      //   2b. If not AND we are inside the Telegram Mini App: do NOT disconnect.
+      //       The Telegram built-in wallet triggers a WebView reload when its
+      //       popup opens, so the proof may still be in-flight via the bridge.
+      //       Disconnecting here would kill the bridge and cause an infinite
+      //       connect → reload → disconnect → connect loop.
       try {
         const check = await fetch('/api/dashboard', { credentials: 'include' });
         if (check.ok) {
@@ -171,9 +176,23 @@ function AuthListener() {
           );
           return;
         }
-        // Cookie missing/expired.  Pre-warm the next challenge while we wait
-        // for the bridge to deliver the proof.
-        console.warn('[AuthListener] no valid cookie on restored session — refreshing challenge, waiting for bridge proof...');
+
+        // Cookie missing/expired.
+        const isInTelegramMiniApp =
+          typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+
+        if (!isInTelegramMiniApp) {
+          // Website: disconnect so the user sees "Connect Wallet" and can
+          // obtain a fresh ton_proof on the next connect attempt.
+          // The onStatusChange(null) handler will call refreshChallenge().
+          console.warn('[AuthListener] session expired on website — disconnecting to force re-auth');
+          await tonConnectUI.disconnect();
+          return;
+        }
+
+        // Mini App: keep the connection alive and pre-warm the next challenge
+        // while waiting for the bridge to deliver the proof.
+        console.warn('[AuthListener] no valid cookie in Mini App — refreshing challenge, waiting for bridge proof...');
         refreshChallenge(tonConnectUI);
       } catch {
         // Network error — leave as-is and hope the bridge delivers the proof.
