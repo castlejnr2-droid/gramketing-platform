@@ -514,8 +514,11 @@ export function buildFeeTransaction(params: {
   treasuryAddress: string;
   amountNano: bigint; // nanoTON
 }): { to: string; amount: string } {
+  // TonConnect SDK requires a user-friendly bounceable urlSafe address (EQ.../UQ...).
+  // TREASURY_WALLET_ADDRESS may be a raw 0:hex or non-urlsafe base64 — normalize it.
+  const to = Address.parse(params.treasuryAddress).toString({ bounceable: true, urlSafe: true });
   return {
-    to: params.treasuryAddress,
+    to,
     amount: params.amountNano.toString(),
   };
 }
@@ -540,10 +543,18 @@ export async function buildJettonFeeTransaction(params: {
     params.senderAddress,
     params.jettonMasterAddress,
   );
-  const senderJettonWallet = Address.parse(senderJettonWalletRaw);
-
-  const treasuryAddr = Address.parse(params.treasuryAddress);
-  const senderAddr = Address.parse(params.senderAddress);
+  // Normalize all addresses before use — env vars and TonAPI may return raw 0:hex
+  // or non-urlsafe base64 (EQ...+...) which Address.parse() would throw on without
+  // the normalization step below.
+  let senderJettonWallet: ReturnType<typeof Address.parse>;
+  let treasuryAddr: ReturnType<typeof Address.parse>;
+  let senderAddr: ReturnType<typeof Address.parse>;
+  try { senderJettonWallet = Address.parse(senderJettonWalletRaw); }
+  catch (e) { throw new Error(`Cannot parse sender jetton wallet address "${senderJettonWalletRaw}": ${e instanceof Error ? e.message : e}`); }
+  try { treasuryAddr = Address.parse(params.treasuryAddress); }
+  catch (e) { throw new Error(`Cannot parse treasury address "${params.treasuryAddress}": ${e instanceof Error ? e.message : e}`); }
+  try { senderAddr = Address.parse(params.senderAddress); }
+  catch (e) { throw new Error(`Cannot parse sender address "${params.senderAddress}": ${e instanceof Error ? e.message : e}`); }
 
   const body = beginCell()
     .storeUint(0x0f8a7ea5, 32)    // transfer opcode (TEP-74)
