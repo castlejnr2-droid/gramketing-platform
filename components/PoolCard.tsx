@@ -2,9 +2,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, Trophy, Clock, BarChart2 } from 'lucide-react';
+import { poolUrl } from '@/lib/slug';
 
 interface PoolCardProps {
   id: string;
+  slug?: string | null;
   projectName: string;
   tokenSymbol: string;
   logoUrl?: string | null;
@@ -38,6 +40,7 @@ function formatReward(totalReward: string, symbol: string): string {
 
 export function PoolCard({
   id,
+  slug,
   projectName,
   tokenSymbol,
   logoUrl,
@@ -75,7 +78,7 @@ export function PoolCard({
   return (
     <div
       className="pool-card p-6 cursor-pointer group"
-      onClick={() => router.push(linkTo ?? `/pools/${id}`)}
+      onClick={() => router.push(linkTo ?? poolUrl({ id, slug }))}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
@@ -168,7 +171,7 @@ export function PoolCard({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          router.push(linkTo ?? `/pools/${id}`);
+          router.push(linkTo ?? poolUrl({ id, slug }));
         }}
         className="mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-white/10 text-white/50 hover:text-white hover:border-[#0088CC]/40 text-xs font-medium transition-all"
       >

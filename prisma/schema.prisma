@@ -96,6 +96,7 @@ model Pool {
   tier3Threshold       BigInt   @default(0)
   accessFeePaidIn      FeeCurrency
   accessFeeTxHash      String?               @unique
+  slug                 String?               @unique
   campaignType         String                @default("both")
   xPostLink            String?
   telegramPostLink     String?

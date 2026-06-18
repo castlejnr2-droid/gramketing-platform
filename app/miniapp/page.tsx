@@ -7,6 +7,7 @@ type StatusFilter = 'ALL' | 'ACTIVE' | 'ENDED';
 
 interface Pool {
   id: string;
+  slug?: string | null;
   project: { name: string; logoUrl: string | null };
   tokenSymbol: string;
   totalReward: string;
@@ -94,6 +95,7 @@ export default function MiniAppPoolsPage() {
                   <PoolCard
                     key={pool.id}
                     id={pool.id}
+                    slug={pool.slug}
                     projectName={pool.project.name}
                     tokenSymbol={pool.tokenSymbol}
                     logoUrl={pool.project.logoUrl}
@@ -103,7 +105,7 @@ export default function MiniAppPoolsPage() {
                     participantCount={pool._count.participants}
                     rewardSlots={pool.rewardSlots}
                     status={pool.status}
-                    linkTo={`/miniapp/pools/${pool.id}`}
+                    linkTo={`/miniapp/pools/${pool.slug ?? pool.id}`}
                   />
                 ))}
               </div>
@@ -121,6 +123,7 @@ export default function MiniAppPoolsPage() {
                   <PoolCard
                     key={pool.id}
                     id={pool.id}
+                    slug={pool.slug}
                     projectName={pool.project.name}
                     tokenSymbol={pool.tokenSymbol}
                     logoUrl={pool.project.logoUrl}
@@ -130,7 +133,7 @@ export default function MiniAppPoolsPage() {
                     participantCount={pool._count.participants}
                     rewardSlots={pool.rewardSlots}
                     status={pool.status}
-                    linkTo={`/miniapp/pools/${pool.id}`}
+                    linkTo={`/miniapp/pools/${pool.slug ?? pool.id}`}
                   />
                 ))}
               </div>

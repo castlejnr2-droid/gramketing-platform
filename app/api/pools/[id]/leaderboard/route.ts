@@ -10,8 +10,16 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
 
+    // Resolve slug or id to the canonical pool id
+    const poolRow = await prisma.pool.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
+      select: { id: true },
+    });
+    if (!poolRow) return NextResponse.json({ leaderboard: [] });
+    const resolvedId = poolRow.id;
+
     const participants = await prisma.poolParticipant.findMany({
-      where: { poolId: id },
+      where: { poolId: resolvedId },
       include: {
         user: {
           select: {
@@ -31,7 +39,7 @@ export async function GET(
     // Fetch referral counts for all participants in one query
     const referralCounts = await prisma.referralBoost.groupBy({
       by: ['referrerId'],
-      where: { poolId: id },
+      where: { poolId: resolvedId },
       _count: { referrerId: true },
     });
     const referralCountMap = new Map(

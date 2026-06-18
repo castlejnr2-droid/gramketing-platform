@@ -6,6 +6,7 @@ function serializePool(pool: any) {
   if (!pool) return pool;
   return {
     ...pool,
+    slug: pool.slug ?? null,
     tier1Threshold: pool.tier1Threshold?.toString() ?? '0',
     tier2Threshold: pool.tier2Threshold?.toString() ?? '0',
     tier3Threshold: pool.tier3Threshold?.toString() ?? '0',
@@ -18,8 +19,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const pool = await prisma.pool.findUnique({
-      where: { id },
+    const pool = await prisma.pool.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
       include: {
         project: {
           select: {

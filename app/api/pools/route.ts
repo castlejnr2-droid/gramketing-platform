@@ -7,6 +7,7 @@ import { calculateFeeInTokens, getRequiredFeeNano } from '@/lib/prices';
 import { logAdminEvent } from '@/lib/admin-log';
 import { verifyAccessFeeTx } from '@/lib/ton-verify';
 import { Address } from '@ton/core';
+import { generateSlug } from '@/lib/slug';
 
 /** Normalize any TON address format (raw 0:... or user-friendly EQ.../UQ...)
  *  to the canonical string stored in the DB (Address.parse().toString()). */
@@ -20,6 +21,7 @@ function serializePool(pool: any) {
   if (!pool) return pool;
   return {
     ...pool,
+    slug: pool.slug ?? null,
     tier1Threshold: pool.tier1Threshold?.toString() ?? '0',
     tier2Threshold: pool.tier2Threshold?.toString() ?? '0',
     tier3Threshold: pool.tier3Threshold?.toString() ?? '0',
@@ -250,6 +252,15 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
+    // Generate a unique slug from the project name
+    const baseSlug = generateSlug(projectName);
+    let slug = baseSlug;
+    for (let i = 2; i <= 99; i++) {
+      const existing = await prisma.pool.findUnique({ where: { slug } });
+      if (!existing) break;
+      slug = `${baseSlug}-${i}`;
+    }
+
     let pool;
     try {
       pool = await prisma.pool.create({
@@ -266,6 +277,7 @@ export async function POST(req: NextRequest) {
           tier3Threshold: BigInt(tier3Threshold ?? 0),
           accessFeePaidIn: feeCurrency,
           accessFeeTxHash: accessFeeTxHash || null,
+          slug,
           campaignType: campaignType ?? 'both',
           xPostLink: xPostLink || null,
           telegramPostLink: telegramPostLink || null,

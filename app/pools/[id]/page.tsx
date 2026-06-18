@@ -115,6 +115,7 @@ export default function PoolDetailPage() {
   const poolId = params.id as string;
 
   const [pool, setPool] = useState<PoolData | null>(null);
+  const [resolvedPoolId, setResolvedPoolId] = useState<string>('');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [myStats, setMyStats] = useState<MyStats | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -130,6 +131,7 @@ export default function PoolDetailPage() {
       const res = await fetch(`/api/pools/${poolId}`);
       const data = await res.json();
       setPool(data.pool);
+      setResolvedPoolId(data.pool?.id ?? poolId); // fallback to poolId (it IS a CUID in old links)
     } catch {
       // ignore
     }
@@ -146,9 +148,9 @@ export default function PoolDetailPage() {
   }, [poolId]);
 
   const fetchMyStats = useCallback(async () => {
-    if (!wallet) return;
+    if (!wallet || !resolvedPoolId) return;
     try {
-      const res = await fetch(`/api/submissions/${poolId}`, {
+      const res = await fetch(`/api/submissions/${resolvedPoolId}`, {
         credentials: 'include',
       });
       const data = await res.json();
@@ -164,7 +166,7 @@ export default function PoolDetailPage() {
     } catch {
       // ignore
     }
-  }, [poolId, wallet]);
+  }, [resolvedPoolId, wallet]);
 
   useEffect(() => {
     Promise.all([fetchPool(), fetchLeaderboard()])
@@ -188,7 +190,7 @@ export default function PoolDetailPage() {
     if (!wallet) return;
     setJoiningPool(true);
     try {
-      const res = await fetch(`/api/pools/${poolId}/join`, {
+      const res = await fetch(`/api/pools/${pool?.id ?? poolId}/join`, {
         method: 'POST',
         credentials: 'include',
       });

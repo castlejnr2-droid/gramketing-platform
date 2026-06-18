@@ -7,6 +7,7 @@ type StatusFilter = 'ALL' | 'ACTIVE' | 'ENDED';
 
 interface Pool {
   id: string;
+  slug?: string | null;
   project: { name: string; logoUrl: string | null };
   tokenSymbol: string;
   totalReward: string;
@@ -128,6 +129,7 @@ export default function PoolsPage() {
                       <PoolCard
                         key={pool.id}
                         id={pool.id}
+                        slug={pool.slug}
                         projectName={pool.project.name}
                         tokenSymbol={pool.tokenSymbol}
                         logoUrl={pool.project.logoUrl}
@@ -158,6 +160,7 @@ export default function PoolsPage() {
                       <PoolCard
                         key={pool.id}
                         id={pool.id}
+                        slug={pool.slug}
                         projectName={pool.project.name}
                         tokenSymbol={pool.tokenSymbol}
                         logoUrl={pool.project.logoUrl}

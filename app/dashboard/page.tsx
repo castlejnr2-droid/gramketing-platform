@@ -6,6 +6,7 @@ import { useTonWallet, useTonConnectUI, useIsConnectionRestored } from '@tonconn
 import Link from 'next/link';
 import { ReferralCard } from '@/components/ReferralCard';
 import { Trophy, TrendingUp, Settings, ChevronRight, CheckCircle, Layers, Wallet } from 'lucide-react';
+import { poolUrl } from '@/lib/slug';
 
 interface MyPool {
   poolId: string;
@@ -33,6 +34,7 @@ interface LeaderboardTop3 {
 
 interface OwnedPool {
   id: string;
+  slug?: string | null;
   projectName: string;
   tokenSymbol: string;
   totalReward: string;
@@ -45,6 +47,7 @@ interface OwnedPool {
 
 interface PendingPool {
   id: string;
+  slug?: string | null;
   projectName: string;
   tokenSymbol: string;
   totalReward: string;
@@ -126,6 +129,7 @@ export default function DashboardPage() {
         const enriched = await Promise.all(
           pools.map(async (p: {
             id: string;
+            slug?: string | null;
             project: { name: string };
             tokenSymbol: string;
             totalReward: string;
@@ -154,6 +158,7 @@ export default function DashboardPage() {
             } catch { /* ignore */ }
             return {
               id: p.id,
+              slug: p.slug,
               projectName: p.project.name,
               tokenSymbol: p.tokenSymbol,
               totalReward: p.totalReward,
@@ -509,7 +514,7 @@ export default function DashboardPage() {
                           <span className={msLeft > 0 ? 'text-[#0088CC]' : ''}>{timeLabel}</span>
                         </div>
                       </div>
-                      <Link href={`/pools/${p.id}`} className="btn-secondary text-sm flex items-center gap-2 flex-shrink-0">
+                      <Link href={poolUrl(p)} className="btn-secondary text-sm flex items-center gap-2 flex-shrink-0">
                         View Pool <ChevronRight className="w-4 h-4" />
                       </Link>
                     </div>

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { Cell } from '@ton/core';
+import { poolUrl } from '@/lib/slug';
 
 interface Prices {
   ton: number;
@@ -100,6 +101,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
 
   // Step 4 - deposit
   const [createdPoolId, setCreatedPoolId] = useState('');
+  const [createdPoolSlug, setCreatedPoolSlug] = useState<string | null>(null);
   const [contractAddress, setContractAddress] = useState('');
   const [depositDone, setDepositDone] = useState(false);
   const [depositTxData, setDepositTxData] = useState<{ to: string; amount: string; payload: string; decimals: number } | null>(null);
@@ -138,6 +140,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
         setTotalReward(latest.totalReward);
         setTokenSymbol(latest.tokenSymbol);
         setCreatedPoolId(latest.id);
+        setCreatedPoolSlug((latest as { id: string; contractAddress: string | null; totalReward: string; tokenSymbol: string; slug?: string | null }).slug ?? null);
         setStep(3);
 
         if (!latest.contractAddress) {
@@ -380,6 +383,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
 
       const data = await res.json();
       setCreatedPoolId(data.pool.id);
+      setCreatedPoolSlug(data.pool.slug ?? null);
       setContractAddress(data.pool.contractAddress ?? '');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error');
@@ -1130,7 +1134,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
             <div className="flex flex-col sm:flex-row gap-3 w-full mt-4">
               <button
                 className="btn-primary flex-1 flex items-center justify-center gap-2"
-                onClick={() => router.push(`${basePath}/pools/${createdPoolId}`)}
+                onClick={() => router.push(poolUrl({ id: createdPoolId, slug: createdPoolSlug }, `${basePath}/pools`))}
               >
                 View Pool Page
                 <ExternalLink className="w-4 h-4" />
@@ -1139,7 +1143,7 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
                 className="btn-secondary flex-1"
                 onClick={() => {
                   navigator.clipboard.writeText(
-                    `https://gramketing.io/pools/${createdPoolId}`
+                    `${window.location.origin}${poolUrl({ id: createdPoolId, slug: createdPoolSlug })}`
                   );
                 }}
               >
