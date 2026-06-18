@@ -1,6 +1,6 @@
 'use client';
 import { getParticipantTier } from '@/lib/points';
-import { useEffect, useState, Suspense } from 'react';
+import { useCallback, useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTonWallet, useTonConnectUI, useIsConnectionRestored } from '@tonconnect/ui-react';
 import Link from 'next/link';
@@ -213,24 +213,41 @@ export default function DashboardPage() {
   const [unlinkXError, setUnlinkXError] = useState<string | null>(null);
   const [xBanner, setXBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  useEffect(() => {
+  const fetchDashboardData = useCallback(async () => {
     if (!wallet) {
       setLoading(false);
       return;
     }
-
-    fetch('/api/dashboard', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        setActivePools(d.activePools ?? []);
-        setEndedPools(d.endedPools ?? []);
-        setAccount(d.account ?? null);
-        if (d.account?.username) setUsernameInput(d.account.username);
-        if (d.account?.telegramChannelUrl) setTgChannelInput(d.account.telegramChannelUrl);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    try {
+      const r = await fetch('/api/dashboard', { credentials: 'include' });
+      if (!r.ok) return; // 401/404 — auth not ready yet; session-ready will re-trigger
+      const d = await r.json();
+      setActivePools(d.activePools ?? []);
+      setEndedPools(d.endedPools ?? []);
+      setAccount(d.account ?? null);
+      if (d.account?.username) setUsernameInput(d.account.username);
+      if (d.account?.telegramChannelUrl) setTgChannelInput(d.account.telegramChannelUrl);
+    } catch {
+      // network error — leave existing state
+    } finally {
+      setLoading(false);
+    }
   }, [wallet]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // Re-fetch after TonConnect proof verification completes (Providers.tsx dispatches
+  // this once the JWT cookie is fresh), so socials show up without a page reload.
+  useEffect(() => {
+    const handler = () => {
+      setLoading(true);
+      fetchDashboardData();
+    };
+    window.addEventListener('gramketing:session-ready', handler);
+    return () => window.removeEventListener('gramketing:session-ready', handler);
+  }, [fetchDashboardData]);
 
   // Listen for postMessage from the X OAuth popup.
   // On success, refetch account so the X handle / avatar appear immediately
