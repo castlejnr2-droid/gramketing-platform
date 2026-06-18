@@ -11,8 +11,16 @@ export async function GET(req: NextRequest) {
 
     const user = await prisma.user.findUnique({ where: { walletAddress } });
     if (!user) {
+      console.warn('[dashboard] user not found for walletAddress', walletAddress);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+    console.log('[dashboard] user loaded', {
+      walletAddress,
+      userId:        user.id,
+      telegramChatId: user.telegramChatId ? '✓' : null,
+      xAccountId:    user.xAccountId     ? '✓' : null,
+      xHandle:       user.xHandle        ?? null,
+    });
 
     // Fetch all participations with pool details
     const participations = await prisma.poolParticipant.findMany({

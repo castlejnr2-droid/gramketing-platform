@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Address } from '@ton/core';
 import { prisma } from '@/lib/prisma';
 import { signJwt } from '@/lib/auth';
 import { validateTelegramInitData, extractTelegramUserId } from '@/lib/telegram';
@@ -50,20 +51,37 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findFirst({
       where: { telegramChatId: telegramUserId },
-      select: { walletAddress: true, username: true, telegramHandle: true },
+      select: { id: true, walletAddress: true, username: true, telegramHandle: true, xAccountId: true },
     });
 
     if (!user) {
       return NextResponse.json({ linked: false });
     }
 
+    // Normalize walletAddress to canonical format so the JWT is consistent with
+    // tokens issued by /api/auth/verify (both use urlSafe:true bounceable:true).
+    let walletAddress = user.walletAddress;
+    try {
+      walletAddress = Address.parse(user.walletAddress).toString({ urlSafe: true, bounceable: true });
+      if (walletAddress !== user.walletAddress) {
+        // Migrate legacy address format in DB
+        await prisma.user.update({ where: { id: user.id }, data: { walletAddress } }).catch(() => {});
+        console.log('[telegram-miniapp] migrated walletAddress to canonical format', { userId: user.id, from: user.walletAddress, to: walletAddress });
+      }
+    } catch {
+      // Not a valid TON address (raw hex, etc.) — use as-is
+      walletAddress = user.walletAddress;
+    }
+
+    console.log('[telegram-miniapp] issuing JWT for linked user', { userId: user.id, walletAddress, telegramChatId: telegramUserId, xAccountId: user.xAccountId ? '✓' : null });
+
     // Issue a session JWT so the user can call authenticated API routes
     // (join pool, submit posts) without having to manually reconnect TonConnect.
-    const token = await signJwt({ walletAddress: user.walletAddress });
+    const token = await signJwt({ walletAddress });
 
     const response = NextResponse.json({
       linked: true,
-      walletAddress: user.walletAddress,
+      walletAddress,
       username: user.username,
     });
 

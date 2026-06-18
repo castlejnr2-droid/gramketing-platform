@@ -116,14 +116,90 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature', reason: 'bad_signature' }, { status: 401 });
     }
 
-    // Derive canonical wallet address (raw 0:hash format, consistent with DB)
-    const walletAddress = Address.parse(account.address).toString();
+    // Derive canonical wallet address.
+    // Explicitly set urlSafe:true + bounceable:true so the format is stable
+    // regardless of @ton/core library version (default has changed between versions).
+    const parsedAddress = Address.parse(account.address);
+    const canonicalAddress = parsedAddress.toString({ urlSafe: true, bounceable: true });
 
-    // Find or create user
-    const user = await prisma.user.upsert({
-      where:  { walletAddress },
-      update: {},
-      create: { walletAddress },
+    // Build the full set of address format variants so we can find users whose
+    // address was stored in any historical format (urlSafe=false, raw, non-bounceable).
+    const addressVariants = Array.from(new Set([
+      canonicalAddress,
+      parsedAddress.toString({ urlSafe: false, bounceable: true }),
+      parsedAddress.toString({ urlSafe: true,  bounceable: false }),
+      parsedAddress.toString({ urlSafe: false, bounceable: false }),
+      parsedAddress.toRawString(),
+    ]));
+
+    // Find all existing users that match any address variant.
+    // If the wallet was stored in a legacy format this query finds them too.
+    const matchingUsers = await prisma.user.findMany({
+      where: { walletAddress: { in: addressVariants } },
+    });
+
+    let user: (typeof matchingUsers)[0] | null = null;
+    let userCreated = false;
+
+    if (matchingUsers.length > 0) {
+      // Prefer whichever record has the most social data so we never surface a
+      // bare "new" record when a richer one exists (common when address was
+      // stored in a different format on first login).
+      user = matchingUsers.reduce((best, candidate) => {
+        const bestScore  = (best.telegramChatId  ? 2 : 0) + (best.xAccountId  ? 1 : 0);
+        const candScore  = (candidate.telegramChatId ? 2 : 0) + (candidate.xAccountId ? 1 : 0);
+        return candScore > bestScore ? candidate : best;
+      });
+
+      console.log('[auth/verify] found existing user', {
+        userId:           user.id,
+        storedAddress:    user.walletAddress,
+        canonicalAddress,
+        formatChanged:    user.walletAddress !== canonicalAddress,
+        multipleRecords:  matchingUsers.length,
+        telegramChatId:   user.telegramChatId ? '✓' : null,
+        xAccountId:       user.xAccountId     ? '✓' : null,
+      });
+
+      // Migrate walletAddress to canonical format if it was stored differently.
+      if (user.walletAddress !== canonicalAddress) {
+        try {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data:  { walletAddress: canonicalAddress },
+          });
+          console.log('[auth/verify] migrated walletAddress to canonical format', canonicalAddress);
+        } catch (migrateErr: unknown) {
+          // P2002 means another record already has the canonical address.
+          // That record takes precedence; re-run the lookup to get it.
+          const code = (migrateErr as { code?: string })?.code;
+          if (code === 'P2002') {
+            const canonical = await prisma.user.findUnique({ where: { walletAddress: canonicalAddress } });
+            if (canonical) {
+              console.warn('[auth/verify] canonical address already exists as separate record — using it', { canonicalId: canonical.id, oldId: user.id });
+              user = canonical;
+            }
+          } else {
+            console.warn('[auth/verify] walletAddress migration failed, continuing with stored format', migrateErr);
+          }
+        }
+      }
+    } else {
+      // No existing user — create fresh.
+      user = await prisma.user.create({ data: { walletAddress: canonicalAddress } });
+      userCreated = true;
+      console.log('[auth/verify] new user created', { userId: user.id, walletAddress: canonicalAddress });
+    }
+
+    const walletAddress = user.walletAddress;
+
+    console.log('[auth/verify] login', {
+      walletAddress,
+      userId:        user.id,
+      created:       userCreated,
+      telegramChatId: user.telegramChatId ? '✓' : null,
+      xAccountId:    user.xAccountId     ? '✓' : null,
+      xHandle:       user.xHandle        ?? null,
     });
 
     // Persist Telegram user ID if supplied from Mini App context and not yet saved.
@@ -134,6 +210,7 @@ export async function POST(req: NextRequest) {
           where: { walletAddress },
           data:  { telegramChatId: String(telegramUserId) },
         });
+        console.log('[auth/verify] linked telegramChatId', telegramUserId, 'to', walletAddress);
       } catch (linkErr: unknown) {
         // P2002: another wallet is already linked to this Telegram ID.
         // Don't fail the auth — wallet authentication still succeeds.
@@ -153,6 +230,10 @@ export async function POST(req: NextRequest) {
       success:       true,
       walletAddress,
       userId:        user.id,
+      linked: {
+        telegram: !!user.telegramChatId,
+        x:        !!user.xAccountId,
+      },
     });
 
     const isProd = process.env.NODE_ENV === 'production';
