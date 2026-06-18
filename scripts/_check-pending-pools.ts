@@ -25,7 +25,8 @@ async function main() {
 
   const pendingPools = await prisma.pool.findMany({
     where: { status: 'PENDING' },
-    include: {
+    select: {
+      id: true, tokenSymbol: true, contractAddress: true, accessFeeTxHash: true, createdAt: true,
       project: { select: { name: true, ownerWalletAddress: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -34,12 +35,13 @@ async function main() {
   console.log(`\nFound ${pendingPools.length} PENDING pool(s):\n`);
 
   for (const pool of pendingPools) {
-    console.log(`  id:             ${pool.id}`);
-    console.log(`  project:        ${pool.project?.name ?? '(none)'}`);
-    console.log(`  owner:          ${pool.project?.ownerWalletAddress ?? '(none)'}`);
-    console.log(`  tokenSymbol:    ${pool.tokenSymbol}`);
-    console.log(`  accessFeeTxHash:${pool.accessFeeTxHash ?? '(null)'}`);
-    console.log(`  createdAt:      ${pool.createdAt.toISOString()}`);
+    console.log(`  id:              ${pool.id}`);
+    console.log(`  project:         ${pool.project?.name ?? '(none)'}`);
+    console.log(`  owner:           ${pool.project?.ownerWalletAddress ?? '(none)'}`);
+    console.log(`  tokenSymbol:     ${pool.tokenSymbol}`);
+    console.log(`  contractAddress: ${pool.contractAddress ?? '(null — not yet deployed)'}`);
+    console.log(`  accessFeeTxHash: ${pool.accessFeeTxHash ?? '(null)'}`);
+    console.log(`  createdAt:       ${pool.createdAt.toISOString()}`);
     console.log('');
   }
 
