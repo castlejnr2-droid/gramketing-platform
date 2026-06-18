@@ -118,30 +118,36 @@ export async function GET(req: NextRequest) {
         : null,
       poolPosts: poolPosts.map((p) => ({
         id: p.id,
-        poolId: p.poolId ?? (p as unknown as { participantId: string }).participantId,
         postLink: p.postLink,
         views: p.views,
         likes: p.likes,
         reposts: p.reposts,
         points: p.points,
         lastScrapedAt: p.lastScrapedAt,
+        lastScrapedAgoMinutes: p.lastScrapedAt
+          ? Math.round((Date.now() - p.lastScrapedAt.getTime()) / 60_000)
+          : null,
         scrapeError: p.scrapeError,
         user: p.participant.user.xHandle ?? p.participant.user.walletAddress,
       })),
       libResult,
       discrepancies: discrepancies.length > 0 ? discrepancies : 'none',
-      verdict:
-        apiRes.status === 401 || apiRes.status === 403
-          ? 'TOKEN_INVALID — bearer token rejected'
-          : apiRes.status === 429
-          ? 'RATE_LIMITED'
-          : !apiTweet && apiBody.errors
-          ? `TWEET_NOT_FOUND — ${JSON.stringify(apiBody.errors)}`
-          : discrepancies.length > 0
-          ? 'STALE_DB — API has newer numbers than DB (scraper write failed or not run yet)'
-          : apiTweet
-          ? 'API_MATCHES_DB — Twitter is returning these numbers; X UI may show different metrics'
-          : 'UNKNOWN',
+      verdict: (() => {
+        if (apiRes.status === 401 || apiRes.status === 403) return 'TOKEN_INVALID — bearer token rejected';
+        if (apiRes.status === 429) return 'RATE_LIMITED';
+        if (!apiTweet && apiBody.errors) return `TWEET_NOT_FOUND — ${JSON.stringify(apiBody.errors)}`;
+        if (!apiTweet) return 'UNKNOWN';
+        if (discrepancies.length === 0) return 'API_MATCHES_DB — Twitter is returning these exact numbers; X UI may show slightly different metrics due to internal Twitter caching';
+        // DB is stale — distinguish expected lag vs scraper failure
+        const post = poolPosts[0];
+        const lastScrapedMins = post?.lastScrapedAt
+          ? Math.round((Date.now() - post.lastScrapedAt.getTime()) / 60_000)
+          : null;
+        if (lastScrapedMins !== null && lastScrapedMins <= 35) {
+          return `STALE_DB (expected) — scraper ran ${lastScrapedMins} min ago; tweet has grown since then. Next scrape will update it.`;
+        }
+        return `STALE_DB (scraper may be broken) — last scraped ${lastScrapedMins ?? 'never'} min ago. Check Railway logs for DB write errors.`;
+      })(),
     });
   } catch (err) {
     console.error('GET /api/admin/debug-tweet error:', err);

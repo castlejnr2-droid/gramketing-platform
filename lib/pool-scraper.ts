@@ -371,7 +371,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
             ? result.views * 0.8 + result.likes * 0.1 + result.retweets * 0.1
             : post.points; // keep last valid score if below minimum view threshold
 
-        console.log(`[scraper] post ${post.id}: views=${result.views} likes=${result.likes} reposts=${result.retweets} pts=${pts.toFixed(0)} (prev views=${post.views} pts=${post.points.toFixed(0)})`);
+        console.log(`[scraper] queuing post ${post.id}: views=${result.views} likes=${result.likes} reposts=${result.retweets} pts=${pts.toFixed(0)} (prev views=${post.views} pts=${post.points.toFixed(0)})`);
 
         participantWrites.push(
           prisma.poolPost.update({
@@ -387,7 +387,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
           }),
         );
         xPoints += pts;
-        scraped++;
+        scraped++; // incremented here; rolled back in the catch block below if $transaction fails
       } else {
         // TELEGRAM - fetched individually (no batch endpoint available);
         // metrics call is outside the transaction but the write is collected.
@@ -420,7 +420,7 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
     // a referral which no longer qualifies (wallet sold, post removed) is revoked.
     const referralBonusPoints = referralBonusMap.get(userId) ?? 0;
 
-    const totalPoints = calculateTotalPoints({
+    const totalPointsRaw = calculateTotalPoints({
       xPoints,
       telegramPoints,
       holderBoost,
@@ -429,18 +429,52 @@ export async function scrapePoolById(poolId: string): Promise<{ scraped: number;
       campaignType,
     });
 
+    // Guard: NaN/Infinity in any Float field will cause the entire transaction to
+    // roll back (PostgreSQL rejects them), silently losing all metric writes for
+    // this participant.  Clamp to a safe value instead.
+    const safeFloat = (v: number, fallback = 0) =>
+      Number.isFinite(v) ? v : fallback;
+
+    const totalPoints    = safeFloat(totalPointsRaw);
+    const safeXPoints    = safeFloat(xPoints);
+    const safeTgPoints   = safeFloat(telegramPoints);
+    const safeHolder     = safeFloat(holderBoost, 1);
+    const safeReferral   = safeFloat(referralMultiplier, 1);
+    const safeBonus      = safeFloat(referralBonusPoints);
+
+    if (!Number.isFinite(totalPointsRaw)) {
+      console.warn(`[scraper] NaN/Infinity totalPoints for participant ${participant.userId} — clamped to 0. xPoints=${xPoints} tgPoints=${telegramPoints} holderBoost=${holderBoost} referralMultiplier=${referralMultiplier}`);
+    }
+
     participantWrites.push(
       prisma.poolParticipant.update({
         where: { id: participant.id },
-        data: { xPoints, telegramPoints, holderBoost, referralMultiplier, referralBonusPoints, totalPoints },
+        data: {
+          xPoints: safeXPoints,
+          telegramPoints: safeTgPoints,
+          holderBoost: safeHolder,
+          referralMultiplier: safeReferral,
+          referralBonusPoints: safeBonus,
+          totalPoints,
+        },
       }),
     );
 
-    // Commit all writes for this participant in one atomic transaction.
-    // If the process is killed after the transaction commits, the next cycle
-    // resumes from the next participant with no partial state.
+    // Commit all writes for this participant atomically.
+    // NOTE: scraped++ runs inside the post loop (before this transaction) so it
+    // counts optimistically.  We correct it back on transaction failure.
     if (participantWrites.length > 0) {
-      await prisma.$transaction(participantWrites);
+      const writesBefore = participantWrites.length;
+      try {
+        await prisma.$transaction(participantWrites);
+        console.log(`[scraper] ✓ DB write OK participant ${participant.userId}: ${writesBefore} ops (xPts=${safeXPoints.toFixed(0)} total=${totalPoints.toFixed(0)})`);
+      } catch (txErr) {
+        const msg = txErr instanceof Error ? txErr.message : String(txErr);
+        console.error(`[scraper] ✗ DB WRITE FAILED participant ${participant.userId}: ${msg}`);
+        // Roll back the optimistic scraped count for posts that weren't actually written
+        scraped -= posts.filter((p) => p.platform === 'X' && tweetIdByPostId.has(p.id) && tweetResultMap.get(tweetIdByPostId.get(p.id)!)?.ok).length;
+        errors.push(`DB write failed for participant ${participant.userId}: ${msg}`);
+      }
     }
   }
 
