@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import * as Tabs from '@radix-ui/react-tabs';
@@ -89,13 +89,30 @@ function formatCountdown(endDate: string): string {
   return `${m}m`;
 }
 
+/** Reads ?ref= from the URL and fires the referral track call.
+ *  Isolated in its own component so useSearchParams() is scoped inside
+ *  a <Suspense> boundary — required by Next.js App Router. */
+function RefTracker({ poolId, wallet }: { poolId: string; wallet: ReturnType<typeof useTonWallet> }) {
+  const searchParams = useSearchParams();
+  const refCode = searchParams.get('ref');
+  useEffect(() => {
+    if (wallet && refCode) {
+      fetch('/api/referral/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ referralCode: refCode, poolId }),
+      }).catch(() => {});
+    }
+  }, [wallet, refCode, poolId]);
+  return null;
+}
+
 export default function PoolDetailPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const wallet = useTonWallet();
   const poolId = params.id as string;
-  const refCode = searchParams.get('ref');
 
   const [pool, setPool] = useState<PoolData | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -158,18 +175,6 @@ export default function PoolDetailPage() {
     fetchMyStats();
   }, [fetchMyStats]);
 
-  // Track referral on wallet connect
-  useEffect(() => {
-    if (wallet && refCode) {
-      fetch('/api/referral/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ referralCode: refCode, poolId }),
-      }).catch(() => {});
-    }
-  }, [wallet, refCode, poolId]);
-
   // Countdown timer
   useEffect(() => {
     if (!pool || pool.status !== 'ACTIVE') return;
@@ -208,6 +213,10 @@ export default function PoolDetailPage() {
 
   return (
     <div className="min-h-screen pt-24 pb-20 px-4">
+      {/* RefTracker reads ?ref= — must be inside Suspense per Next.js App Router rules */}
+      <Suspense fallback={null}>
+        <RefTracker poolId={poolId} wallet={wallet} />
+      </Suspense>
       <div className="max-w-6xl mx-auto">
         {/* Back */}
         <button

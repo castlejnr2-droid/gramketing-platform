@@ -6,6 +6,13 @@ import { notifyNewPool } from '@/lib/telegram-notify';
 import { calculateFeeInTokens, getRequiredFeeNano } from '@/lib/prices';
 import { logAdminEvent } from '@/lib/admin-log';
 import { verifyAccessFeeTx } from '@/lib/ton-verify';
+import { Address } from '@ton/core';
+
+/** Normalize any TON address format (raw 0:... or user-friendly EQ.../UQ...)
+ *  to the canonical string stored in the DB (Address.parse().toString()). */
+function normalizeAddress(addr: string): string {
+  try { return Address.parse(addr).toString(); } catch { return addr; }
+}
 
 // JSON.stringify cannot serialize BigInt — convert pool's BigInt fields to strings.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,13 +52,13 @@ export async function GET(req: NextRequest) {
     } else if (status && ['ACTIVE', 'ENDED', 'DISTRIBUTED'].includes(status)) {
       where.status = status;
       if (ownerAddress) {
-        where.project = { ownerWalletAddress: ownerAddress };
+        where.project = { ownerWalletAddress: normalizeAddress(ownerAddress) };
       }
     } else {
       // No status filter → default public listing excludes PENDING.
       where.status = { not: 'PENDING' };
       if (ownerAddress) {
-        where.project = { ownerWalletAddress: ownerAddress };
+        where.project = { ownerWalletAddress: normalizeAddress(ownerAddress) };
       }
     }
 
