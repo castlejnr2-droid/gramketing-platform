@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serializePool(pool: any) {
+  if (!pool) return pool;
+  return {
+    ...pool,
+    tier1Threshold: pool.tier1Threshold?.toString() ?? '0',
+    tier2Threshold: pool.tier2Threshold?.toString() ?? '0',
+    tier3Threshold: pool.tier3Threshold?.toString() ?? '0',
+  };
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,7 +44,7 @@ export async function GET(
       return NextResponse.json({ error: 'Pool not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ pool });
+    return NextResponse.json({ pool: serializePool(pool) });
   } catch (err) {
     console.error('GET /api/pools/[id] error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
