@@ -115,6 +115,31 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
 
+  // Resume: on mount, load the user's latest PENDING pool (if any) so a page
+  // refresh doesn't lose the deposit step.
+  useEffect(() => {
+    fetch('/api/pools?status=PENDING', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        const pools: Array<{
+          id: string;
+          contractAddress: string | null;
+          totalReward: string;
+          tokenSymbol: string;
+        }> = d.pools ?? [];
+        if (pools.length === 0) return;
+        // Most recent PENDING pool (API returns newest first)
+        const latest = pools[0];
+        console.log('[resume] Found PENDING pool:', latest.id, 'contractAddress:', latest.contractAddress);
+        setCreatedPoolId(latest.id);
+        setContractAddress(latest.contractAddress ?? '');
+        setTotalReward(latest.totalReward);
+        setTokenSymbol(latest.tokenSymbol);
+        setStep(3);
+      })
+      .catch(() => { /* ignore — user may not be logged in yet */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fetch live prices for fee table display
   useEffect(() => {
     if (step === 2) {
@@ -346,30 +371,38 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
     }
   };
 
+  const checkDepositStatus = async (poolId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/pools/${poolId}/deposit-status`, { credentials: 'include' });
+      const data = await res.json();
+      console.log('[deposit-status]', JSON.stringify(data));
+      // API returns { funded, balance } — also accept legacy { deposited } for safety
+      if (data.funded || data.deposited) {
+        stopPolling();
+        setPollStatus('confirmed');
+        setDepositDone(true);
+        setStep(4);
+        return true;
+      }
+    } catch (e) {
+      console.warn('[deposit-status] fetch error:', e);
+      // ignore transient fetch errors, keep polling
+    }
+    return false;
+  };
+
   const startDepositPolling = (poolId: string) => {
     setPollStatus('polling');
     pollStartRef.current = Date.now();
 
     const check = async () => {
-      // Timeout after 5 minutes
-      if (Date.now() - pollStartRef.current > 5 * 60 * 1000) {
+      // Timeout after 10 minutes (first Jetton deposits can be slow)
+      if (Date.now() - pollStartRef.current > 10 * 60 * 1000) {
         stopPolling();
         setPollStatus('timeout');
         return;
       }
-
-      try {
-        const res = await fetch(`/api/pools/${poolId}/deposit-status`);
-        const data = await res.json();
-        if (data.deposited) {
-          stopPolling();
-          setPollStatus('confirmed');
-          setDepositDone(true);
-          setStep(4);
-        }
-      } catch {
-        // ignore transient fetch errors, keep polling
-      }
+      await checkDepositStatus(poolId);
     };
 
     // First check after 5s, then every 10s
@@ -957,34 +990,53 @@ export function CreatePoolStepper({ basePath = '' }: { basePath?: string }) {
 
             {/* Polling status banner */}
             {pollStatus === 'polling' && (
-              <div className="p-4 rounded-xl bg-[#0088CC]/10 border border-[#0088CC]/20 flex items-center gap-3">
-                <Loader2 className="w-4 h-4 text-[#0088CC] animate-spin flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-[#0088CC]">Waiting for on-chain confirmation…</p>
-                  <p className="text-xs text-white/40 mt-0.5">Checking every 10 seconds. This may take 1–2 minutes.</p>
-                </div>
-              </div>
-            )}
-
-            {pollStatus === 'timeout' && (
-              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 space-y-3">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+              <div className="p-4 rounded-xl bg-[#0088CC]/10 border border-[#0088CC]/20 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-4 h-4 text-[#0088CC] animate-spin flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-red-400">Confirmation timed out</p>
+                    <p className="text-sm font-medium text-[#0088CC]">Waiting for on-chain confirmation…</p>
                     <p className="text-xs text-white/40 mt-0.5">
-                      The deposit was not detected after 5 minutes. Your transaction may still confirm - check TONScan,
-                      or retry below.
+                      Checking every 10 seconds. First Jetton deposits may take 1–3 minutes.
                     </p>
                   </div>
                 </div>
                 <button
-                  onClick={() => startDepositPolling(createdPoolId)}
-                  className="flex items-center gap-2 text-sm text-white/60 hover:text-white border border-white/10 px-4 py-2 rounded-xl transition-all"
+                  onClick={() => checkDepositStatus(createdPoolId)}
+                  className="flex items-center gap-2 text-xs text-white/50 hover:text-white border border-white/10 px-3 py-1.5 rounded-lg transition-all"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  Retry confirmation check
+                  <RefreshCw className="w-3 h-3" />
+                  Refresh status now
                 </button>
+              </div>
+            )}
+
+            {pollStatus === 'timeout' && (
+              <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-400">Auto-check timed out after 10 minutes</p>
+                    <p className="text-xs text-white/40 mt-0.5">
+                      Your transaction may still be confirming on-chain. Click below to check manually,
+                      or verify on TONScan before retrying.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => checkDepositStatus(createdPoolId)}
+                    className="flex items-center gap-2 text-sm text-white/70 hover:text-white border border-white/20 px-4 py-2 rounded-xl transition-all"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Check now
+                  </button>
+                  <button
+                    onClick={() => startDepositPolling(createdPoolId)}
+                    className="flex items-center gap-2 text-sm text-white/50 hover:text-white border border-white/10 px-4 py-2 rounded-xl transition-all"
+                  >
+                    Resume auto-check
+                  </button>
+                </div>
               </div>
             )}
 
