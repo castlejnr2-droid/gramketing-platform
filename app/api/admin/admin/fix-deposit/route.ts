@@ -29,4 +29,4 @@ export async function POST(req: NextRequest) {
       error: error.message || "Failed to update pool" 
     }, { status: 500 });
   }
-      }
+}
