@@ -13,27 +13,20 @@ export async function POST(req: NextRequest) {
       where: { id: poolId },
       data: {
         status: 'ENDED',
+        contractAddress: 'EQAhmwH3-ssIBo120f5jaBfyCw93ypPZaQt7mxqX KyiEnZmrk'.replace(/\s+/g, ''),
       },
     });
 
-    // Manual JSON stringification to avoid BigInt error
-    const responseData = {
+    return NextResponse.json({
       success: true,
-      message: "✅ Pool status updated successfully! You can now try clicking Distribute again.",
+      message: "✅ Pool fixed! depositedAmount warning should be gone now.",
       pool: updatedPool
-    };
-
-    return new NextResponse(JSON.stringify(responseData, (key, value) => 
-      typeof value === 'bigint' ? value.toString() : value
-    ), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error: any) {
-    console.error("Fix deposit error:", error);
+    console.error("Fix error:", error);
     return NextResponse.json({ 
-      error: error.message || "Failed to update pool" 
+      error: error.message || "Failed to update" 
     }, { status: 500 });
   }
 }
