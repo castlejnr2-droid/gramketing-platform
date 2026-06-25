@@ -9,21 +9,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid pool" }, { status: 400 });
     }
 
-    // ✅ CORRECT cleaned address - NO hyphen
-    const cleanAddress = 'EQAhmwH3ssIBol20f5jaBfyCW93yPZaQt7mxqXKyiEnZmrk';
+    // ✅ Use the EXACT correct address with hyphen as provided
+    const correctAddress = 'EQAhmwH3-ssIBol20f5jaBfyCW93yPZaQt7mxqXKyiEnZmrk';
 
     const updatedPool = await prisma.pool.update({
       where: { id: poolId },
       data: {
         status: 'ENDED',
-        contractAddress: cleanAddress,
+        contractAddress: correctAddress,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: "✅ Address cleaned successfully! No hyphen. Try Distribute now.",
-      cleanedAddress: cleanAddress
+      message: "✅ Contract address updated with the exact correct version (with hyphen). Try Distribute now.",
+      addressSaved: correctAddress
     });
 
   } catch (error: any) {
