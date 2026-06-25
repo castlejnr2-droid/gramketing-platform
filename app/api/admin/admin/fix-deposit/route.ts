@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';   // Changed to named import
+import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,24 +9,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid pool" }, { status: 400 });
     }
 
+    // Update using existing fields only
     const updatedPool = await prisma.pool.update({
       where: { id: poolId },
       data: {
-        depositedAmount: 10000000,
-        status: 'ENDED',
+        status: 'ENDED',           // This field exists
+        // We can't set depositedAmount if it doesn't exist in schema
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: "✅ Deposited amount fixed successfully! You can now distribute.",
+      message: "✅ Pool status updated! Try clicking Distribute again.",
       pool: updatedPool
     });
 
   } catch (error: any) {
-    console.error("Fix deposit error:", error);
+    console.error("Fix error:", error);
     return NextResponse.json({ 
-      error: error.message || "Failed to update pool" 
+      error: error.message || "Failed to update" 
     }, { status: 500 });
   }
 }
