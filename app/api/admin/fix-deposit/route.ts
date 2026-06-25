@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid pool" }, { status: 400 });
     }
 
-    // ✅ Use the EXACT correct address with hyphen as provided
+    // ✅ Use the EXACT address you confirmed has the hyphen
     const correctAddress = 'EQAhmwH3-ssIBol20f5jaBfyCW93yPZaQt7mxqXKyiEnZmrk';
 
     const updatedPool = await prisma.pool.update({
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "✅ Contract address updated with the exact correct version (with hyphen). Try Distribute now.",
+      message: "✅ Saved the exact correct address (with hyphen). Now try Distribute.",
       addressSaved: correctAddress
     });
 
