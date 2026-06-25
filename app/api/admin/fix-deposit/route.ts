@@ -21,14 +21,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "✅ Address fixed. Try Distribute now.",
+      message: "✅ Address updated. If tokens are really in the contract, try Distribute again.",
       address: correctAddress
     });
 
   } catch (error: any) {
     console.error("Fix error:", error);
-    return NextResponse.json({ 
-      error: error.message || "Failed to update pool" 
-    }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed" }, { status: 500 });
   }
 }
