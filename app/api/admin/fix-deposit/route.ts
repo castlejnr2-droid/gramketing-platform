@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Helper to fix BigInt serialization error
-const jsonReplacer = (key: string, value: any) => 
+// Fix for BigInt serialization
+const replacer = (key: string, value: any) => 
   typeof value === 'bigint' ? value.toString() : value;
 
 export async function POST(req: NextRequest) {
@@ -22,8 +22,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "✅ Pool status updated successfully! You can now try Distribute again.",
+      message: "✅ Pool status updated successfully! Try clicking Distribute again.",
       pool: updatedPool
+    }, { 
+      status: 200 
     });
 
   } catch (error: any) {
