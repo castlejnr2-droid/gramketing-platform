@@ -16,19 +16,19 @@ export async function POST(req: NextRequest) {
       data: {
         status: 'ENDED',
         contractAddress: correctAddress,
-        // Force the system to think deposit is done
-        depositedAmount: 10000000,   // 10M tokens
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: "✅ Address + depositedAmount fixed. Now click Distribute.",
+      message: "✅ Address fixed. Try Distribute now.",
       address: correctAddress
     });
 
   } catch (error: any) {
     console.error("Fix error:", error);
-    return NextResponse.json({ error: error.message || "Failed" }, { status: 500 });
+    return NextResponse.json({ 
+      error: error.message || "Failed to update pool" 
+    }, { status: 500 });
   }
 }
