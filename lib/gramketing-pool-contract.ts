@@ -363,9 +363,7 @@ export async function fetchOnChainPoolInfo(contractAddressStr: string) {
 
 /**
  * Sends the DistributeRewards message to the pool contract from the admin wallet.
- * The contract will emit JettonTransfer messages to each winner's jetton wallet.
- *
- * Gas estimate: 0.07 TON per winner + 0.1 TON base.
+ * Improved version with much higher gas + better debugging.
  */
 export async function sendDistributeRewards(
   contractAddressStr: string,
@@ -375,64 +373,75 @@ export async function sendDistributeRewards(
 
   const contractAddress = Address.parse(contractAddressStr);
 
+  // ── Build winners dictionary ─────────────────────────────────────────────
   const winnersDict = Dictionary.empty(
     Dictionary.Keys.Address(),
     Dictionary.Values.BigInt(257),
   );
-  // Parse and validate all addresses first so we get a named error, not a generic throw
+
   const parsedWinners = winners.map((w) => {
-    let addr: Address;
     try {
-      addr = Address.parse(w.walletAddress);
+      return {
+        addr: Address.parse(w.walletAddress),
+        shareBasisPoints: w.shareBasisPoints,
+      };
     } catch (e) {
-      throw new Error(`Invalid TON address for winner: "${w.walletAddress}" - ${String(e)}`);
+      throw new Error(`Invalid TON address for winner: "${w.walletAddress}"`);
     }
-    return { addr, shareBasisPoints: w.shareBasisPoints };
   });
 
-  // Detect duplicates - bounceable and non-bounceable forms of the same wallet
-  // normalise to the same key in the dictionary and silently overwrite each other.
+  // Duplicate check
   const seen = new Map<string, string>();
   for (const w of parsedWinners) {
     const canonical = `${w.addr.workChain}:${w.addr.hash.toString('hex')}`;
     if (seen.has(canonical)) {
-      throw new Error(
-        `Duplicate TON address in winners list: "${w.addr.toString()}" maps to the same ` +
-        `on-chain key as "${seen.get(canonical)}" - fix the winners array before distributing`,
-      );
+      throw new Error(`Duplicate address in winners list: ${w.addr.toString()}`);
     }
     seen.set(canonical, w.addr.toString());
     winnersDict.set(w.addr, BigInt(w.shareBasisPoints));
   }
 
-  // Sanity-check: dict must have exactly as many entries as winners
-  // (if this ever fails something changed in the Address key implementation)
-  let dictSize = 0;
-  for (const _ of winnersDict) { dictSize++; } // eslint-disable-line @typescript-eslint/no-unused-vars
-  if (dictSize !== winners.length) {
-    throw new Error(
-      `Dictionary size mismatch after insert: expected ${winners.length}, got ${dictSize}. ` +
-      `Some addresses may have collapsed to the same key.`,
-    );
-  }
+  // ── Gas calculation (significantly increased) ─────────────────────────────
+  // Base: 0.15 TON
+  // Per winner: 0.35 TON (covers Jetton transfer + notification + contract logic)
+  // Extra buffer for long-running pools
+  const baseGas = toNano('0.15');
+  const perWinnerGas = toNano('0.35');
+  const gasAmount = baseGas + BigInt(winners.length) * perWinnerGas;
 
-  // Budget: 0.22 TON per winner (0.15 jetton send value + 0.07 contract execution) + 0.1 TON base
-  const gasAmount = toNano('0.1') + BigInt(winners.length) * toNano('0.22');
+  console.log(`[DistributeRewards] Contract: ${contractAddressStr}`);
+  console.log(`[DistributeRewards] Winners: ${winners.length} | Gas: ${(gasAmount / 10n**9n).toString()} TON`);
 
   const body = beginCell()
     .store(storeDistributeRewards({ $$type: 'DistributeRewards', winners: winnersDict }))
     .endCell();
 
+  // ── Send with retry + debug ───────────────────────────────────────────────
   const seqno = await tonRetry(c => c.open(wallet).getSeqno(), 'distribute/getSeqno');
+
   await tonRetry(
-    c => c.open(wallet).sendTransfer({
-      secretKey: keyPair.secretKey,
-      seqno,
-      messages: [internal({ to: contractAddress, value: gasAmount, body })],
-      sendMode: SendMode.PAY_GAS_SEPARATELY,
-    }),
-    'distribute/sendTransfer',
+    async (c) => {
+      const tx = await c.open(wallet).sendTransfer({
+        secretKey: keyPair.secretKey,
+        seqno,
+        messages: [
+          internal({
+            to: contractAddress,
+            value: gasAmount,
+            body,
+            bounce: true,
+          }),
+        ],
+        sendMode: SendMode.PAY_GAS_SEPARATELY,
+      });
+
+      console.log(`[DistributeRewards] Transaction sent! Hash: ${tx.hash().toString('hex')}`);
+      return tx;
+    },
+    'distribute/sendTransfer'
   );
+
+  console.log(`✅ DistributeRewards message sent successfully for ${winners.length} winners.`);
 }
 
 // ── End pool ──────────────────────────────────────────────────────────────────
@@ -455,7 +464,7 @@ export async function sendEndPool(contractAddressStr: string): Promise<void> {
       messages: [internal({ to: contractAddress, value: toNano('0.05'), body })],
       sendMode: SendMode.PAY_GAS_SEPARATELY,
     }),
-    'endPool/sendTransfer',
+    'endPool/sendTransfer'
   );
 }
 
@@ -501,7 +510,7 @@ export async function sendCancelPool(
       messages: [internal({ to: contractAddress, value: gasAmount, body })],
       sendMode: SendMode.PAY_GAS_SEPARATELY,
     }),
-    'cancelPool/sendTransfer',
+    'cancelPool/sendTransfer'
   );
 }
 
@@ -517,7 +526,7 @@ export function buildFeeTransaction(params: {
   treasuryAddress: string;
   amountNano: bigint; // nanoTON
 }): { to: string; amount: string } {
-  // TonConnect SDK requires a user-friendly bounceable urlSafe address (EQ.../UQ...).
+  // TonConnect SDK requires a user-friendly bounceable url-safe address (EQ.../UQ...).
   // TREASURY_WALLET_ADDRESS may be a raw 0:hex or non-urlsafe base64 — normalize it.
   const to = Address.parse(params.treasuryAddress).toString({ bounceable: true, urlSafe: true });
   return {
