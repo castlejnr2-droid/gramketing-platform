@@ -9,20 +9,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid pool" }, { status: 400 });
     }
 
-    await prisma.pool.update({
+    const cleanAddress = 'EQAhmwH3-ssIBo120f5jaBfyCw93ypPZaQt7mxqXKyiEnZmrk';
+
+    const updatedPool = await prisma.pool.update({
       where: { id: poolId },
-      data: { status: 'ENDED' },
+      data: {
+        status: 'ENDED',
+        contractAddress: cleanAddress,
+      },
     });
 
     return NextResponse.json({
       success: true,
-      message: "✅ Pool status updated! Refresh the All Pools page and try Distribute again."
+      message: "✅ Contract address fixed + status updated! Try Distribute now.",
+      pool: updatedPool
     });
 
   } catch (error: any) {
     console.error("Fix error:", error);
     return NextResponse.json({ 
-      error: error.message || "Failed" 
+      error: error.message || "Failed to update" 
     }, { status: 500 });
   }
 }
