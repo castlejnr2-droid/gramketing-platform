@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid pool" }, { status: 400 });
     }
 
-    // ✅ Correct cleaned address (no hyphen)
+    // ✅ Use the exact address you provided, cleaned (no hyphen)
     const cleanAddress = 'EQAhmwH3ssIBol20f5jaBfyCW93yPZaQt7mxqXKyiEnZmrk';
 
     const updatedPool = await prisma.pool.update({
@@ -22,15 +22,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "✅ Contract address FIXED with correct one. Now click Distribute.",
-      cleanedAddress: cleanAddress,
-      pool: updatedPool
+      message: "✅ Address updated to clean version. Try Distribute now.",
+      cleanedAddress: cleanAddress
     });
 
   } catch (error: any) {
     console.error("Fix error:", error);
-    return NextResponse.json({ 
-      error: error.message || "Failed to update" 
-    }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed" }, { status: 500 });
   }
 }
